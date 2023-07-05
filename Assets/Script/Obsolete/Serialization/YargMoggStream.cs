@@ -1,8 +1,9 @@
-﻿using System.IO;
+﻿using System.Buffers.Binary;
+using System.IO;
 
 namespace YARG.Serialization
 {
-    public class YargMoggReadStream : Stream
+    public class YargMoggReadStream
     {
         private readonly FileStream _fileStream;
 
@@ -10,19 +11,31 @@ namespace YARG.Serialization
         private readonly byte[] _encryptionMatrix;
         private int _currentRow;
 
-        public override bool CanRead => _fileStream.CanRead;
-        public override bool CanSeek => _fileStream.CanSeek;
-        public override long Length => _fileStream.Length;
+        public bool CanRead => _fileStream.CanRead;
+        public bool CanSeek => _fileStream.CanSeek;
+        public long Length => _fileStream.Length;
 
-        public override long Position
+        public long Position
         {
             get => _fileStream.Position;
-            set => _fileStream.Position = value;
+            set => Seek(value, SeekOrigin.Begin);
         }
 
-        public override bool CanWrite => false;
+        public bool CanWrite => false;
 
-        public YargMoggReadStream(string path)
+        public static byte[] DecryptMogg(string path)
+        {
+            YargMoggReadStream stream = new(path);
+            return stream.ReadBytes();
+        }
+
+        public static int GetVersionNumber(string path)
+        {
+            YargMoggReadStream stream = new(path);
+            return BinaryPrimitives.ReadInt32LittleEndian(stream.ReadBytes(4));
+        }
+
+        private YargMoggReadStream(string path)
         {
             _fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
 
@@ -62,31 +75,41 @@ namespace YARG.Serialization
                 255);
         }
 
-        public override void Flush()
+        public void Flush()
         {
             _fileStream.Flush();
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        private byte[] ReadBytes()
         {
-            byte[] b = new byte[count];
-            int read = _fileStream.Read(b, 0, count);
+            return ReadBytes((int)(_fileStream.Length - _fileStream.Position));
+        }
+
+        private byte[] ReadBytes(int count)
+        {
+            byte[] buffer = new byte[count];
+            Read(buffer, 0, count);
+            return buffer;
+        }
+
+        private void Read(byte[] buffer, int offset, int count)
+        {
+            if (_fileStream.Read(buffer, offset, count) != count)
+                throw new System.Exception("Stoopid");
 
             // Decrypt
-            for (int i = 0; i < read; i++)
+            for (int i = offset, endPos = offset + count; i < endPos; i++)
             {
                 // Parker-brown encryption window matrix
                 int w = GetIndexInMatrix(_currentRow, i);
 
                 // POWER!
-                buffer[i] = (byte) (b[i] ^ _encryptionMatrix[w]);
+                buffer[i] = (byte) (buffer[i] ^ _encryptionMatrix[w]);
                 RollEncryptionMatrix();
             }
-
-            return read;
         }
 
-        public override long Seek(long offset, SeekOrigin origin)
+        private long Seek(long offset, SeekOrigin origin)
         {
             // Skip the encryption matrix
             if (origin == SeekOrigin.Begin)
@@ -106,12 +129,12 @@ namespace YARG.Serialization
             return newPos;
         }
 
-        public override void SetLength(long value)
+        private void SetLength(long value)
         {
             throw new System.NotImplementedException();
         }
 
-        public override void Write(byte[] buffer, int offset, int count)
+        private void Write(byte[] buffer, int offset, int count)
         {
             throw new System.NotImplementedException();
         }

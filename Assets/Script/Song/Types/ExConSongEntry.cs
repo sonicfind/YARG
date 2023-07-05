@@ -569,17 +569,8 @@ namespace YARG.Song
         public virtual byte[] LoadMoggFile()
         {
             if (MoggPath.EndsWith(".yarg_mogg"))
-            {
-                var stream = new YargMoggReadStream(MoggPath);
-
-                byte[] bytes = new byte[stream.Length];
-
-                // This should be fine because we are doing `stream.Length`
                 // ReSharper disable once MustUseReturnValue
-                stream.Read(bytes, 0, bytes.Length);
-
-                return bytes;
-            }
+                return YargMoggReadStream.DecryptMogg(MoggPath);
 
             return File.ReadAllBytes(MoggPath);
         }
@@ -599,11 +590,7 @@ namespace YARG.Song
         public virtual bool IsMoggUnencrypted()
         {
             if (MoggPath.EndsWith(".yarg_mogg"))
-            {
-                var fs = new YargMoggReadStream(MoggPath);
-                int readInt32Le = fs.ReadInt32LE();
-                return readInt32Le == 0xF0;
-            }
+                return YargMoggReadStream.GetVersionNumber(MoggPath) == 0xF0;
             else
             {
                 var fs = new FileStream(MoggPath, FileMode.Open, FileAccess.Read);
