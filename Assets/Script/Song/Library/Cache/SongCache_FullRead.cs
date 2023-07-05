@@ -535,6 +535,7 @@ namespace YARG.Library
             if (!midiInfo.Exists || midiInfo.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
                 return;
 
+            bool isYargMogg = reader.ReadBoolean();
             FileInfo moggInfo = new(reader.ReadLEBString());
             if (!moggInfo.Exists || moggInfo.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
                 return;
@@ -547,7 +548,12 @@ namespace YARG.Library
                     return;
             }
 
-            ConSongEntry currentSong = new(midiInfo, moggInfo, updateInfo, reader, strings);
+            ConSongEntry currentSong;
+            if (isYargMogg)
+                currentSong = new(midiInfo, moggInfo, null, updateInfo, reader, strings);
+            else
+                currentSong = new(midiInfo, null, moggInfo, updateInfo, reader, strings);
+
             Hash128Wrapper hash = new(reader);
             group.AddEntry(nodeName, index, currentSong, hash);
         }

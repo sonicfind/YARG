@@ -70,6 +70,7 @@ namespace YARG.Song.Entries
 
         // .mogg info
         public CONSongFileInfo? Mogg { get; private set; } = null;
+        public CONSongFileInfo? Yarg_Mogg { get; private set; } = null;
 
         // .milo info
         public CONSongFileInfo? Milo { get; private set; } = null;
@@ -144,12 +145,15 @@ namespace YARG.Song.Entries
             FinishCacheRead(reader);
         }
 
-        public ConSongEntry(FileInfo midi, FileInfo mogg, FileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
+        public ConSongEntry(FileInfo midi, FileInfo? yargmogg, FileInfo? mogg, FileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
         {
             MidiPath = midi.FullName;
             MidiLastWrite = midi.LastWriteTime;
 
-            Mogg = mogg;
+            if (yargmogg != null)
+                Yarg_Mogg = yargmogg;
+            else
+                Mogg = mogg!;
 
             if (updateInfo != null)
                 UpdateMidi = updateInfo;
@@ -266,7 +270,11 @@ namespace YARG.Song.Entries
                 throw new Exception($"Required midi file '{MidiPath}' was not located");
             MidiLastWrite = midiInfo.LastWriteTime;
 
-            Mogg = new(file + ".mogg");
+            FileInfo mogg = new(file + ".yarg_mogg");
+            if (mogg.Exists)
+                Yarg_Mogg = mogg;
+            else
+                Mogg = new(file + ".mogg");
 
             if (!location.StartsWith($"songs/{nodeName}"))
                 nodeName = location.Split('/')[1];
@@ -611,9 +619,9 @@ namespace YARG.Song.Entries
 
             try
             {
-                using FrameworkFile? file = LoadMidiFile();
-                using FrameworkFile? updateFile = LoadMidiUpdateFile();
-                using FrameworkFile? upgradeFile = Upgrade?.GetUpgradeMidi();
+                using var file = LoadMidiFile();
+                using var updateFile = LoadMidiUpdateFile();
+                using var upgradeFile = Upgrade?.GetUpgradeMidi();
 
                 int bufLength = 0;
                 m_scans = Scan_Midi(file);
@@ -719,8 +727,19 @@ namespace YARG.Song.Entries
             {
                 writer.Write(MidiPath);
                 writer.Write(MidiLastWrite.ToBinary());
-                writer.Write(Mogg!.FullName);
-                writer.Write(Mogg.LastWriteTime.ToBinary());
+
+                if (Yarg_Mogg != null)
+                {
+                    writer.Write(true);
+                    writer.Write(Yarg_Mogg.FullName);
+                    writer.Write(Yarg_Mogg.LastWriteTime.ToBinary());
+                }
+                else
+                {
+                    writer.Write(false);
+                    writer.Write(Mogg!.FullName);
+                    writer.Write(Mogg.LastWriteTime.ToBinary());
+                }
             }
 
             if (UpdateMidi != null)
@@ -836,6 +855,12 @@ namespace YARG.Song.Entries
 
         public FrameworkFile? LoadMoggFile()
         {
+            if (Yarg_Mogg != null)
+            {
+                // ReSharper disable once MustUseReturnValue
+                return new FrameworkFile_Handle(YargMoggReadStream.DecryptMogg(Yarg_Mogg.FullName));
+            }
+
             if (Mogg != null && File.Exists(Mogg.FullName))
                 return new FrameworkFile_Alloc(Mogg.FullName);
 
@@ -869,13 +894,19 @@ namespace YARG.Song.Entries
 
         public bool IsMoggUnencrypted()
         {
-            if (Mogg != null && File.Exists(Mogg.FullName))
+            if (Yarg_Mogg != null)
+            {
+                if (!File.Exists(Yarg_Mogg.FullName))
+                    throw new Exception("Mogg file not present");
+                return YargMoggReadStream.GetVersionNumber(Yarg_Mogg.FullName) == 0xF0;
+            }
+            else if (Mogg != null && File.Exists(Mogg.FullName))
             {
                 using var fs = new FileStream(Mogg.FullName, FileMode.Open, FileAccess.Read);
-                return fs.ReadInt32LE() == 0xA;
+                return fs.ReadInt32LE() == 0x0A;
             }
             else if (conFile != null)
-                return conFile.GetMoggVersion(moggListing!) == 0xA;
+                return conFile.GetMoggVersion(moggListing!) == 0x0A;
 
             throw new Exception("Mogg file not present");
         }
@@ -892,7 +923,7 @@ namespace YARG.Song.Entries
                 if (reader.GetTrackNumber() > 1 && reader.GetEvent().type == MidiEventType.Text_TrackName)
                 {
                     string name = Encoding.ASCII.GetString(reader.ExtractTextOrSysEx());
-                    if (MidiFileReader.TRACKNAMES.TryGetValue(name, out MidiTrackType type) && type != MidiTrackType.Events && type != MidiTrackType.Beats)
+                    if (MidiFileReader.TRACKNAMES.TryGetValue(name, out var type) && type != MidiTrackType.Events && type != MidiTrackType.Beats)
                         scans.ScanFromMidi(type, Types.DrumType.FOUR_PRO, reader);
                 }
             }

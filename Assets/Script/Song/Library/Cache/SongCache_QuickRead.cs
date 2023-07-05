@@ -391,6 +391,7 @@ namespace YARG.Library
             FileInfo midiInfo = new(reader.ReadLEBString());
             reader.Position += 8;
 
+            bool isYargMogg = reader.ReadBoolean();
             FileInfo moggInfo = new(reader.ReadLEBString());
             reader.Position += 8;
 
@@ -401,7 +402,12 @@ namespace YARG.Library
                 reader.Position += 8;
             }
 
-            ConSongEntry currentSong = new(midiInfo, moggInfo, updateInfo, reader, strings);
+            ConSongEntry currentSong;
+            if (isYargMogg)
+                currentSong = new(midiInfo, moggInfo, null, updateInfo, reader, strings);
+            else
+                currentSong = new(midiInfo, null, moggInfo, updateInfo, reader, strings);
+
             if (upgrades.TryGetValue(nodeName, out var upgrade))
                 currentSong.Upgrade = upgrade.Item2;
 
