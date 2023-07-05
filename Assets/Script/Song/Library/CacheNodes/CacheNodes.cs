@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace YARG.Library.CacheNodes
+namespace YARG.Song.Library.CacheNodes
 {
     public class CategoryCacheWriteNode
     {

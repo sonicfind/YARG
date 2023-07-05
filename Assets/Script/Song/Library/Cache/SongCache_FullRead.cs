@@ -1,5 +1,5 @@
 ﻿using YARG.Hashes;
-using YARG.Library.CacheNodes;
+using YARG.Song.Library.CacheNodes;
 using YARG.Serialization;
 using YARG.Song.Entries;
 using System;
@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 #nullable enable
-namespace YARG.Library
+namespace YARG.Song.Library
 {
     public partial class SongCache
     {

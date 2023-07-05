@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using YARG.Song.Entries;
 
-namespace YARG.Library
+namespace YARG.Song.Library
 {
     public class SongLibrary
     {

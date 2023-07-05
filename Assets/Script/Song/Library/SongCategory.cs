@@ -1,5 +1,5 @@
 ﻿using YARG.FlatMaps;
-using YARG.Library.CacheNodes;
+using YARG.Song.Library.CacheNodes;
 using YARG.Song.Entries;
 using YARG.Types;
 using System;
@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace YARG.Library
+namespace YARG.Song.Library
 {
     public interface IEntryAddable
     {

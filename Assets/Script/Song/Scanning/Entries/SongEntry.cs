@@ -12,7 +12,7 @@ using YARG.Song.Entries.TrackScan;
 using System.IO;
 using System.Xml.Linq;
 using System.Diagnostics;
-using YARG.Library.CacheNodes;
+using YARG.Song.Library.CacheNodes;
 
 namespace YARG.Song.Entries
 {

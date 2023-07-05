@@ -1,5 +1,5 @@
 ﻿using YARG.Ini;
-using YARG.Library.CacheNodes;
+using YARG.Song.Library.CacheNodes;
 using YARG.Modifiers;
 using YARG.Serialization;
 using YARG.Song.Entries.TrackScan.Instrument.Drums;

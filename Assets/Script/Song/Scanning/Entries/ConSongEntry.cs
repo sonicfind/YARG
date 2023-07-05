@@ -1,5 +1,5 @@
 ﻿using YARG.Hashes;
-using YARG.Library.CacheNodes;
+using YARG.Song.Library.CacheNodes;
 using YARG.Serialization;
 using YARG.Types;
 using System;

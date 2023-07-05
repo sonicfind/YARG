@@ -1,4 +1,4 @@
-﻿using YARG.Library.CacheNodes;
+﻿using YARG.Song.Library.CacheNodes;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YARG.Song.Entries;
 
-namespace YARG.Library
+namespace YARG.Song.Library
 {
     public partial class SongCache
     {
