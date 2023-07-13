@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using YARG.Song;
+using YARG.Song.Entries;
 
 namespace YARG.UI.MusicLibrary.ViewTypes
 {

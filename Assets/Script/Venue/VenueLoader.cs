@@ -1,8 +1,8 @@
-using System.IO;
+﻿using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using YARG.Settings;
-using YARG.Song;
+using YARG.Song.Entries;
 using YARG.Util;
 
 namespace YARG.Venue
@@ -48,7 +48,7 @@ namespace YARG.Venue
 
             // Try a local yarground first
 
-            string backgroundPath = Path.Combine(song.Location, "bg.yarground");
+            string backgroundPath = Path.Combine(song.Directory, "bg.yarground");
             if (File.Exists(backgroundPath))
             {
                 return new(VenueType.Yarground, backgroundPath);
@@ -70,7 +70,7 @@ namespace YARG.Venue
             {
                 foreach (var ext in videoExtensions)
                 {
-                    var path = Path.Combine(song.Location, name + ext);
+                    var path = Path.Combine(song.Directory, name + ext);
 
                     if (File.Exists(path))
                     {
@@ -88,7 +88,7 @@ namespace YARG.Venue
             {
                 foreach (var ext in imageExtensions)
                 {
-                    var path = Path.Combine(song.Location, name + ext);
+                    var path = Path.Combine(song.Directory, name + ext);
 
                     if (File.Exists(path))
                     {

@@ -9,7 +9,7 @@ namespace YARG.Util
         public bool TestPlayMode;
 
         [HideInInspector]
-        public string TestPlaySongHash;
+        public Hash128 TestPlaySongHash;
 
         public bool NoBotsMode;
     }

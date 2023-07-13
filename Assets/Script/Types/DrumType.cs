@@ -10,6 +10,6 @@ namespace YARG.Types
     {
         UNKNOWN,
         FOUR_PRO,
-        FIVE_LANE
+        FIVE_LANE,
     }
 }

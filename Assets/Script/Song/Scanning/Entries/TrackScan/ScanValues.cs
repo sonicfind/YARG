@@ -12,10 +12,10 @@ namespace YARG.Song.Entries.TrackScan
         internal static byte[] shifts = { 1, 2, 4, 8, 16 };
         public byte subTracks;
         public sbyte intensity;
-        public ScanValues(int _ = 0)
+        public ScanValues(sbyte baseIntensity)
         {
             subTracks = 0;
-            intensity = -1;
+            intensity = baseIntensity;
         }
 
         public void Set(int subTrack)

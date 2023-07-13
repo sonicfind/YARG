@@ -9,22 +9,25 @@ using System.Threading.Tasks;
 
 namespace YARG.Song.Entries.TrackScan
 {
-    public static class DotChart_Scanner
+    public static class DotChart_Scanner<T>
+        where T : class, IScannableFromDotChart, new()
     {
-        public static bool Scan<T>(ref ScanValues scan, ChartFileReader reader)
-            where T : IScannableFromDotChart, new()
+        private static readonly T obj = new();
+        public static bool Scan(ref ScanValues scan, ChartFileReader reader)
         {
-            T obj = new();
             int index = reader.Difficulty;
             if (scan[index])
                 return false;
 
             while (reader.IsStillCurrentTrack())
             {
-                if (reader.ParseEvent().Item2 == ChartEvent.NOTE && obj.IsValid(reader.ExtractLaneAndSustain().Item1))
+                if (reader.ParseEvent().Item2 == ChartEvent.NOTE)
                 {
-                    scan.Set(index);
-                    return false;
+                    if (obj.IsValid(reader.ExtractLaneAndSustain().Item1))
+                    {
+                        scan.Set(index);
+                        return false;
+                    }
                 }
                 reader.NextEvent();
             }

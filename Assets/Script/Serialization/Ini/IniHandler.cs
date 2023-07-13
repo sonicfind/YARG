@@ -146,7 +146,7 @@ namespace YARG.Ini
                 { "video_start_time",                     new("video_start_time", ModifierNodeType.FLOAT) },
                 { "vocal_gender",                         new("vocal_gender", ModifierNodeType.UINT32) },
 
-                { "year",                                 new("year", ModifierNodeType.SORTSTRING) }
+                { "year",                                 new("year", ModifierNodeType.STRING) }
             });
 
             LOADING_PHRASE_DICTIONARY.Add("[song]", new()

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using SFB;
@@ -38,8 +38,10 @@ namespace YARG.Settings
             {
                 pathText.text = SongFolders[_index];
 
-                int songCount = SongContainer.Songs.Count(i =>
-                    PathHelper.PathsEqual(i.CacheRoot, SongFolders[_index]));
+                int songCount = 0;
+                foreach (var song in SongContainer.Songs)
+                    if (song.Directory.StartsWith(SongFolders[_index]))
+                        ++songCount;
 
                 if (songCount == 0)
                 {
@@ -69,13 +71,6 @@ namespace YARG.Settings
                 SongFolders[_index] = folder;
                 RefreshText();
             });
-        }
-
-        public async void Refresh()
-        {
-            LoadingManager.Instance.QueueSongFolderRefresh(SongFolders[_index]);
-            await LoadingManager.Instance.StartLoad();
-            RefreshText();
         }
     }
 }

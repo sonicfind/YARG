@@ -38,7 +38,7 @@ namespace YARG.Serialization
             {"PART REAL_KEYS_H", MidiTrackType.Real_Keys_H},
             {"PART REAL_KEYS_M", MidiTrackType.Real_Keys_M},
             {"PART REAL_KEYS_E", MidiTrackType.Real_Keys_E},
-            {"BEATS", MidiTrackType.Beats},
+            {"BEAT", MidiTrackType.Beat},
         };
 
         internal static readonly byte[][] TRACKTAGS = { Encoding.ASCII.GetBytes("MThd"), Encoding.ASCII.GetBytes("MTrk") };

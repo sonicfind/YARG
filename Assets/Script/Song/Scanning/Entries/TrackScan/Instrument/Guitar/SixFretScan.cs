@@ -17,9 +17,9 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             0, 4, 5, 6, 1, 2, 3, 7, 8, 9, 10, 11,
         };
 
-        public override bool IsNote() { return 58 <= note.value && note.value <= 103; }
+        protected override bool IsNote() { return 58 <= note.value && note.value <= 103; }
 
-        public override bool ParseLaneColor()
+        protected override bool ParseLaneColor()
         {
             uint noteValue = note.value - 58;
             int diffIndex = DIFFVALUES[noteValue];
@@ -32,7 +32,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             return false;
         }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 58 || 103 < note.value)
                 return false;
@@ -44,7 +44,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
                 uint lane = LANEVALUES[noteValue];
                 if (lane < 7 && notes[diffIndex, lane])
                 {
-                    value.Set(diffIndex);
+                    Validate(diffIndex);
                     difficulties[diffIndex] = true;
                     return IsFullyScanned();
                 }

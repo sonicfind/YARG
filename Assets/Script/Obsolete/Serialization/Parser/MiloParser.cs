@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
@@ -27,9 +27,9 @@ namespace YARG.Serialization.Parser
         }
 
         // inflate a milo file's bytes so that you can parse them
-        private static byte[] Inflate(byte[] milo)
+        private static unsafe byte[] Inflate(FrameworkFile file)
         {
-            using var ms = new MemoryStream(milo);
+            using var ms = new UnmanagedMemoryStream(file.ptr, file.Length);
             using var br = new BinaryReader(ms, new ASCIIEncoding());
 
             // 0xCABEDEAF = RBN
@@ -81,10 +81,10 @@ namespace YARG.Serialization.Parser
         }
 
         // parse the fully inflated bytes for usable files
-        private static Dictionary<string, byte[]> ParseMiloForFiles(byte[] milo)
+        private static Dictionary<string, byte[]> ParseMiloForFiles(FrameworkFile file)
         {
             // inflate the milo
-            byte[] inflated = Inflate(milo);
+            byte[] inflated = Inflate(file);
             var FileDict = new Dictionary<string, byte[]>();
 
             // with the milo file inflated, now we can properly begin to parse it
@@ -468,16 +468,17 @@ namespace YARG.Serialization.Parser
             return new TrackChunk(lipsyncTrack);
         }
 
+#nullable enable
         // the main fxn we actually care about
-        public static List<TrackChunk> GetMidiFromMilo(byte[] miloBytes, TempoMap tmap)
+        public static List<TrackChunk> GetMidiFromMilo(FrameworkFile? file, TempoMap tmap)
         {
             // inflate milo bytes
             // get dictionary of files and filebytes from inflated milo
             var MiloTracks = new List<TrackChunk>();
             // if no milo bytes, return empty list
-            if (miloBytes == null || miloBytes.Length == 0) return MiloTracks;
+            if (file == null || file.Length == 0) return MiloTracks;
 
-            var MiloFiles = ParseMiloForFiles(miloBytes);
+            var MiloFiles = ParseMiloForFiles(file);
             // with our list of files and filebytes from the milo, we must convert each file to a MIDI track
             foreach (var f in MiloFiles)
             {

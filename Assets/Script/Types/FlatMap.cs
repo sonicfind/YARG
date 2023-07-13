@@ -1,5 +1,4 @@
-﻿using YARG.Types;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,10 +10,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine.InputSystem;
 
-#nullable enable
-namespace YARG.FlatMaps
+namespace YARG.Types
 {
+#nullable enable
     public abstract unsafe class FlatMap_Base<Key, T> : IDisposable
        where T : new()
        where Key : IComparable<Key>, IEquatable<Key>
@@ -27,8 +27,6 @@ namespace YARG.FlatMaps
             public static bool operator <(Node node, Key key) { return node.key.CompareTo(key) < 0; }
 
             public static bool operator >(Node node, Key key) { return node.key.CompareTo(key) < 0; }
-
-            private string GetDebuggerDisplay() { return $"{key} | {obj}"; }
         }
 
         internal static readonly int DEFAULTCAPACITY = 16;
@@ -81,7 +79,7 @@ namespace YARG.FlatMaps
         protected void Grow()
         {
             int newcapacity = _capacity == 0 ? DEFAULTCAPACITY : 2 * _capacity;
-            if ((uint)newcapacity > int.MaxValue) newcapacity = int.MaxValue;
+            if ((uint) newcapacity > int.MaxValue) newcapacity = int.MaxValue;
             Capacity = newcapacity;
         }
 
@@ -112,7 +110,7 @@ namespace YARG.FlatMaps
             {
                 var localMap = _map;
 
-                if (_version == localMap._version && ((uint)_index < (uint)localMap._count))
+                if (_version == localMap._version && ((uint) _index < (uint) localMap._count))
                 {
                     _current = localMap.At_index(_index);
                     _index++;
@@ -152,15 +150,13 @@ namespace YARG.FlatMaps
                 _current = default;
             }
         }
-
-        private string GetDebuggerDisplay() { return $"Count: {Count}"; }
     }
 
     public unsafe class FlatMap<Key, T> : FlatMap_Base<Key, T>
        where T : new()
        where Key : IComparable<Key>, IEquatable<Key>
     {
-        Node[]? _buffer = null;
+        private Node[] _buffer = Array.Empty<Node>();
 
         public FlatMap() { }
         public FlatMap(int capacity) : base(capacity) { }
@@ -183,7 +179,7 @@ namespace YARG.FlatMaps
         public override void Clear()
         {
             for (uint i = 0; i < _count; ++i)
-                _buffer![i] = default;
+                _buffer[i] = default;
 
             base.Clear();
         }
@@ -208,11 +204,11 @@ namespace YARG.FlatMaps
                     }
                     else
                     {
-                        _buffer = null;
+                        _buffer = Array.Empty<Node>();
                         _capacity = 0;
                     }
                     ++_version;
-                    
+
                 }
             }
         }
@@ -223,12 +219,28 @@ namespace YARG.FlatMaps
                 Capacity = _count;
         }
 
+        public ref T Insert(int index, Key key, T? obj)
+        {
+            CheckAndGrow();
+
+            if (index >= _count)
+                index = _count;
+            else
+                Array.Copy(_buffer, index, _buffer, index + 1, _count - index);
+
+            ++_count;
+            ref var node = ref _buffer[index];
+            node.key = key;
+            node.obj = obj != null ? obj : new();
+            return ref node.obj;
+        }
+
         public ref T Add_Back(Key key, T obj)
         {
             CheckAndGrow();
 
             int index = _count++;
-            ref var node = ref _buffer![index];
+            ref var node = ref _buffer[index];
             node.key = key;
             node.obj = obj;
             return ref node.obj;
@@ -239,7 +251,7 @@ namespace YARG.FlatMaps
             CheckAndGrow();
 
             int index = _count++;
-            ref var node = ref _buffer![index];
+            ref var node = ref _buffer[index];
             node.key = key;
             node.obj = obj;
             return ref node.obj;
@@ -250,7 +262,7 @@ namespace YARG.FlatMaps
             CheckAndGrow();
 
             int index = _count++;
-            ref var node = ref _buffer![index];
+            ref var node = ref _buffer[index];
             node.key = key;
             node.obj = new();
             return ref node.obj;
@@ -261,7 +273,7 @@ namespace YARG.FlatMaps
             CheckAndGrow();
 
             int index = _count++;
-            ref var node = ref _buffer![index];
+            ref var node = ref _buffer[index];
             node.key = key;
             node.obj = new();
         }
@@ -271,7 +283,7 @@ namespace YARG.FlatMaps
             if (_count == 0)
                 return ref Add_Back(key);
 
-            ref var node = ref _buffer![_count - 1];
+            ref var node = ref _buffer[_count - 1];
             if (node < key)
                 return ref Add_Back(key);
             return ref node.obj;
@@ -292,7 +304,7 @@ namespace YARG.FlatMaps
             if (_count == 0)
                 throw new Exception("Pop on emtpy map");
 
-            _buffer![_count - 1] = default;
+            _buffer[_count - 1] = default;
             --_count;
             ++_version;
         }
@@ -302,14 +314,14 @@ namespace YARG.FlatMaps
         public ref T Find_Or_Add(int searchIndex, Key key)
         {
             int index = Find_or_emplace_index(searchIndex, key);
-            return ref _buffer![index].obj;
+            return ref _buffer[index].obj;
         }
 
         public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
 
         public override ref Node At_index(int index)
         {
-            return ref _buffer![index];
+            return ref _buffer[index];
         }
 
         public ref T At(Key key)
@@ -317,15 +329,15 @@ namespace YARG.FlatMaps
             int index = BinarySearch(0, key);
             if (index < 0)
                 throw new KeyNotFoundException();
-            return ref _buffer![index].obj;
+            return ref _buffer[index].obj;
         }
 
         public void RemoveAt(int index)
         {
-            if ((uint)index >= (uint)_count)
+            if ((uint) index >= (uint) _count)
                 throw new IndexOutOfRangeException();
 
-            _buffer![index] = default;
+            _buffer[index] = default;
             --_count;
             if (index < _count)
             {
@@ -334,11 +346,11 @@ namespace YARG.FlatMaps
             ++_version;
         }
 
-        public ref T Last() { return ref _buffer![_count - 1].obj; }
+        public ref T Last() { return ref _buffer[_count - 1].obj; }
 
         public bool ValidateLastKey(Key key)
         {
-            return _count > 0 && _buffer![_count - 1].key.Equals(key);
+            return _count > 0 && _buffer[_count - 1].key.Equals(key);
         }
 
         public bool Contains(Key key) { return BinarySearch(0, key) >= 0; }
@@ -353,11 +365,11 @@ namespace YARG.FlatMaps
                 index = ~index;
                 if (index < _count)
                 {
-                    Array.Copy(_buffer!, index, _buffer!, index + 1, _count - index);
+                    Array.Copy(_buffer, index, _buffer, index + 1, _count - index);
                 }
 
                 ++_count;
-                ref var node = ref _buffer![index];
+                ref var node = ref _buffer[index];
                 node.key = key;
                 node.obj = new();
             }
@@ -385,10 +397,10 @@ namespace YARG.FlatMaps
     }
 
     public unsafe class NativeFlatMap<Key, T> : FlatMap_Base<Key, T>
-       where T : struct
-       where Key : IComparable<Key>, IEquatable<Key>
+       where T : unmanaged
+       where Key : unmanaged, IComparable<Key>, IEquatable<Key>
     {
-        internal static T BASE = new();
+        internal static readonly T BASE = new();
         internal static readonly int SIZEOFNODE = sizeof(Node);
 
         static NativeFlatMap()
@@ -397,7 +409,7 @@ namespace YARG.FlatMaps
                 throw new Exception($"{nameof(T)} cannot be used in an unmanaged context");
         }
 
-        Node* _buffer = null;
+        private Node* _buffer = null;
 
         public NativeFlatMap() { }
         public NativeFlatMap(int capacity) { Capacity = capacity; }
@@ -411,7 +423,7 @@ namespace YARG.FlatMaps
 
             if (_buffer != null)
             {
-                Marshal.FreeHGlobal((IntPtr)_buffer);
+                Marshal.FreeHGlobal((IntPtr) _buffer);
                 _buffer = null;
             }
 
@@ -440,19 +452,19 @@ namespace YARG.FlatMaps
                     {
                         if (value > int.MaxValue)
                             value = int.MaxValue;
-                        
-                        void* newItems = (void*)Marshal.AllocHGlobal(value * SIZEOFNODE);
+
+                        void* newItems = (void*) Marshal.AllocHGlobal(value * SIZEOFNODE);
 
                         if (_count > 0)
                             Copier.MemCpy(newItems, _buffer, (nuint)(_count * SIZEOFNODE));
 
-                        Marshal.FreeHGlobal((IntPtr)_buffer);
-                        _buffer = (Node*)newItems;
+                        Marshal.FreeHGlobal((IntPtr) _buffer);
+                        _buffer = (Node*) newItems;
                     }
                     else
                     {
                         if (_capacity > 0)
-                            Marshal.FreeHGlobal((IntPtr)_buffer);
+                            Marshal.FreeHGlobal((IntPtr) _buffer);
                         _buffer = null;
                     }
                     _capacity = value;
@@ -465,6 +477,27 @@ namespace YARG.FlatMaps
         {
             if (_count < _capacity)
                 Capacity = _count;
+        }
+
+        public ref T Insert(int index, Key key)
+        {
+            return ref Insert(index, key, BASE);
+        }
+
+        public ref T Insert(int index, Key key, T obj)
+        {
+            CheckAndGrow();
+
+            if (index >= _count)
+                index = _count;
+            else
+                Copier.MemMove(_buffer + index + 1, _buffer + index, (nuint) ((_count - index) * SIZEOFNODE));
+
+            ++_count;
+            ref var node = ref _buffer[index];
+            node.key = key;
+            node.obj = obj;
+            return ref node.obj;
         }
 
         public ref T Add_Back(Key key, T obj)
@@ -568,13 +601,13 @@ namespace YARG.FlatMaps
 
         public void RemoveAt(int index)
         {
-            if ((uint)index >= (uint)_count)
+            if ((uint) index >= (uint) _count)
                 throw new IndexOutOfRangeException();
 
             _buffer[index] = default;
             --_count;
             if (index < _count)
-                Copier.MemMove(_buffer + index, _buffer + index + 1, (nuint)((_count - index) * SIZEOFNODE));
+                Copier.MemMove(_buffer + index, _buffer + index + 1, (nuint) ((_count - index) * SIZEOFNODE));
             ++_version;
         }
 
@@ -596,7 +629,7 @@ namespace YARG.FlatMaps
                 CheckAndGrow();
 
                 if (index < _count)
-                    Copier.MemMove(_buffer + index + 1, _buffer + index, (nuint)((_count - index) * SIZEOFNODE));
+                    Copier.MemMove(_buffer + index + 1, _buffer + index, (nuint) ((_count - index) * SIZEOFNODE));
 
                 ++_count;
                 ref var node = ref _buffer[index];
@@ -626,12 +659,25 @@ namespace YARG.FlatMaps
             return ~lo;
         }
     }
-    
+
+
     public class TimedFlatMap<T> : FlatMap<ulong, T>
         where T : new()
-    { }
+    {
+        public float GetLastNodeTime()
+        {
+            if (IsEmpty()) return 0.0f;
+            return At_index(Count - 1).key;
+        }
+    }
 
     public class TimedNativeFlatMap<T> : NativeFlatMap<ulong, T>
-        where T : struct
-    { }
+        where T : unmanaged
+    {
+        public float GetLastNodeTime()
+        {
+            if (IsEmpty()) return 0.0f;
+            return At_index(Count - 1).key;
+        }
+    }
 }

@@ -11,11 +11,12 @@ namespace YARG.Song.Entries.TrackScan.Instrument
     public abstract class Midi_Instrument_Scanner_Base
     {
         internal static readonly byte[] SYSEXTAG = Encoding.ASCII.GetBytes("PS");
+        protected static readonly int[] ValidationMask = { 1, 2, 4, 8, 16 };
         protected MidiParseEvent currEvent;
-        protected ScanValues value = new();
+        protected int validations;
         protected MidiNote note;
 
-        public ScanValues Scan(MidiFileReader reader)
+        public byte Scan(MidiFileReader reader)
         {
             while (reader.TryParseEvent())
             {
@@ -42,7 +43,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument
                 else if (currEvent.type <= MidiEventType.Text_EnumLimit)
                     ParseText(reader.ExtractTextOrSysEx());
             }
-            return value;
+            return (byte)validations;
         }
 
         private bool ParseNote()
@@ -60,23 +61,25 @@ namespace YARG.Song.Entries.TrackScan.Instrument
             return ProcessSpecialNote_Off() || ParseLaneColor_Off();
         }
 
-        public abstract bool ParseLaneColor();
+        protected abstract bool ParseLaneColor();
 
-        public abstract bool ParseLaneColor_Off();
+        protected abstract bool ParseLaneColor_Off();
 
-        public virtual bool IsFullyScanned() { return value.subTracks == 15; }
+        protected virtual bool IsFullyScanned() { return validations == 15; }
 
-        public virtual void ParseText(ReadOnlySpan<byte> str) {}
+        protected virtual void ParseText(ReadOnlySpan<byte> str) {}
 
-        public virtual bool IsNote() { return 60 <= note.value && note.value <= 100; }
+        protected virtual bool IsNote() { return 60 <= note.value && note.value <= 100; }
 
-        public virtual bool ProcessSpecialNote() { return false; }
+        protected virtual bool ProcessSpecialNote() { return false; }
 
-        public virtual bool ProcessSpecialNote_Off() { return false; }
+        protected virtual bool ProcessSpecialNote_Off() { return false; }
 
-        public virtual bool ToggleExtraValues() { return false; }
+        protected virtual bool ToggleExtraValues() { return false; }
 
-        public virtual void ParseSysEx(ReadOnlySpan<byte> str) { }
+        protected virtual void ParseSysEx(ReadOnlySpan<byte> str) { }
+
+        protected void Validate(int diffIndex) { validations |= ValidationMask[diffIndex]; }
     }
 
     public abstract class Midi_Instrument_Scanner : Midi_Instrument_Scanner_Base

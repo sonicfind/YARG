@@ -93,7 +93,7 @@ namespace YARG.Serialization
         Real_Keys_H,
         Real_Keys_M,
         Real_Keys_E,
-        Beats,
+        Beat,
         Unknown
     }    
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Melanchall.DryWetMidi.Core;
@@ -392,7 +392,7 @@ namespace YARG.Serialization.Parser
 
                             // Use HOPO frequency value from song info.
                             // Convert the ticks to a musical time span.
-                            if (distance <= new MusicalTimeSpan(songEntry.HopoThreshold, 480 * 4))
+                            if (distance <= new MusicalTimeSpan((long)songEntry.HopoFrequency, 480 * 4))
                             {
                                 note.hopo = true;
                                 note.autoHopo = true;

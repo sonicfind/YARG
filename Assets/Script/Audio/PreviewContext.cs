@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using YARG.Settings;
 using YARG.Song;
+using YARG.Song.Entries;
 
 namespace YARG.Audio
 {

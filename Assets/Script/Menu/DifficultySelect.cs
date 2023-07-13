@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -74,7 +74,7 @@ namespace YARG.UI
                 new NavigationScheme.Entry(MenuAction.Back, "Back", () => { MainMenu.Instance.ShowSongSelect(); })
             }, false));
 
-            Debug.Log(GameManager.Instance.SelectedSong.AvailableParts);
+            //Debug.Log(GameManager.Instance.SelectedSong.AvailableParts);
 
             playerIndex = 0;
             playersToConfigure.Clear();
@@ -185,7 +185,21 @@ namespace YARG.UI
                         player.chosenInstrument = instrument;
                     }
 
-                    bool showExpertPlus = _expertPlusAllowedList.Contains(instrument);
+                    Instrument ins = InstrumentHelper.FromStringName(instrument);
+
+                    bool showExpertPlus = false;
+                    switch (ins)
+                    {
+                        case Instrument.VOCALS:
+                        case Instrument.HARMONY:
+                            showExpertPlus = true;
+                            break;
+                        case Instrument.DRUMS:
+                        case Instrument.REAL_DRUMS:
+                        case Instrument.GH_DRUMS:
+                            showExpertPlus = GameManager.Instance.SelectedSong.HasPart(ins, 4);
+                            break;
+                    }
                     UpdateDifficulty(instrument, showExpertPlus);
                 }
             }
@@ -267,12 +281,6 @@ namespace YARG.UI
             if (availableInstruments.Contains(Instrument.DRUMS))
             {
                 availableInstruments.Add(Instrument.GH_DRUMS);
-
-                // Add real drums if not present
-                if (!availableInstruments.Contains(Instrument.REAL_DRUMS))
-                {
-                    availableInstruments.Add(Instrument.REAL_DRUMS);
-                }
             }
             else if (availableInstruments.Contains(Instrument.GH_DRUMS))
             {
@@ -335,12 +343,8 @@ namespace YARG.UI
             var availableDifficulties = new List<Difficulty>();
             for (int i = 0; i < (int) Difficulty.EXPERT_PLUS; i++)
             {
-                if (!GameManager.Instance.SelectedSong.HasPart(instrument, (Difficulty) i))
-                {
-                    continue;
-                }
-
-                availableDifficulties.Add((Difficulty) i);
+                if (GameManager.Instance.SelectedSong.HasPart(instrument, i))
+                    availableDifficulties.Add((Difficulty) i);
             }
 
             if (showExpertPlus)

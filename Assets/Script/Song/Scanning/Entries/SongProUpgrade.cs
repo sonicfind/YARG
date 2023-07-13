@@ -34,7 +34,7 @@ namespace YARG.Song.Entries
             writer.Write(UpgradeLastWrite.ToBinary());
         }
 
-        public FrameworkFile? GetUpgradeMidi()
+        public FrameworkFile? LoadUpgradeMidi()
         {
             if (UpgradeMidiPath == string.Empty)
             {

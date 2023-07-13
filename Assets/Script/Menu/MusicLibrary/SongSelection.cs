@@ -1,3 +1,6 @@
+using System;
+using System.Text;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
@@ -12,6 +15,8 @@ using YARG.UI.MusicLibrary.ViewTypes;
 using Random = UnityEngine.Random;
 using System.Threading;
 using YARG.Settings;
+using YARG.Song.Library;
+using YARG.Song.Entries;
 
 namespace YARG.UI.MusicLibrary
 {
@@ -420,7 +425,7 @@ namespace YARG.UI.MusicLibrary
 
             _recommendedSongs = new();
 
-            if (SongContainer.Songs.Count > 0)
+            if (SongContainer.Count > 0)
             {
                 FillRecommendedSongs();
             }
@@ -549,7 +554,7 @@ namespace YARG.UI.MusicLibrary
             int skip = GetSkip();
 
             // Select random between all of the songs
-            SelectedIndex = Random.Range(skip, SongContainer.Songs.Count);
+            SelectedIndex = Random.Range(skip, SongContainer.Count);
         }
 
         public void SelectPreviousSection()
@@ -577,7 +582,7 @@ namespace YARG.UI.MusicLibrary
         private int GetSkip()
         {
             // Get how many non-song things there are
-            return Mathf.Max(1, _viewList.Count - SongContainer.Songs.Count);
+            return Mathf.Max(1, _viewList.Count - SongContainer.Count);
         }
 
 #if UNITY_EDITOR
@@ -588,7 +593,7 @@ namespace YARG.UI.MusicLibrary
                 return;
             }
 
-            GameManager.Instance.TestPlayInfo.TestPlaySongHash = song.SongEntry.Checksum;
+            GameManager.Instance.TestPlayInfo.TestPlaySongHash = song.SongEntry.Hash;
         }
 #endif
     }

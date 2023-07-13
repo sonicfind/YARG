@@ -31,5 +31,6 @@ namespace YARG.Types
         ProGuitar_22,
         ProBass_17,
         ProBass_22,
+        ProKeys
 };
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -7,6 +7,7 @@ using UnityEngine;
 using YARG.Data;
 using YARG.Input;
 using YARG.Song;
+using YARG.Song.Library;
 
 namespace YARG
 {
@@ -77,13 +78,6 @@ namespace YARG
             QueueSongSort();
         }
 
-        public void QueueSongFolderRefresh(string path)
-        {
-            // Refreshes 1 folder (called when clicking "Refresh" on a folder in settings)
-            Queue(async () => { await ScanSongFolder(path, false); });
-            QueueSongSort();
-        }
-
         public void QueueSongSort()
         {
             Queue(async () =>
@@ -96,16 +90,7 @@ namespace YARG
         private async UniTask ScanSongFolders(bool fast)
         {
             SetLoadingText("Loading songs...");
-            var errors = await SongContainer.ScanAllFolders(fast, UpdateSongUi);
-
-            // Pass all errored caches in at once so it can run in parallel
-            await SongContainer.ScanFolders(errors, false, UpdateSongUi);
-        }
-
-        private async UniTask ScanSongFolder(string path, bool fast)
-        {
-            SetLoadingText("Loading songs from folder...");
-            await SongContainer.ScanSingleFolder(path, fast, UpdateSongUi);
+            await SongContainer.Scan(fast, UpdateSongUi);
         }
 
         private void SetLoadingText(string phrase, string sub = null)
@@ -114,11 +99,11 @@ namespace YARG
             subPhrase.text = sub;
         }
 
-        private void UpdateSongUi(SongScanner scanner)
+        private void UpdateSongUi(SongCache cache)
         {
-            string subText = $"Folders Scanned: {scanner.TotalFoldersScanned}" +
-                $"\nSongs Scanned: {scanner.TotalSongsScanned}" +
-                $"\nErrors: {scanner.TotalErrorsEncountered}";
+            string subText = $"Folders Scanned: {cache.NumScannedDirectories}" +
+                $"\nSongs Scanned: {cache.Count}" +
+                $"\nErrors: {cache.BadSongCount}";
 
             SetLoadingText("Loading songs...", subText);
         }
@@ -171,10 +156,9 @@ namespace YARG
             }
 
             // Get the Test Play song by hash, and play it
-            if (SongContainer.SongsByHash.TryGetValue(info.TestPlaySongHash,
-                out var song))
+            if (SongContainer.SongsByHash.TryGetValue(info.TestPlaySongHash, out var song))
             {
-                GameManager.Instance.SelectedSong = song;
+                GameManager.Instance.SelectedSong = song[0];
                 GameManager.Instance.LoadScene(SceneIndex.PLAY);
             }
         }

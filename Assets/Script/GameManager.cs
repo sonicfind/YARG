@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.InputSystem;
@@ -7,7 +7,7 @@ using YARG.Audio;
 using YARG.Audio.BASS;
 using YARG.Input;
 using YARG.Settings;
-using YARG.Song;
+using YARG.Song.Entries;
 using YARG.Util;
 
 namespace YARG
@@ -39,7 +39,7 @@ namespace YARG
 
 #if UNITY_EDITOR
 
-        public Util.TestPlayInfo TestPlayInfo { get; private set; }
+        public TestPlayInfo TestPlayInfo { get; private set; }
 
 #endif
 
@@ -61,7 +61,7 @@ namespace YARG
 #if UNITY_EDITOR
 
             TestPlayInfo =
-                UnityEditor.AssetDatabase.LoadAssetAtPath<Util.TestPlayInfo>("Assets/Settings/TestPlayInfo.asset");
+                UnityEditor.AssetDatabase.LoadAssetAtPath<TestPlayInfo>("Assets/Settings/TestPlayInfo.asset");
 
 #endif
         }

@@ -20,9 +20,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
 
         protected readonly bool[,] notes = new bool[4, 7];
 
-        public override bool IsFullyScanned() { return value.subTracks == 31; }
-
-        public override bool ProcessSpecialNote()
+        protected override bool ProcessSpecialNote()
         {
             if (note.value != 95)
                 return false;
@@ -31,13 +29,13 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
             return true;
         }
 
-        public override bool ProcessSpecialNote_Off()
+        protected override bool ProcessSpecialNote_Off()
         {
             if (note.value != 95)
                 return false;
 
             if (notes[3, 1])
-                value.subTracks |= 24;
+                validations |= 24;
             return true;
         }
     }

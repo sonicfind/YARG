@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +13,8 @@ using YARG.Chart;
 using YARG.Data;
 using YARG.DiffDownsample;
 using YARG.Song;
+using YARG.Song.Entries;
+using YARG.Types;
 
 namespace YARG.Serialization.Parser
 {
@@ -28,6 +30,8 @@ namespace YARG.Serialization.Parser
             InvalidChannelEventParameterValuePolicy = InvalidChannelEventParameterValuePolicy.ReadValid,
         };
 
+        public static ReadingSettings Settings => ReadSettings;
+
         // Matches text inside [brackets], not including the brackets
         // '[end]' -> 'end', '[section Solo] - "Solo"' -> 'section Solo'
         private static readonly Regex textEventRegex =
@@ -42,100 +46,9 @@ namespace YARG.Serialization.Parser
 
         public MidiFile midi;
 
-        public MidiParser(SongEntry songEntry) : base(songEntry)
+        public MidiParser(SongEntry songEntry, MidiFile file) : base(songEntry)
         {
-            // get base midi - read it in latin1 if RB, UTF-8 if clon
-
-            var readSettings = ReadSettings; // we need to modify these
-            readSettings.TextEncoding = songEntry is ConSongEntry ? Encoding.GetEncoding("iso-8859-1") : Encoding.UTF8;
-            if (songEntry is ExtractedConSongEntry hotdog)
-            {
-                // hotdog brought to you by hugh
-                midi = MidiFile.Read(new MemoryStream(hotdog.LoadMidiFile()), readSettings);
-            }
-            else
-            {
-                midi = MidiFile.Read(Path.Combine(songEntry.Location, songEntry.NotesFile), readSettings);
-            }
-
-            // if this is a RB song...
-            if (songEntry is ExtractedConSongEntry oof)
-            {
-                //...and it contains an update, merge the base and update midi
-                if (oof.DiscUpdate)
-                {
-                    var TracksToAdd = new Dictionary<string, TrackChunk>();
-                    var tmap = midi.GetTempoMap();
-                    MidiFile midi_update = MidiFile.Read(oof.UpdateMidiPath, new ReadingSettings()
-                    {
-                        TextEncoding = Encoding.GetEncoding("iso-8859-1")
-                    });
-
-                    bool BaseTMapParsed = false;
-                    // get base track chunks
-                    foreach (var trackChunk in midi.GetTrackChunks())
-                    {
-                        if (!BaseTMapParsed)
-                            BaseTMapParsed = true;
-                        else
-                            TracksToAdd.Add(((SequenceTrackNameEvent) (trackChunk.Events[0])).Text, trackChunk);
-                    }
-
-                    bool UpdateTMapParsed = false;
-                    // get update track chunks, replacing any base track chunks as necessary
-                    foreach (var trackChunk in midi_update.GetTrackChunks())
-                    {
-                        if (!UpdateTMapParsed)
-                            UpdateTMapParsed = true;
-                        else
-                            TracksToAdd[((SequenceTrackNameEvent) (trackChunk.Events[0])).Text] = trackChunk;
-                    }
-
-                    // create new midi to use and set the tempo map to the base midi's
-                    MidiFile midi_merged = new MidiFile();
-                    midi_merged.ReplaceTempoMap(tmap);
-
-                    // add tracks to midi_merged
-                    foreach (var pair in TracksToAdd) midi_merged.Chunks.Add(pair.Value);
-
-                    // finally, assign this new midi as the midi to use in-game
-                    midi = midi_merged;
-                }
-
-                // also, if this RB song has a pro upgrade, merge it as well
-                if (oof.SongUpgrade != null)
-                {
-                    using var stream = new MemoryStream(oof.SongUpgrade.GetUpgradeMidi());
-                    MidiFile upgrade = MidiFile.Read(stream, new ReadingSettings()
-                    {
-                        TextEncoding = Encoding.GetEncoding("iso-8859-1")
-                    });
-
-                    foreach (var trackChunk in upgrade.GetTrackChunks())
-                    {
-                        foreach (var trackEvent in trackChunk.Events)
-                        {
-                            if (trackEvent is not SequenceTrackNameEvent trackName) continue;
-                            if (trackName.Text.Contains("PART REAL_GUITAR") ||
-                                trackName.Text.Contains("PART REAL_BASS"))
-                            {
-                                midi.Chunks.Add(trackChunk);
-                            }
-                        }
-                    }
-                }
-
-                // TODO: NEVER assume localized version contains "Beatles"
-                if (!SongSources.SourceToGameName(oof.Source).Contains("Beatles"))
-                {
-                    // skip beatles venues cuz they're built different
-                    var miloTracks = MiloParser.GetMidiFromMilo(oof.LoadMiloFile(), midi.GetTempoMap());
-                    foreach (var track in miloTracks)
-                    {
-                        midi.Chunks.Add(track);
-                    }
-                }
-            }
+            midi = file;
         }
 
         public override void Parse(YargChart chart)
@@ -278,7 +191,7 @@ namespace YARG.Serialization.Parser
                             case "PART DRUMS":
                                 var drumType = GetDrumType(trackChunk);
 
-                                if (drumType == DrumType.FourLane)
+                                if (drumType == DrumType.FOUR_PRO)
                                 {
                                     for (int i = 0; i < 5; i++)
                                     {
@@ -378,7 +291,7 @@ namespace YARG.Serialization.Parser
                     // Add delay
                     foreach (var note in difficulty)
                     {
-                        note.time += (float) songEntry.Delay;
+                        note.time += songEntry.Delay;
                     }
 
                     // Last note time
@@ -393,19 +306,19 @@ namespace YARG.Serialization.Parser
 
             foreach (var lyric in chart.genericLyrics)
             {
-                lyric.time += (float) songEntry.Delay;
+                lyric.time += songEntry.Delay;
             }
 
             foreach (var lyric in chart.realLyrics)
             {
-                lyric.time += (float) songEntry.Delay;
+                lyric.time += songEntry.Delay;
             }
 
             foreach (var lyricList in chart.harmLyrics)
             {
                 foreach (var lyric in lyricList)
                 {
-                    lyric.time += (float) songEntry.Delay;
+                    lyric.time += songEntry.Delay;
                 }
             }
 
@@ -443,7 +356,7 @@ namespace YARG.Serialization.Parser
             chart.events.Sort(new Comparison<EventInfo>((a, b) => a.time.CompareTo(b.time)));
             foreach (var ev in chart.events)
             {
-                ev.time += (float) songEntry.Delay;
+                ev.time += songEntry.Delay;
             }
 
             // Add beats to chart
@@ -654,9 +567,9 @@ namespace YARG.Serialization.Parser
 
         private DrumType GetDrumType(TrackChunk trackChunk)
         {
-            if (songEntry.DrumType != DrumType.Unknown)
+            if (songEntry.GetDrumType() != DrumType.UNKNOWN)
             {
-                return songEntry.DrumType;
+                return songEntry.GetDrumType();
             }
 
             // If we don't know the drum type...
@@ -670,12 +583,12 @@ namespace YARG.Serialization.Parser
                 // Look for the expert 5th-lane note
                 if (note.NoteNumber == 101)
                 {
-                    return DrumType.FiveLane;
+                    return DrumType.FIVE_LANE;
                 }
             }
 
             // If we didn't find the note, assume 4-lane
-            return DrumType.FourLane;
+            return DrumType.FOUR_PRO;
         }
     }
 }

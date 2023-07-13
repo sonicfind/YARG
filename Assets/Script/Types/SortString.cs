@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using UnityEngine;
+using YARG.Song;
 
 namespace YARG.Types
 {
@@ -19,7 +20,7 @@ namespace YARG.Types
             get { return _str; }
             set {
                 _str = value;
-                _sortStr = value.ToLower();
+                _sortStr = SongSearching.RemoveDiacritics(value);
                 _hashCode = _sortStr.GetHashCode();
             }
         }
@@ -51,5 +52,6 @@ namespace YARG.Types
         }
 
         public static implicit operator SortString(string str) => new(str);
+        public static implicit operator string(SortString str) => str.Str;
     }
 }

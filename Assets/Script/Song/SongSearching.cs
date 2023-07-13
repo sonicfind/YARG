@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Globalization;
@@ -12,7 +12,7 @@ using UnityEngine.UI;
 using YARG.Audio;
 using YARG.Data;
 using YARG.Input;
-using YARG.Song;
+using YARG.Song.Entries;
 using YARG.UI.MusicLibrary.ViewTypes;
 using Random = UnityEngine.Random;
 
@@ -28,46 +28,29 @@ namespace YARG.Song
         // TODO: Make search query separate. This gets rid of the need of a tuple in SearchSongs
         public static SortedSongList Search(string value, SongSorting.Sort sort)
         {
+            if (string.IsNullOrEmpty(value))
+                return SongSorting.GetSortCache(sort);
+
             var songsOut = new List<SongEntry>(SongContainer.Songs);
-            bool searching = false;
+            bool searching = true;
 
-            if (!string.IsNullOrEmpty(value))
+            var split = value.Split(';');
+            foreach (var arg in split)
             {
-                var split = value.Split(';');
-                foreach (var arg in split)
+                if (SearchSongs(arg, ref songsOut))
                 {
-                    var (isSearching, songsEnumerable) = SearchSongs(arg);
-                    var songs = songsEnumerable.ToList();
-
-                    if (isSearching)
-                    {
-                        searching = true;
-                        songsOut.Clear();
-                        songsOut.AddRange(songs);
-                    }
-                    else
-                    {
-                        foreach (var song in songsOut.ToArray())
-                        {
-                            if (songs.Contains(song))
-                            {
-                                continue;
-                            }
-
-                            songsOut.Remove(song);
-                        }
-                    }
+                    searching = true;
+                    break;
                 }
+
+                if (songsOut.Count == 0)
+                    break;
             }
 
             SortedSongList sortedSongs;
             if (searching)
             {
-                sortedSongs = new SortedSongList();
-                foreach (var song in songsOut)
-                {
-                    sortedSongs.AddSongToSection("Search Results", song);
-                }
+                sortedSongs = new SortedSongList("Search Results", songsOut);
             }
             else
             {
@@ -78,128 +61,85 @@ namespace YARG.Song
             return sortedSongs;
         }
 
-        private static (bool isSearching, IEnumerable<SongEntry>) SearchSongs(string arg)
+        private static bool SearchSongs(string arg, ref List<SongEntry> songs)
         {
             if (arg.StartsWith("artist:"))
             {
-                var artist = arg[7..];
-                return (false, SearchByArtist(artist));
+                string artist = RemoveDiacriticsAndArticle(arg[7..]);
+                songs.RemoveAll(entry => SongSorting.RemoveArticle(entry.Artist.SortStr) != artist);
             }
 
-            if (arg.StartsWith("source:"))
+            else if (arg.StartsWith("source:"))
             {
-                var source = arg[7..];
-                return (false, SearchBySource(source));
+                string source = arg[7..].ToLower();
+                songs.RemoveAll(entry => entry.Source.SortStr != source);
             }
 
-            if (arg.StartsWith("album:"))
+            else if (arg.StartsWith("album:"))
             {
-                var album = arg[6..];
-                return (false, SearchByAlbum(album));
+                string album = RemoveDiacritics(arg[6..]);
+                songs.RemoveAll(entry => entry.Album.SortStr != album);
             }
 
-            if (arg.StartsWith("charter:"))
+            else if (arg.StartsWith("charter:"))
             {
-                var charter = arg[8..];
-                return (false, SearchByCharter(charter));
+                string charter = arg[8..].ToLower();
+                songs.RemoveAll(entry => entry.Charter.SortStr != charter);
             }
 
-            if (arg.StartsWith("year:"))
+            else if (arg.StartsWith("year:"))
             {
-                var year = arg[5..];
-                return (false, SearchByYear(year));
+                string year = arg[5..].ToLower();
+                songs.RemoveAll(entry => entry.Year != year && entry.UnmodifiedYear != year);
             }
 
-            if (arg.StartsWith("genre:"))
+            else if (arg.StartsWith("genre:"))
             {
-                var genre = arg[6..];
-                return (false, SearchByGenre(genre));
+                string genre = arg[6..].ToLower();
+                songs.RemoveAll(entry => entry.Genre.SortStr != genre);
             }
 
-            if (arg.StartsWith("instrument:"))
+            else if (arg.StartsWith("instrument:"))
             {
                 var instrument = arg[11..];
 
-                if (!string.IsNullOrEmpty(instrument) && instrument.Length > 1 && instrument.StartsWith("-"))
+                if (!string.IsNullOrEmpty(instrument) && instrument.Length > 1 && instrument.StartsWith("~"))
                 {
-                    return (false, SearchByMissingInstrument(instrument.Substring(1)));
+                    instrument = instrument[1..];
+                    if (instrument == "band")
+                    {
+                        songs.RemoveAll(entry => entry.BandDifficulty >= 0);
+                    }
+                    else
+                    {
+                        var ins = InstrumentHelper.FromStringName(instrument);
+                        songs.RemoveAll(entry => entry.HasInstrument(ins));
+                    }
                 }
-
-                return (false, SearchByInstrument(instrument));
-            }
-
-            return (true, SongContainer.Songs
-                .Select(i => new
+                else if (instrument == "band")
                 {
-                    score = Search(arg, i), songInfo = i
+                    songs.RemoveAll(entry => entry.BandDifficulty < 0);
+                }
+                else
+                {
+                    var ins = InstrumentHelper.FromStringName(instrument);
+                    songs.RemoveAll(entry => !entry.HasInstrument(ins));
+                }
+            }
+            else
+            {
+                var tmp = songs.Select(i => new
+                {
+                    score = Search(arg, i),
+                    songInfo = i
                 })
                 .Where(i => i.score >= 0)
                 .OrderBy(i => i.score)
-                .Select(i => i.songInfo));
-        }
-
-        private static IEnumerable<SongEntry> SearchByArtist(string artist)
-        {
-            return SongContainer.Songs
-                .Where(i => RemoveDiacriticsAndArticle(i.Artist) == RemoveDiacriticsAndArticle(artist));
-        }
-
-        private static IEnumerable<SongEntry> SearchBySource(string source)
-        {
-            return SongContainer.Songs
-                .Where(i => i.Source?.ToLower() == source.ToLower());
-        }
-
-        private static IEnumerable<SongEntry> SearchByAlbum(string album)
-        {
-            return SongContainer.Songs
-                .Where(i => RemoveDiacritics(i.Album) == RemoveDiacritics(album));
-        }
-
-        private static IEnumerable<SongEntry> SearchByCharter(string charter)
-        {
-            return SongContainer.Songs
-                .Where(i => i.Charter?.ToLower() == charter.ToLower());
-        }
-
-        private static IEnumerable<SongEntry> SearchByYear(string year)
-        {
-            return SongContainer.Songs
-                .Where(i => i.Year?.ToLower() == year.ToLower());
-        }
-
-        private static IEnumerable<SongEntry> SearchByGenre(string genre)
-        {
-            return SongContainer.Songs
-                .Where(i => i.Genre?.ToLower() == genre.ToLower());
-        }
-
-        private static IEnumerable<SongEntry> SearchByInstrument(string instrument)
-        {
-            return instrument switch
-            {
-                "band"       => SongContainer.Songs.Where(i => i.BandDifficulty >= 0),
-                "vocals"     => SongContainer.Songs.Where(i => i.HasInstrument(InstrumentHelper.FromStringName(instrument))),
-                "harmVocals" => SongContainer.Songs.Where(i => i.VocalParts >= 2),
-                _ => SongContainer.Songs.Where(i =>
-                    i.HasInstrument(InstrumentHelper.FromStringName(instrument))),
-            };
-        }
-
-        private static IEnumerable<SongEntry> SearchByMissingInstrument(string instrument)
-        {
-            return instrument switch
-            {
-                "band"   => SongContainer.Songs.Where(i => i.BandDifficulty < 0),
-                "vocals" => SongContainer.Songs.Where(i => i.VocalParts <= 0),
-                // string s when s.StartsWith("-") => SongContainer.Songs.Where(SongIsMissing(instrument)),
-                _ => SongContainer.Songs.Where(SongIsMissing(instrument)),
-            };
-        }
-
-        private static Func<SongEntry, bool> SongIsMissing(string instrument)
-        {
-            return s => !s.HasInstrument(InstrumentHelper.FromStringName(instrument));
+                .Select(i => i.songInfo).ToList();
+                songs = tmp;
+                return true;
+            }
+            return false;
         }
 
         public static string RemoveDiacritics(string text)
@@ -242,12 +182,12 @@ namespace YARG.Song
             string normalizedInput = RemoveDiacritics(input);
 
             // Get name index
-            string name = songInfo.NameNoParenthesis;
-            int nameIndex = RemoveDiacritics(name).IndexOf(normalizedInput, StringComparison.Ordinal);
+            string name = songInfo.Name.SortStr;
+            int nameIndex = name.IndexOf(normalizedInput, StringComparison.Ordinal);
 
             // Get artist index
             string artist = songInfo.Artist;
-            int artistIndex = RemoveDiacritics(artist).IndexOf(normalizedInput, StringComparison.Ordinal);
+            int artistIndex = artist.IndexOf(normalizedInput, StringComparison.Ordinal);
 
             // Return the best search
             if (nameIndex == -1 && artistIndex == -1)

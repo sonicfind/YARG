@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using UnityEngine;
 using YARG.Data;
 using YARG.Song;
+using YARG.Song.Entries;
 using YARG.Util;
 
 namespace YARG
@@ -19,7 +20,7 @@ namespace YARG
         /// </value>
         public static string ScoreFile => Path.Combine(PathHelper.PersistentDataPath, "scores.json");
 
-        private static Dictionary<string, SongScore> scores = null;
+        private static Dictionary<Hash128, SongScore> scores = null;
 
         /// <summary>
         /// Should be called before you access any scores.
@@ -37,7 +38,7 @@ namespace YARG
                 if (File.Exists(ScoreFile))
                 {
                     string json = await File.ReadAllTextAsync(ScoreFile);
-                    scores = await Task.Run(() => JsonConvert.DeserializeObject<Dictionary<string, SongScore>>(json));
+                    scores = await Task.Run(() => JsonConvert.DeserializeObject<Dictionary<Hash128, SongScore>>(json));
                 }
                 else
                 {
@@ -58,10 +59,10 @@ namespace YARG
 
         public static void PushScore(SongEntry song, SongScore score)
         {
-            if (!scores.TryGetValue(song.Checksum, out var oldScore))
+            if (!scores.TryGetValue(song.Hash, out var oldScore))
             {
                 // If the score info doesn't exist, just add the new one.
-                scores.Add(song.Checksum, score);
+                scores.Add(song.Hash, score);
             }
             else
             {
@@ -112,7 +113,7 @@ namespace YARG
 
         public static SongScore GetScore(SongEntry song)
         {
-            if (scores.TryGetValue(song.Checksum, out var o))
+            if (scores.TryGetValue(song.Hash, out var o))
             {
                 return o;
             }
@@ -122,7 +123,7 @@ namespace YARG
 
         public static void SaveScore()
         {
-            var scoreCopy = new Dictionary<string, SongScore>(scores);
+            var scoreCopy = new Dictionary<Hash128, SongScore>(scores);
 
             // Prevent game lag by saving on another thread
             ThreadPool.QueueUserWorkItem(_ =>
@@ -139,10 +140,7 @@ namespace YARG
                 .Select(i =>
                 {
                     if (SongContainer.SongsByHash.TryGetValue(i.Key, out var song))
-                    {
-                        return song;
-                    }
-
+                        return song[0];
                     return null;
                 })
                 .Where(i => i != null)

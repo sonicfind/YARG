@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using YARG.Song.Entries;
 
 namespace YARG.Song
 {
@@ -24,6 +25,19 @@ namespace YARG.Song
         {
             _sectionsOrder = new();
             _sections = new();
+        }
+
+        public SortedSongList(string section, List<SongEntry> songs)
+        {
+            _sectionsOrder = new()
+            {
+                section,
+            };
+
+            _sections = new()
+            {
+                {section, songs }
+            };
         }
 
         public SortedSongList(SortedSongList other)
@@ -115,20 +129,20 @@ namespace YARG.Song
 
         private static readonly Func<SongEntry, string>[] HeaderFunctions =
         {
-            song => GetFirstCharacter(song.NameNoParenthesis),                      // Song
+            song => GetFirstCharacter(song.Name.SortStr),                      // Song
             song => song.Artist,                                                    // Artist
             song => SongSources.SourceToGameName(song.Source),                      // Source
             song => GetDecade(song.Year),                                           // Year
             song => GetSongDurationBySection(song.SongLengthTimeSpan.TotalMinutes), // Duration
-            song => song.Genre.ToUpper(),                                           // Genre
+            song => song.Genre.SortStr,                                           // Genre
             song => GetFirstCharacter(song.Album),                                  // Album
             song => GetFirstCharacter(song.Charter),                                // Charter
         };
 
         private static readonly Func<SongEntry, string>[] OrderFunctions =
         {
-            song => RemoveArticle(song.NameNoParenthesis),       // Song
-            song => RemoveArticle(song.Artist),                  // Artist
+            song => RemoveArticle(song.Name.SortStr),            // Song
+            song => RemoveArticle(song.Artist.SortStr),          // Artist
             song => song.Source,                                 // Source
             song => GetYear(song.Year),                          // Year
             song => ((int) song.SongLengthTimeSpan.TotalSeconds) // Duration

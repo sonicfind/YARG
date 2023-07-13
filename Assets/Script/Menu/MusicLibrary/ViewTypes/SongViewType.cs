@@ -1,8 +1,9 @@
-using System.Threading;
+﻿using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using YARG.Data;
 using YARG.Song;
+using YARG.Song.Entries;
 
 namespace YARG.UI.MusicLibrary.ViewTypes
 {
@@ -49,7 +50,7 @@ namespace YARG.UI.MusicLibrary.ViewTypes
         {
             base.SecondaryTextClick();
 
-            SongSelection.Instance.SetSearchInput($"artist:{SongEntry.Artist}");
+            SongSelection.Instance.SetSearchInput($"artist:{SongEntry.Artist.SortStr}");
         }
 
         public override void PrimaryButtonClick()
@@ -63,7 +64,7 @@ namespace YARG.UI.MusicLibrary.ViewTypes
         {
             base.IconClick();
 
-            SongSelection.Instance.SetSearchInput($"source:{SongEntry.Source}");
+            SongSelection.Instance.SetSearchInput($"source:{SongEntry.Source.SortStr}");
         }
     }
 }

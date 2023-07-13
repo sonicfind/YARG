@@ -1,12 +1,13 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using YARG.Data;
 using YARG.PlayMode;
-using YARG.Song;
+using YARG.Song.Entries;
 using YARG.UI;
 using Newtonsoft.Json;
 using YARG.Util;
+using YARG.Song;
 
 namespace YARG
 {

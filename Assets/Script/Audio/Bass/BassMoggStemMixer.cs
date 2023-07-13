@@ -2,16 +2,19 @@
 using ManagedBass;
 using ManagedBass.Mix;
 using UnityEngine;
+using YARG.Serialization;
 
 namespace YARG.Audio.BASS
 {
     public class BassMoggStemMixer : BassStemMixer
     {
         private int _moggSourceHandle;
+        private FrameworkFile _file;
 
-        public BassMoggStemMixer(IAudioManager manager, int moggStreamHandle) : base(manager)
+        public BassMoggStemMixer(IAudioManager manager, FrameworkFile file, int moggStreamHandle) : base(manager)
         {
             _moggSourceHandle = moggStreamHandle;
+            _file = file;
         }
 
         public override int AddChannel(IStemChannel channel)

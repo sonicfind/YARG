@@ -1,4 +1,4 @@
-namespace YARG.Data
+﻿namespace YARG.Data
 {
     /*
     
@@ -69,26 +69,6 @@ namespace YARG.Data
                 Instrument.GH_DRUMS    => "ghDrums",
                 Instrument.RHYTHM      => "rhythm",
                 Instrument.GUITAR_COOP => "guitarCoop",
-                _                      => null,
-            };
-        }
-
-        public static string ToSongIniName(this Instrument instrument)
-        {
-            return instrument switch
-            {
-                Instrument.GUITAR      => "diff_guitar",
-                Instrument.BASS        => "diff_bass",
-                Instrument.DRUMS       => "diff_drums",
-                Instrument.KEYS        => "diff_keys",
-                Instrument.VOCALS      => "diff_vocals",
-                Instrument.REAL_GUITAR => "diff_guitar_real",
-                Instrument.REAL_BASS   => "diff_bass_real",
-                Instrument.REAL_DRUMS  => "diff_drums_real",
-                Instrument.REAL_KEYS   => "diff_keys_real",
-                Instrument.HARMONY     => "diff_vocals_harm",
-                Instrument.RHYTHM      => "diff_rhythm",
-                Instrument.GUITAR_COOP => "diff_guitarCoop",
                 _                      => null,
             };
         }

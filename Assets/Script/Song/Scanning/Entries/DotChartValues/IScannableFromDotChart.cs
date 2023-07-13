@@ -8,6 +8,6 @@ namespace YARG.Song.Entries.DotChartValues
 {
     public interface IScannableFromDotChart
     {
-        abstract bool IsValid(nuint lane);
+        bool IsValid(nuint lane);
     }
 }

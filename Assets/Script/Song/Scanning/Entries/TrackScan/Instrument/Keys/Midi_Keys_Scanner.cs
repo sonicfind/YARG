@@ -19,7 +19,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Keys
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
         };
 
-        public override bool ParseLaneColor()
+        protected override bool ParseLaneColor()
         {
             uint noteValue = note.value - 60;
             int diffIndex = DIFFVALUES[noteValue];
@@ -32,7 +32,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Keys
             return false;
         }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 60 || 100 < note.value)
                 return false;
@@ -44,7 +44,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Keys
                 uint lane = LANEVALUES[noteValue];
                 if (lane < 5)
                 {
-                    value.Set(diffIndex);
+                    Validate(diffIndex);
                     difficulties[diffIndex] = true;
                     return IsFullyScanned();
                 }

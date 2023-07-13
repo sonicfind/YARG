@@ -21,9 +21,9 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
         };
 
-        public override bool IsNote() { return 59 <= note.value && note.value <= 107; }
+        protected override bool IsNote() { return 59 <= note.value && note.value <= 107; }
 
-        public override bool ParseLaneColor()
+        protected override bool ParseLaneColor()
         {
             uint noteValue = note.value - 59;
             int diffIndex = DIFFVALUES[noteValue];
@@ -36,7 +36,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             return false;
         }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 59 || 107 < note.value)
                 return false;
@@ -48,7 +48,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
                 uint lane = lanes[noteValue];
                 if (lane < 6 && notes[diffIndex, lane])
                 {
-                    value.Set(diffIndex);
+                    Validate(diffIndex);
                     difficulties[diffIndex] = true;
                     return IsFullyScanned();
                 }
@@ -56,7 +56,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             return false;
         }
 
-        public override void ParseSysEx(ReadOnlySpan<byte> str)
+        protected override void ParseSysEx(ReadOnlySpan<byte> str)
         {
             if (str.StartsWith(SYSEXTAG) && str[5] == 1)
             {
@@ -71,7 +71,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
             }
         }
 
-        public override void ParseText(ReadOnlySpan<byte> str)
+        protected override void ParseText(ReadOnlySpan<byte> str)
         {
             if (str.SequenceEqual(ENHANCED_STRINGS[0]) || str.SequenceEqual(ENHANCED_STRINGS[1]))
                 for (int diff = 0; diff < 4; ++diff)

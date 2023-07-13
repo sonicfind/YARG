@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace YARG.Song.Entries
 {
-    public struct TrackScans
+    public class TrackScans
     {
         public ScanValues lead_5;
         public ScanValues lead_6;
@@ -40,46 +40,29 @@ namespace YARG.Song.Entries
 
         public ScanValues leadVocals;
         public ScanValues harmonyVocals;
-        public TrackScans(int _)
+        public TrackScans()
         {
-            lead_5 = new();
-            lead_6 = new();
-            bass_5= new();
-            bass_6 = new();
-            rhythm = new();
-            coop = new();
-            keys = new();
-            drums_4 = new();
-            drums_4pro = new();
-            drums_5 = new();
-            proguitar_17 = new();
-            proguitar_22 = new();
-            probass_17= new();
-            probass_22= new();
-            proKeys= new();
-            leadVocals = new();
-            harmonyVocals = new();
+            lead_5 =        new(-1);
+            lead_6 =        new(-1);
+            bass_5=         new(-1);
+            bass_6 =        new(-1);
+            rhythm =        new(-1);
+            coop =          new(-1);
+            keys =          new(-1);
+            drums_4 =       new(-1);
+            drums_4pro =    new(-1);
+            drums_5 =       new(-1);
+            proguitar_17 =  new(-1);
+            proguitar_22 =  new(-1);
+            probass_17 =    new(-1);
+            probass_22 =    new(-1);
+            proKeys =       new(-1);
+            leadVocals =    new(-1);
+            harmonyVocals = new(-1);
         }
 
         public TrackScans(BinaryFileReader reader)
         {
-            lead_5 = default;
-            lead_6 = default;
-            bass_5 = default;
-            bass_6 = default;
-            rhythm = default;
-            coop = default;
-            keys = default;
-            drums_4 = default;
-            drums_4pro = default;
-            drums_5 = default;
-            proguitar_17 = default;
-            proguitar_22 = default;
-            probass_17 = default;
-            probass_22 = default;
-            proKeys = default;
-            leadVocals = default;
-            harmonyVocals = default;
             unsafe
             {
                 fixed (ScanValues* scans = &lead_5)
@@ -95,50 +78,60 @@ namespace YARG.Song.Entries
                    coop.subTracks > 0       || drums_5.subTracks > 0       || lead_6.subTracks > 0       || bass_6.subTracks > 0;
         }
 
-        public void ScanFromMidi(MidiTrackType trackType, Types.DrumType drumType, MidiFileReader reader)
+        public void ScanFromMidi(MidiTrackType trackType, DrumType drumType, ref bool forceProDrums, MidiFileReader reader)
         {
             switch (trackType)
             {
                 case MidiTrackType.Guitar_5:
                     {
                         if (lead_5.subTracks == 0)
-                            lead_5 = new Midi_FiveFret_Scanner().Scan(reader);
+                            lead_5.subTracks = new Midi_FiveFret_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Bass_5:
                     {
                         if (bass_5.subTracks == 0)
-                            bass_5 = new Midi_FiveFret_Scanner().Scan(reader);
+                            bass_5.subTracks = new Midi_FiveFret_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Keys:
                     {
                         if (keys.subTracks == 0)
-                            keys = new Midi_Keys_Scanner().Scan(reader);
+                            keys.subTracks = new Midi_Keys_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Drums:
                     {
-                        if (drumType == Types.DrumType.FOUR_PRO)
+                        if (drumType == DrumType.FOUR_PRO)
                         {
                             if (drums_4pro.subTracks == 0)
-                                drums_4pro = new Midi_Drum4Pro_Scanner().Scan(reader);
+                            {
+                                Midi_Drum4Pro_Scanner scanner = new(forceProDrums);
+                                drums_4pro.subTracks = scanner.Scan(reader);
+                                forceProDrums = scanner.Cymbals;
+                            }
                         }
-                        else if (drumType == Types.DrumType.FIVE_LANE)
+                        else if (drumType == DrumType.FIVE_LANE)
                         {
                             if (drums_5.subTracks == 0)
-                                drums_5 = new Midi_Drum5_Scanner().Scan(reader);
+                                drums_5.subTracks = new Midi_Drum5_Scanner().Scan(reader);
                         }
                         else
                         {
-                            LegacyDrumScan legacy = new();
-                            if (legacy.ScanMidi(reader) == Types.DrumType.FIVE_LANE)
+                            LegacyDrumScan legacy = new(forceProDrums);
+                            if (legacy.ScanMidi(reader) == DrumType.FIVE_LANE)
                             {
                                 if (drums_5.subTracks == 0)
-                                    drums_5 = legacy.Values;
+                                {
+                                    drums_5.subTracks = legacy.ValidatedDiffs;
+                                    forceProDrums = legacy.cymbals;
+                                }
                             }
                             else if (drums_4pro.subTracks == 0)
-                                drums_4pro = legacy.Values;
+                            {
+                                drums_4pro.subTracks = legacy.ValidatedDiffs;
+                                forceProDrums = legacy.cymbals;
+                            }
                         }
                         break;
                     }
@@ -169,73 +162,73 @@ namespace YARG.Song.Entries
                 case MidiTrackType.Rhythm:
                     {
                         if (rhythm.subTracks == 0)
-                            rhythm = new Midi_FiveFret_Scanner().Scan(reader);
+                            rhythm.subTracks = new Midi_FiveFret_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Coop:
                     {
                         if (coop.subTracks == 0)
-                            coop = new Midi_FiveFret_Scanner().Scan(reader);
+                            coop.subTracks = new Midi_FiveFret_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Guitar:
                     {
                         if (proguitar_17.subTracks == 0)
-                            proguitar_17 = new Midi_ProGuitar17_Scanner().Scan(reader);
+                            proguitar_17.subTracks = new Midi_ProGuitar17_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Guitar_22:
                     {
                         if (proguitar_22.subTracks == 0)
-                            proguitar_22 = new Midi_ProGuitar22_Scanner().Scan(reader);
+                            proguitar_22.subTracks = new Midi_ProGuitar22_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Bass:
                     {
                         if (probass_17.subTracks == 0)
-                            probass_17 = new Midi_ProGuitar17_Scanner().Scan(reader);
+                            probass_17.subTracks = new Midi_ProGuitar17_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Bass_22:
                     {
                         if (probass_22.subTracks == 0)
-                            probass_22 = new Midi_ProGuitar22_Scanner().Scan(reader);
+                            probass_22.subTracks = new Midi_ProGuitar22_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Keys_X:
                     {
                         if (!proKeys[3])
-                            proKeys |= new Midi_ProKeys_Scanner(3).Scan(reader);
+                            proKeys.subTracks |= new Midi_ProKeys_Scanner(3).Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Keys_H:
                     {
                         if (!proKeys[2])
-                            proKeys |= new Midi_ProKeys_Scanner(2).Scan(reader);
+                            proKeys.subTracks |= new Midi_ProKeys_Scanner(2).Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Keys_M:
                     {
                         if (!proKeys[1])
-                            proKeys |= new Midi_ProKeys_Scanner(1).Scan(reader);
+                            proKeys.subTracks |= new Midi_ProKeys_Scanner(1).Scan(reader);
                         break;
                     }
                 case MidiTrackType.Real_Keys_E:
                     {
                         if (!proKeys[0])
-                            proKeys |= new Midi_ProKeys_Scanner(0).Scan(reader);
+                            proKeys.subTracks |= new Midi_ProKeys_Scanner(0).Scan(reader);
                         break;
                     }
                 case MidiTrackType.Guitar_6:
                     {
                         if (lead_6.subTracks == 0)
-                            lead_6 = new Midi_SixFret_Scanner().Scan(reader);
+                            lead_6.subTracks = new Midi_SixFret_Scanner().Scan(reader);
                         break;
                     }
                 case MidiTrackType.Bass_6:
                     {
                         if (bass_6.subTracks == 0)
-                            bass_6 = new Midi_SixFret_Scanner().Scan(reader);
+                            bass_6.subTracks = new Midi_SixFret_Scanner().Scan(reader);
                         break;
                     }
             }
@@ -245,39 +238,30 @@ namespace YARG.Song.Entries
         {
             switch (reader.Instrument)
             {
-                case NoteTracks_Chart.Single:       return DotChart_Scanner.Scan<FiveFretOutline>(ref lead_5, reader);
-                case NoteTracks_Chart.DoubleGuitar: return DotChart_Scanner.Scan<FiveFretOutline>(ref coop, reader);
-                case NoteTracks_Chart.DoubleBass:   return DotChart_Scanner.Scan<FiveFretOutline>(ref bass_5, reader);
-                case NoteTracks_Chart.DoubleRhythm: return DotChart_Scanner.Scan<FiveFretOutline>(ref rhythm, reader);
+                case NoteTracks_Chart.Single:       return DotChart_Scanner<FiveFretOutline>.Scan(ref lead_5, reader);
+                case NoteTracks_Chart.DoubleGuitar: return DotChart_Scanner<FiveFretOutline>.Scan(ref coop, reader);
+                case NoteTracks_Chart.DoubleBass:   return DotChart_Scanner<FiveFretOutline>.Scan(ref bass_5, reader);
+                case NoteTracks_Chart.DoubleRhythm: return DotChart_Scanner<FiveFretOutline>.Scan(ref rhythm, reader);
                 case NoteTracks_Chart.Drums:
                     {
                         switch (legacy.Type)
                         {
-                            case Types.DrumType.FOUR_PRO:  return DotChart_Scanner.Scan<Drums4_ProOutline>(ref drums_4pro, reader);
-                            case Types.DrumType.FIVE_LANE: return DotChart_Scanner.Scan<Drums5Outline>(ref drums_5, reader);
-                            case Types.DrumType.UNKNOWN:   return legacy.ScanDotChart(reader);
+                            case DrumType.FOUR_PRO:
+                                {
+                                    if (legacy.cymbals)
+                                        return DotChart_Scanner<Drums4_ProOutline>.Scan(ref drums_4pro, reader);
+                                    return new Drum4_Pro_ChartScanner().Scan(ref drums_4pro, ref legacy.cymbals, reader);
+                                }
+                            case DrumType.FIVE_LANE: return DotChart_Scanner<Drums5Outline>.Scan(ref drums_5, reader);
+                            case DrumType.UNKNOWN:   return legacy.ScanDotChart(reader);
                         }
                         break;
                     }
-                case NoteTracks_Chart.Keys:      return DotChart_Scanner.Scan<KeysOutline>(ref keys, reader);
-                case NoteTracks_Chart.GHLGuitar: return DotChart_Scanner.Scan<SixFretOutline>(ref lead_6, reader);
-                case NoteTracks_Chart.GHLBass:   return DotChart_Scanner.Scan<SixFretOutline>(ref bass_6, reader);
+                case NoteTracks_Chart.Keys:      return DotChart_Scanner<KeysOutline>.Scan(ref keys, reader);
+                case NoteTracks_Chart.GHLGuitar: return DotChart_Scanner<SixFretOutline>.Scan(ref lead_6, reader);
+                case NoteTracks_Chart.GHLBass:   return DotChart_Scanner<SixFretOutline>.Scan(ref bass_6, reader);
             }
             return true;
-        }
-
-        public void Update(TrackScans update)
-        {
-            unsafe
-            {
-                fixed (ScanValues* scans = &lead_5)
-                {
-                    var updatedScans = &update.lead_5;
-                    for (int i = 0; i < 17; ++i)
-                        if (updatedScans[i].subTracks > 0)
-                            scans[i] = updatedScans[i];
-                }
-            }
         }
 
         public void WriteToCache(BinaryWriter writer)

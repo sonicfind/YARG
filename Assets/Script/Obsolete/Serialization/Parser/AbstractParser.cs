@@ -1,5 +1,5 @@
-using YARG.Data;
-using YARG.Song;
+﻿using YARG.Data;
+using YARG.Song.Entries;
 
 namespace YARG.Serialization.Parser
 {

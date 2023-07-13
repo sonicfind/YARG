@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using Melanchall.DryWetMidi.MusicTheory;
 using YARG.Data;
 using YARG.Song;
+using YARG.Types;
 
 namespace YARG.Serialization.Parser
 {
@@ -43,7 +44,7 @@ namespace YARG.Serialization.Parser
         {
             var tempoMap = midi.GetTempoMap();
 
-            if (drumType == DrumType.FourLane)
+            if (drumType == DrumType.FOUR_PRO)
             {
                 var notes = DrumNotePass(trackChunk, difficulty, tempoMap);
 

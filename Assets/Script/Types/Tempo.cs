@@ -26,6 +26,6 @@ namespace YARG.Types
         }
 
         public ulong Anchor { get; set; }
-        public Tempo(uint micros = MICROS_AT_120BPM) { _micros = micros; Anchor = 0; }
+        public Tempo(uint micros) { _micros = micros; Anchor = 0; }
     }
 }

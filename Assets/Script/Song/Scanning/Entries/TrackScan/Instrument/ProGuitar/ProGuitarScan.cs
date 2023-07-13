@@ -26,21 +26,21 @@ namespace YARG.Song.Entries.TrackScan.Instrument.ProGuitar
         protected readonly bool[] difficulties = new bool[4];
         protected readonly bool[,] notes = new bool[4, 6];
 
-        public override bool IsNote() { return 24 <= note.value && note.value <= 106; }
+        protected override bool IsNote() { return 24 <= note.value && note.value <= 106; }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 24 || 106 < note.value)
                 return false;
 
             uint noteValue = note.value - 24;
             int diffIndex = DIFFVALUES[noteValue];
-            if (!value[diffIndex])
+            if (!difficulties[diffIndex])
             {
                 uint lane = LANEVALUES[noteValue];
                 if (lane < 6 && currEvent.channel != 1)
                 {
-                    value.Set(diffIndex);
+                    Validate(diffIndex);
                     difficulties[diffIndex] = true;
                     return IsFullyScanned();
                 }

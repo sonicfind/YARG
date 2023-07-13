@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DG.Tweening;
+using Melanchall.DryWetMidi.Core;
 using MoonscraperChartEditor.Song;
 using MoonscraperChartEditor.Song.IO;
 using TrombLoader.Helpers;
@@ -14,9 +15,10 @@ using YARG.Audio;
 using YARG.Chart;
 using YARG.Data;
 using YARG.Input;
+using YARG.Serialization;
 using YARG.Serialization.Parser;
 using YARG.Settings;
-using YARG.Song;
+using YARG.Song.Entries;
 using YARG.UI;
 using YARG.Venue;
 
@@ -59,7 +61,7 @@ namespace YARG.PlayMode
 
         private bool audioRunning;
         private float realSongTime;
-        public float SongTime => realSongTime - PlayerManager.AudioCalibration * speed - (float) Song.Delay;
+        public float SongTime => realSongTime - PlayerManager.AudioCalibration * speed - Song.Delay;
 
         private float audioLength;
         public float SongLength { get; private set; }
@@ -153,7 +155,7 @@ namespace YARG.PlayMode
             GameUI.Instance.SetLoadingText("Loading audio...");
             Song.LoadAudio(GameManager.AudioManager, speed);
 
-            bool isYargSong = Song.Source.ToLowerInvariant() == "yarg";
+            bool isYargSong = Song.Source.SortStr == "yarg";
             GameManager.AudioManager.Options.UseMinimumStemVolume = isYargSong;
 
             // Get song length
@@ -167,27 +169,20 @@ namespace YARG.PlayMode
 
             // Adjust song length if needed
             // The [end] event is allowed to make the chart shorter (but not longer)
-            for (int i = chart.events.Count - 1; i > 0; i--)
-            {
-                var chartEvent = chart.events[i];
-                if (chartEvent.name != "end")
-                {
-                    continue;
-                }
 
-                if (chartEvent.time < SongLength)
-                {
-                    SongLength = chartEvent.time;
-                    break;
-                }
-            }
+            int i = chart.events.Count - 1;
+            while (i > 0 && chart.events[i].time > SongLength)
+                --i;
+
+            if (i >= 0 && chart.events[i].name == "end")
+                SongLength = chart.events[i].time;
 
             // The song length must include all notes in the chart
             foreach (var part in chart.AllParts)
             {
                 foreach (var difficulty in part)
                 {
-                    if (difficulty.Count < 1)
+                    if (difficulty.Count == 0)
                     {
                         continue;
                     }
@@ -311,29 +306,7 @@ namespace YARG.PlayMode
 
         private void LoadChart()
         {
-            // Parse
-
-            MoonSong moonSong = null;
-            if (Song.NotesFile.EndsWith(".chart"))
-            {
-                Debug.Log("Reading .chart file");
-                moonSong = ChartReader.ReadChart(Path.Combine(Song.Location, Song.NotesFile));
-            }
-
-            chart = new YargChart(moonSong);
-            if (Song.NotesFile.EndsWith(".mid"))
-            {
-                // Parse
-                var parser = new MidiParser(Song);
-                chart.InitializeArrays();
-                parser.Parse(chart);
-            }
-            else if (Song.NotesFile.EndsWith(".chart"))
-            {
-                var handler = new BeatHandler(moonSong);
-                handler.GenerateBeats();
-                chart.beats = handler.Beats;
-            }
+            chart = Song.LoadChart_Original();
 
             // initialize current tempo
             if (chart.beats.Count > 2)

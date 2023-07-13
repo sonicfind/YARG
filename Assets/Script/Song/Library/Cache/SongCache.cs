@@ -1,60 +1,87 @@
-﻿using YARG.Hashes;
-using YARG.Song.Library.CacheNodes;
-using YARG.Serialization;
+﻿using YARG.Serialization;
 using YARG.Song.Entries;
 using YARG.Types;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using TagLib.Riff;
+using UnityEngine;
+using YARG.Util;
+using YARG.Assets.Script.Types;
+using Cysharp.Threading.Tasks;
 
 #nullable enable
 namespace YARG.Song.Library
 {
-    public partial class SongCache : IDisposable
+    public enum ScanResult
     {
-        private const int CACHE_VERSION = 23_07_02_01;
-        private static readonly object dirLock = new();
-        private static readonly object fileLock = new();
-        private static readonly object iniLock = new();
-        private static readonly object conLock = new();
-        private static readonly object extractedLock = new();
-        private static readonly object updateLock = new();
-        private static readonly object upgradeLock = new();
-        private static readonly object updateGroupLock = new();
-        private static readonly object upgradeGroupLock = new();
-        private static readonly object entryLock = new();
+        Success,
+        DirectoryError,
+        IniEntryCorruption,
+        NoName,
+        NoNotes,
+        DTAError,
+        MissingMogg,
+        UnsupportedEncryption,
+        MissingMidi,
+        PossibleCorruption
+    }
+
+    public abstract class SongCache : IDisposable
+    {
+        protected const int CACHE_VERSION = 23_07_16_02;
+        protected static readonly object dirLock = new();
+        protected static readonly object fileLock = new();
+        protected static readonly object iniLock = new();
+        protected static readonly object conLock = new();
+        protected static readonly object extractedLock = new();
+        protected static readonly object updateLock = new();
+        protected static readonly object upgradeLock = new();
+        protected static readonly object updateGroupLock = new();
+        protected static readonly object upgradeGroupLock = new();
+        protected static readonly object entryLock = new();
+        protected static readonly object badsongsLock = new();
+        protected static readonly object invalidLock = new();
+        protected static readonly string CACHE_FILE = Path.Combine(PathHelper.PersistentDataPath, "songcache.bin");
 
         static SongCache() { }
 
-        private readonly List<UpdateGroup> updateGroups = new();
-        private readonly Dictionary<string, List<(string, DTAFileReader)>> updates = new();
-        private readonly List<UpgradeGroup> upgradeGroups = new();
-        
-        private readonly Dictionary<string, PackedCONGroup> conGroups = new();
-        private readonly Dictionary<string, (DTAFileReader?, SongProUpgrade)> upgrades = new();
-        private readonly Dictionary<string, ExtractedConGroup> extractedConGroups = new();
-        private readonly Dictionary<Hash128Wrapper, List<IniSongEntry>> iniEntries = new();
+        public readonly Dictionary<Hash128, List<SongEntry>> entries = new();
+        public readonly TitleCategory titles = new();
+        public readonly MainCategory artists = new(SongAttribute.ARTIST);
+        public readonly MainCategory albums = new(SongAttribute.ALBUM);
+        public readonly MainCategory genres = new(SongAttribute.GENRE);
+        public readonly YearCategory years = new();
+        public readonly MainCategory charters = new(SongAttribute.CHARTER);
+        public readonly MainCategory playlists = new(SongAttribute.PLAYLIST);
+        public readonly MainCategory sources = new(SongAttribute.SOURCE);
+        public readonly ArtistAlbumCategory artistAlbums = new();
+        public readonly SongLengthCategory songLengths = new();
 
-        private int IniCount
-        {
-            get
-            {
-                int count = 0;
-                foreach (var node in iniEntries)
-                    count += node.Value.Count;
-                return count;
-            }
-        }
 
-        private readonly SongLibrary library = new();
-        private readonly HashSet<string> preScannedDirectories = new();
-        private readonly HashSet<string> preScannedFiles = new();
+        public int Count { get { lock (entryLock) return _count; } }
+        public int NumScannedDirectories { get { lock (dirLock) return preScannedDirectories.Count; } }
+        public int BadSongCount { get { lock (badsongsLock) return badSongs.Count; } }
 
-        internal readonly (string, ChartType)[] CHARTTYPES =
+        protected readonly List<UpdateGroup> updateGroups = new();
+        protected readonly Dictionary<string, List<(string, DTAFileReader)>> updates = new();
+        protected readonly List<UpgradeGroup> upgradeGroups = new();
+
+        protected readonly Dictionary<string, PackedCONGroup> conGroups = new();
+        protected readonly Dictionary<string, (DTAFileReader?, SongProUpgrade)> upgrades = new();
+        protected readonly Dictionary<string, ExtractedConGroup> extractedConGroups = new();
+        protected readonly Dictionary<Hash128, List<IniSongEntry>> iniEntries = new();
+        protected readonly HashSet<string> invalidSongsInCache = new();
+
+        protected readonly HashSet<string> preScannedDirectories = new();
+        protected readonly HashSet<string> preScannedFiles = new();
+        private readonly SortedDictionary<string, ScanResult> badSongs = new();
+
+        protected int _count;
+
+        protected readonly (string, ChartType)[] CHARTTYPES =
         {
             new("notes.mid",   ChartType.MID),
             new("notes.midi",  ChartType.MIDI),
@@ -100,52 +127,701 @@ namespace YARG.Song.Library
             GC.SuppressFinalize(this);
         }
 
-        private void FinalizeIniEntries()
+        public bool QuickScan()
+        {
+            Debug.Log("Performing quick scan");
+            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+            if (!LoadCacheFile_Quick())
+            {
+                Debug.Log("Cache file unavailable or outdated");
+                return false;
+            }
+
+            Debug.Log($"Cache load successful");
+            MapCategories();
+            Debug.Log("Finished quick scan");
+            return true;
+        }
+
+        public void FullScan(List<string> baseDirectories, bool loadCache = true)
+        {
+            Debug.Log("Performing full scan");
+            if (loadCache)
+            {
+                Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+                if (LoadCacheFile(baseDirectories))
+                    Debug.Log($"Cache load successful");
+                else
+                    Debug.Log($"Cache load failed - Unavailable or outdated");
+            }
+
+            FindNewEntries(baseDirectories);
+            FinalizeIniEntries();
+            MapCategories();
+
+            Debug.Log($"Attempting to write cache file '{CACHE_FILE}'");
+            try
+            {
+                SaveToFile();
+                Debug.Log($"Cache file write successful");
+            }
+            catch (Exception ex)
+            {
+                Debug.Log($"Cache file write unsuccessful");
+                Debug.LogError(ex);
+            }
+            Debug.Log("Full scan complete");
+        }
+
+        public async UniTask WriteBadSongs()
+        {
+#if UNITY_EDITOR
+            string badSongsPath = Path.Combine(PathHelper.PersistentDataPath, "badsongs.txt");
+#else
+            string badSongsPath = Path.Combine(PathHelper.ExecutablePath, "badsongs.txt");
+#endif
+            await using var stream = new FileStream(badSongsPath, FileMode.Create, FileAccess.Write);
+            await using var writer = new StreamWriter(stream);
+
+            foreach (var error in badSongs)
+            {
+                await writer.WriteLineAsync(error.Key);
+                switch (error.Value)
+                {
+                    case ScanResult.DirectoryError:
+                        await writer.WriteLineAsync("Error accessing directory contents");
+                        break;
+                    case ScanResult.IniEntryCorruption:
+                        await writer.WriteLineAsync("Corruption of either the ini file or chart/mid file");
+                        break;
+                    case ScanResult.NoName:
+                        await writer.WriteLineAsync("Name metadata not provided");
+                        break;
+                    case ScanResult.NoNotes:
+                        await writer.WriteLineAsync("No notes found");
+                        break;
+                    case ScanResult.DTAError:
+                        await writer.WriteLineAsync("Error occured while parsing DTA file node");
+                        break;
+                    case ScanResult.MissingMogg:
+                        await writer.WriteLineAsync("Required mogg audio file not present");
+                        break;
+                    case ScanResult.UnsupportedEncryption:
+                        await writer.WriteLineAsync("Mogg file uses unsupported encryption");
+                        break;
+                    case ScanResult.MissingMidi:
+                        await writer.WriteLineAsync("Midi file queried for found missing");
+                        break;
+                    case ScanResult.PossibleCorruption:
+                        await writer.WriteLineAsync("Possible corruption of a queried midi file");
+                        break;
+                }
+                await writer.WriteLineAsync();
+            }
+        }
+
+        protected abstract void FindNewEntries(List<string> baseDirectories);
+        protected abstract void ScanDirectory(DirectoryInfo directory);
+        protected abstract void LoadCONSongs();
+        protected abstract void LoadExtractedCONSongs();
+        protected abstract void MapCategories();
+        protected abstract bool LoadCacheFile(List<string> baseDirectories);
+        protected abstract void ReadCONGroup(BinaryFileReader reader, List<string> baseDirectories, CategoryCacheStrings strings);
+        protected abstract void ReadExtractedCONGroup(BinaryFileReader reader, List<string> baseDirectories, CategoryCacheStrings strings);
+        protected abstract bool LoadCacheFile_Quick();
+        protected abstract void QuickReadCONGroup(BinaryFileReader reader, CategoryCacheStrings strings);
+        protected abstract void QuickReadExtractedCONGroup(BinaryFileReader reader, CategoryCacheStrings strings);
+
+        protected void FinalizeIniEntries()
         {
             foreach (var entryList in iniEntries)
                 foreach (var entry in entryList.Value)
                     entry.FinishScan();
         }
 
-        private void MapCategories()
+        protected void SaveToFile()
         {
-            Parallel.ForEach(library.entries, entryList =>
+            using var writer = new BinaryWriter(new FileStream(CACHE_FILE, FileMode.Create, FileAccess.Write));
+            Dictionary<SongEntry, CategoryCacheWriteNode> nodes = new();
+
+            writer.Write(CACHE_VERSION);
+
+            titles.WriteToCache(writer, ref nodes);
+            artists.WriteToCache(writer, ref nodes);
+            albums.WriteToCache(writer, ref nodes);
+            genres.WriteToCache(writer, ref nodes);
+            years.WriteToCache(writer, ref nodes);
+            charters.WriteToCache(writer, ref nodes);
+            playlists.WriteToCache(writer, ref nodes);
+            sources.WriteToCache(writer, ref nodes);
+
             {
+                int iniCount = 0;
+                foreach (var node in iniEntries)
+                    iniCount += node.Value.Count;
+                writer.Write(iniCount);
+            }
+
+            foreach (var entryList in iniEntries)
+            {
+                var hash = entryList.Key;
                 foreach (var entry in entryList.Value)
                 {
-                    library.titles.Add(entry);
-                    library.artists.Add(entry);
-                    library.albums.Add(entry);
-                    library.genres.Add(entry);
-                    library.years.Add(entry);
-                    library.charters.Add(entry);
-                    library.playlists.Add(entry);
-                    library.sources.Add(entry);
-                    library.artistAlbums.Add(entry);
+                    byte[] buffer = entry.FormatCacheData(nodes[entry]);
+                    writer.Write(buffer.Length);
+                    writer.Write(buffer);
                 }
-            });
+            }
+
+            writer.Write(updateGroups.Count);
+            foreach (var group in updateGroups)
+            {
+                byte[] buffer = group.FormatForCache();
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(upgradeGroups.Count);
+            foreach (var group in upgradeGroups)
+            {
+                byte[] buffer = group.FormatForCache();
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            List<KeyValuePair<string, PackedCONGroup>> upgradeCons = new();
+            List<KeyValuePair<string, PackedCONGroup>> entryCons = new();
+            foreach (var group in conGroups)
+            {
+                if (group.Value.UpgradeCount > 0)
+                    upgradeCons.Add(group);
+
+                if (group.Value.EntryCount > 0)
+                    entryCons.Add(group);
+            }
+
+            writer.Write(upgradeCons.Count);
+            foreach (var group in upgradeCons)
+            {
+                byte[] buffer = group.Value.FormatUpgradesForCache(group.Key);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(entryCons.Count);
+            foreach (var group in entryCons)
+            {
+                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(extractedConGroups.Count);
+            foreach (var group in extractedConGroups)
+            {
+                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
         }
 
-        private void MapCategories_Serial()
+        protected void AddToBadSongs(string filePath, ScanResult err)
         {
-            foreach (var entryList in library)
+            lock (badsongsLock) badSongs.Add(filePath, err);
+        }
+
+        protected bool ScanIniEntry(FileInfo?[] charts, FileInfo? ini)
+        {
+            for (int i = ini != null ? 0 : 2; i < 3; ++i)
             {
-                foreach (var entry in entryList.Value)
+                var chart = charts[i];
+                if (chart != null)
                 {
-                    library.titles.Add(entry);
-                    library.artists.Add(entry);
-                    library.albums.Add(entry);
-                    library.genres.Add(entry);
-                    library.years.Add(entry);
-                    library.charters.Add(entry);
-                    library.playlists.Add(entry);
-                    library.sources.Add(entry);
-                    library.artistAlbums.Add(entry);
+                    try
+                    {
+                        using FrameworkFile_Alloc file = new(chart.FullName);
+                        IniSongEntry entry = new(file, chart, ini, CHARTTYPES[i].Item2);
+                        if (entry.ScannedSuccessfully())
+                        {
+                            if (AddEntry(entry))
+                                AddIniEntry(entry);
+                        }
+                        else if (entry.GetModifier("name") == null)
+                            AddToBadSongs(chart.FullName, ScanResult.NoName);
+                        else
+                            AddToBadSongs(chart.FullName, ScanResult.NoNotes);
+                    }
+                    catch
+                    {
+                        AddToBadSongs(chart.DirectoryName, ScanResult.IniEntryCorruption);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected bool TryAddUpdateDirectory(DirectoryInfo directory)
+        {
+            if (directory.Name == "songs_updates")
+            {
+                string dirName = directory.FullName;
+                FileInfo dta = new(Path.Combine(dirName, "songs_updates.dta"));
+                if (dta.Exists)
+                {
+                    UpdateGroupAdd(dirName, dta);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected bool TryAddUpgradeDirectory(DirectoryInfo directory)
+        {
+            if (directory.Name == "song_upgrades")
+            {
+                string dirName = directory.FullName;
+                FileInfo dta = new(Path.Combine(dirName, "upgrades.dta"));
+                if (dta.Exists)
+                {
+                    UpgradeGroupAdd(dirName, dta);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected bool TryAddExtractedCONDirectory(DirectoryInfo directory)
+        {
+            if (directory.Name == "songs")
+            {
+                string dirName = directory.FullName;
+                FileInfo dta = new(Path.Combine(dirName, "songs.dta"));
+                if (dta.Exists)
+                {
+                    AddExtractedCONGroup(dirName, new(dta));
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected void AddPossibleCON(FileInfo info)
+        {
+            if (!FindOrMarkFile(info.FullName))
+                return;
+
+            var file = CONFile.LoadCON(info.FullName);
+            if (file == null)
+                return;
+
+            PackedCONGroup group = new(file, info.LastWriteTime);
+            AddCONGroup(info.FullName, group);
+
+            if (group.LoadUpgrades(out var reader))
+                AddCONUpgrades(group, reader!);
+        }
+
+        protected void loadCONGroup(KeyValuePair<string, PackedCONGroup> node)
+        {
+            var group = node.Value;
+            if (group.LoadSongs(out var reader))
+            {
+                Dictionary<string, int> indices = new();
+                ushort nodeIndex = 0;
+                while (reader!.StartNode())
+                {
+                    string name = reader.GetNameOfNode();
+                    int index;
+                    if (indices.ContainsKey(name))
+                        index = ++indices[name];
+                    else
+                        index = indices[name] = 0;
+
+                    if (group.TryGetEntry(name, index, out var entry))
+                    {
+                        if (!AddEntry(entry!))
+                            group.RemoveEntry(name, index);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            ConSongEntry currentSong = new(group.file, name, reader, nodeIndex);
+                            var result = ProcessCONEntry(name, currentSong);
+                            if (result == ScanResult.Success)
+                            {
+                                if (AddEntry(currentSong))
+                                    group.AddEntry(name, index, currentSong);
+                            }
+                            else
+                            {
+                                AddToBadSongs(node.Key + $" - Node {name}", result);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            AddToBadSongs(node.Key + $" - Node {name}", ScanResult.DTAError);
+                            Debug.LogError(e);
+                        }
+                    }
+                    reader.EndNode();
+                    ++nodeIndex;
                 }
             }
         }
 
-        private bool CreateCONGroup(string filename, out PackedCONGroup? group)
+        protected void loadExtractedCONGroup(KeyValuePair<string, ExtractedConGroup> node)
+        {
+            string directory = node.Key;
+            var group = node.Value;
+            var reader = group.LoadDTA();
+            if (reader == null)
+                return;
+
+            Dictionary<string, int> indices = new();
+            ushort nodeIndex = 0;
+            while (reader.StartNode())
+            {
+                string name = reader.GetNameOfNode();
+                int index;
+                if (indices.ContainsKey(name))
+                    index = indices[name]++;
+                else
+                    index = indices[name] = 0;
+
+                if (group.TryGetEntry(name, index, out var entry))
+                {
+                    if (!AddEntry(entry!))
+                        group.RemoveEntry(name, index);
+                }
+                else
+                {
+                    try
+                    {
+                        ConSongEntry currentSong = new(directory, name, reader, nodeIndex);
+                        var result = ProcessCONEntry(name, currentSong);
+                        if (result == ScanResult.Success)
+                        {
+                            if (AddEntry(currentSong))
+                                group.AddEntry(name, index, currentSong);
+                        }
+                        else
+                        {
+                            AddToBadSongs(node.Key + $" - Node {name}", result);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        AddToBadSongs(node.Key + $" - Node {name}", ScanResult.DTAError);
+                        Debug.LogError(e.Message);
+                    }
+                }
+                reader.EndNode();
+                ++nodeIndex;
+            }
+        }
+
+        protected bool FindOrMarkDirectory(string directory)
+        {
+            lock (dirLock)
+            {
+                if (preScannedDirectories.Contains(directory))
+                    return false;
+
+                preScannedDirectories.Add(directory);
+                return true;
+            }
+        }
+
+        protected static bool StartsWithBaseDirectory(string path, List<string> baseDirectories)
+        {
+            for (int i = 0; i != baseDirectories.Count; ++i)
+                if (path.StartsWith(baseDirectories[i]))
+                    return true;
+            return false;
+        }
+
+        protected void ReadIniEntry(BinaryFileReader reader, List<string> baseDirectories, CategoryCacheStrings strings)
+        {
+            string directory = reader.ReadLEBString();
+            if (!StartsWithBaseDirectory(directory, baseDirectories))
+                return;
+
+            byte chartTypeIndex = reader.ReadByte();
+            if (chartTypeIndex >= CHARTTYPES.Length)
+                return;
+
+            ref var chartType = ref CHARTTYPES[chartTypeIndex];
+            FileInfo chartFile = new(Path.Combine(directory, chartType.Item1));
+            if (!chartFile.Exists)
+                return;
+
+            if (chartFile.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
+                return;
+
+            FileInfo? iniFile = null;
+            if (reader.ReadBoolean())
+            {
+                iniFile = new(Path.Combine(directory, "song.ini"));
+                if (!iniFile.Exists)
+                    return;
+
+                if (iniFile.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
+                    return;
+            }
+
+            MarkDirectory(directory);
+            IniSongEntry entry = new(directory, chartFile, iniFile, chartType.Item2, reader, strings);
+            AddEntry(entry);
+            AddIniEntry(entry);
+        }
+
+        protected void ReadUpdateDirectory(BinaryFileReader reader, List<string> baseDirectories)
+        {
+            string directory = reader.ReadLEBString();
+            var dtaLastWrite = DateTime.FromBinary(reader.ReadInt64());
+            int count = reader.ReadInt32();
+
+            if (StartsWithBaseDirectory(directory, baseDirectories))
+            {
+                FileInfo dta = new(Path.Combine(directory, "songs_updates.dta"));
+                if (dta.Exists)
+                {
+                    MarkDirectory(directory);
+                    UpdateGroupAdd(directory, dta);
+
+                    if (dta.LastWriteTime == dtaLastWrite)
+                        return;
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+                AddInvalidSong(reader.ReadLEBString());
+        }
+
+        protected void ReadUpgradeDirectory(BinaryFileReader reader, List<string> baseDirectories)
+        {
+            string directory = reader.ReadLEBString();
+            var dtaLastWrite = DateTime.FromBinary(reader.ReadInt64());
+            int count = reader.ReadInt32();
+
+            if (StartsWithBaseDirectory(directory, baseDirectories))
+            {
+                FileInfo dta = new(Path.Combine(directory, "upgrades.dta"));
+                if (dta.Exists)
+                {
+                    MarkDirectory(directory);
+                    var group = UpgradeGroupAdd(directory, dta);
+
+                    if (group != null && dta.LastWriteTime == dtaLastWrite)
+                    {
+                        for (int i = 0; i < count; i++)
+                        {
+                            string name = reader.ReadLEBString();
+                            var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+                            if (!group.upgrades.TryGetValue(name, out var upgrade) || upgrade!.UpgradeLastWrite != lastWrite)
+                                AddInvalidSong(name);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                AddInvalidSong(reader.ReadLEBString());
+                reader.Position += 4;
+            }
+        }
+
+        protected void ReadUpgradeCON(BinaryFileReader cacheReader, List<string> baseDirectories)
+        {
+            string filename = cacheReader.ReadLEBString();
+            var conLastWrite = DateTime.FromBinary(cacheReader.ReadInt64());
+            int dtaLastWrite = cacheReader.ReadInt32();
+            int count = cacheReader.ReadInt32();
+
+            if (StartsWithBaseDirectory(filename, baseDirectories))
+            {
+                if (CreateCONGroup(filename, out var group))
+                {
+                    AddCONGroup(filename, group!);
+
+                    if (group!.LoadUpgrades(out var reader))
+                    {
+                        AddCONUpgrades(group, reader!);
+
+                        if (group.UpgradeDTALastWrite == dtaLastWrite)
+                        {
+                            if (group.lastWrite != conLastWrite)
+                            {
+                                for (int i = 0; i < count; i++)
+                                {
+                                    string name = cacheReader.ReadLEBString();
+                                    if (group.upgrades[name].UpgradeLastWrite != DateTime.FromBinary(cacheReader.ReadInt64()))
+                                        AddInvalidSong(name);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                AddInvalidSong(cacheReader.ReadLEBString());
+                cacheReader.Position += 4;
+            }
+        }
+
+        protected void QuickReadIniEntry(BinaryFileReader reader, CategoryCacheStrings strings)
+        {
+            string directory = reader.ReadLEBString();
+            byte chartTypeIndex = reader.ReadByte();
+            if (chartTypeIndex >= CHARTTYPES.Length)
+                return;
+
+            ref var chartType = ref CHARTTYPES[chartTypeIndex];
+            var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+
+            AbridgedFileInfo chartFile = new(Path.Combine(directory, chartType.Item1), lastWrite);
+            AbridgedFileInfo? iniFile = null;
+            if (reader.ReadBoolean())
+            {
+                lastWrite = DateTime.FromBinary(reader.ReadInt64());
+                iniFile = new(Path.Combine(directory, "song.ini"), lastWrite);
+            }
+
+            IniSongEntry entry = new(directory, chartFile, iniFile, chartType.Item2, reader, strings);
+            AddEntry(entry);
+        }
+
+        protected void QuickReadUpgradeDirectory(BinaryFileReader reader)
+        {
+            string directory = reader.ReadLEBString();
+            var dtaLastWrite = DateTime.FromBinary(reader.ReadInt64());
+            int count = reader.ReadInt32();
+
+            UpgradeGroup group = new(directory, dtaLastWrite);
+            lock (upgradeGroupLock)
+                upgradeGroups.Add(group);
+
+            for (int i = 0; i < count; i++)
+            {
+                string name = reader.ReadLEBString();
+                var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+                string filename = Path.Combine(directory, $"{name}_plus.mid");
+
+                SongProUpgrade upgrade = new(filename, lastWrite);
+                group.upgrades.Add(name, upgrade);
+                AddUpgrade(name, null, upgrade);
+            }
+        }
+
+        protected void QuickReadUpgradeCON(BinaryFileReader reader)
+        {
+            string filename = reader.ReadLEBString();
+            reader.Position += 12;
+            int count = reader.ReadInt32();
+
+            if (CreateCONGroup(filename, out var group))
+            {
+                var file = group!.file;
+                AddCONGroup(filename, group);
+
+                for (int i = 0; i < count; i++)
+                {
+                    string name = reader.ReadLEBString();
+                    var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+                    var listing = file[$"songs_upgrades/{name}_plus.mid"];
+
+                    SongProUpgrade upgrade = new(file, listing, lastWrite);
+                    AddUpgrade(name, null, upgrade);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    string name = reader.ReadLEBString();
+                    var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+
+                    SongProUpgrade upgrade = new(null, null, lastWrite);
+                    AddUpgrade(name, null, upgrade);
+                }
+            }
+        }
+
+        protected void QuickReadCONEntry(CONFile file, string nodeName, BinaryFileReader reader, CategoryCacheStrings strings)
+        {
+            var midiListing = file[reader.ReadLEBString()];
+            reader.Position += 4;
+
+            FileListing? moggListing = null;
+            AbridgedFileInfo? moggInfo = null;
+            if (reader.ReadBoolean())
+            {
+                moggListing = file[reader.ReadLEBString()];
+                reader.Position += 4;
+            }
+            else
+            {
+                string moggName = reader.ReadLEBString();
+                var moggTime = DateTime.FromBinary(reader.ReadInt64());
+                moggInfo = new(moggName, moggTime);
+            }
+
+            AbridgedFileInfo? updateInfo = null;
+            if (reader.ReadBoolean())
+            {
+                string updateName = reader.ReadLEBString();
+                DateTime updateTime = DateTime.FromBinary(reader.ReadInt64());
+                updateInfo = new(updateName, updateTime);
+            }
+
+            ConSongEntry currentSong = new(file, nodeName, midiListing, moggListing, moggInfo, updateInfo, reader, strings);
+            if (upgrades.TryGetValue(nodeName, out var upgrade))
+                currentSong.Upgrade = upgrade.Item2;
+
+            AddEntry(currentSong);
+        }
+
+        protected void QuickReadExtractedCONEntry(string nodeName, BinaryFileReader reader, CategoryCacheStrings strings)
+        {
+            string filename = reader.ReadLEBString();
+            var lastWrite = DateTime.FromBinary(reader.ReadInt64());
+
+            AbridgedFileInfo midiInfo = new(filename, lastWrite);
+
+            bool isYargMogg = reader.ReadBoolean();
+            filename = reader.ReadLEBString();
+            lastWrite = DateTime.FromBinary(reader.ReadInt64());
+
+            AbridgedFileInfo moggInfo = new(filename, lastWrite);
+
+            AbridgedFileInfo? updateInfo = null;
+            if (reader.ReadBoolean())
+            {
+                filename = reader.ReadLEBString();
+                lastWrite = DateTime.FromBinary(reader.ReadInt64());
+                updateInfo = new(filename, lastWrite);
+            }
+
+            ConSongEntry currentSong;
+            if (isYargMogg)
+                currentSong = new(midiInfo, moggInfo, null, updateInfo, reader, strings);
+            else
+                currentSong = new(midiInfo, null, moggInfo, updateInfo, reader, strings);
+
+            if (upgrades.TryGetValue(nodeName, out var upgrade))
+                currentSong.Upgrade = upgrade.Item2;
+
+            AddEntry(currentSong);
+        }
+
+        protected bool CreateCONGroup(string filename, out PackedCONGroup? group)
         {
             group = null;
 
@@ -163,20 +839,54 @@ namespace YARG.Song.Library
             return true;
         }
 
-        private void AddCONGroup(string filename, PackedCONGroup group)
+        protected void AddCONGroup(string filename, PackedCONGroup group)
         {
             lock (conLock) 
                 conGroups.Add(filename, group);
         }
 
-        private void AddExtractedCONGroup(string directory, ExtractedConGroup group)
+        protected void AddExtractedCONGroup(string directory, ExtractedConGroup group)
         {
             lock (extractedLock)
                 extractedConGroups.Add(directory, group);
         }
 
-        private void AddIniEntry(Hash128Wrapper hash, IniSongEntry entry)
+        protected bool FindCONGroup(string filename, out PackedCONGroup? group)
         {
+            lock (conLock)
+                return conGroups.TryGetValue(filename, out group);
+        }
+
+        protected void MarkDirectory(string directory)
+        {
+            lock (dirLock) preScannedDirectories.Add(directory);
+        }
+
+        protected void MarkFile(string file)
+        {
+            lock (fileLock) preScannedFiles.Add(file);
+        }
+
+        private bool FindOrMarkFile(string file)
+        {
+            lock (fileLock)
+            {
+                if (preScannedFiles.Contains(file))
+                    return false;
+
+                preScannedFiles.Add(file);
+                return true;
+            }
+        }
+
+        private void AddInvalidSong(string name)
+        {
+            lock (invalidLock) invalidSongsInCache.Add(name);
+        }
+
+        private void AddIniEntry(IniSongEntry entry)
+        {
+            var hash = entry.Hash;
             lock (iniLock)
             {
                 if (iniEntries.TryGetValue(hash, out var list))
@@ -278,7 +988,7 @@ namespace YARG.Song.Library
             }
         }
 
-        private bool ProcessCONEntry(string name, ConSongEntry currentSong, out Hash128Wrapper? hash)
+        private ScanResult ProcessCONEntry(string name, ConSongEntry currentSong)
         {
             if (updates.TryGetValue(name, out var updateList))
             {
@@ -292,7 +1002,7 @@ namespace YARG.Song.Library
                 currentSong.SetFromDTA(name, upgrade.Item1!.Clone());
             }
 
-            return currentSong.Scan(out hash, name);
+            return currentSong.Scan(name);
         }
 
         private bool CanAddUpgrade(string shortname, ref DateTime lastWrite)
@@ -364,291 +1074,18 @@ namespace YARG.Song.Library
             }
         }
 
-        private bool AddEntry(Hash128Wrapper hash, SongEntry entry)
+        private bool AddEntry(SongEntry entry)
         {
+            var hash = entry.Hash;
             lock (entryLock)
             {
-                if (library.entries.TryGetValue(hash, out var list))
+                if (entries.TryGetValue(hash, out var list))
                     list.Add(entry);
                 else
-                    library.entries.Add(hash, new() { entry });
+                    entries.Add(hash, new() { entry });
+                ++_count;
             }
             return true;
-        }
-
-        private bool FindCONGroup(string filename, out PackedCONGroup? group)
-        {
-            lock (conLock)
-                return conGroups.TryGetValue(filename, out group);
-        }
-
-        private void MarkDirectory(string directory)
-        {
-            lock (dirLock) preScannedDirectories.Add(directory);
-        }
-
-        private void MarkFile(string file)
-        {
-            lock (fileLock) preScannedFiles.Add(file);
-        }
-    }
-
-    internal abstract class CONGroup
-    {
-        public class EntryNode
-        {
-            public readonly ConSongEntry entry;
-            public readonly Hash128Wrapper hash;
-            public EntryNode(ConSongEntry entry, Hash128Wrapper hash)
-            {
-                this.entry = entry;
-                this.hash = hash;
-            }
-        }
-
-        protected readonly Dictionary<string, SortedDictionary<int, EntryNode>> entries = new();
-        protected readonly object entryLock = new();
-        public int EntryCount
-        {
-            get
-            {
-                int count = 0;
-                foreach (var node in entries)
-                    count += node.Value.Count;
-                return count;
-            }
-        }
-        public void AddEntry(string name, int index, ConSongEntry entry, Hash128Wrapper hash)
-        {
-            EntryNode node = new(entry, hash);
-            lock (entryLock)
-            {
-                if (entries.TryGetValue(name, out var dict))
-                    dict.Add(index, node);
-                else
-                    entries.Add(name, new() { { index, node } });
-            }
-        }
-
-        public void RemoveEntries(string name) { lock (entryLock) entries.Remove(name); }
-
-        public void RemoveEntry(string name, int index) { lock (entryLock) entries[name].Remove(index); }
-
-        public bool TryGetEntry(string name, int index, out EntryNode? entry)
-        {
-            entry = null;
-            return entries.TryGetValue(name, out var dict) && dict.TryGetValue(index, out entry);
-        }
-
-        protected void WriteEntriesToCache(BinaryWriter writer, ref Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
-        {
-            writer.Write(EntryCount);
-            foreach (var entryList in entries)
-            {
-                foreach (var entry in entryList.Value)
-                {
-                    writer.Write(entryList.Key);
-                    writer.Write(entry.Key);
-
-                    byte[] data = entry.Value.entry.FormatCacheData(nodes[entry.Value.entry]);
-                    writer.Write(data.Length + 20);
-                    writer.Write(data);
-
-                    entry.Value.hash.Write(writer);
-                }
-            }
-        }
-    }
-
-    internal class PackedCONGroup : CONGroup
-    {
-        public readonly CONFile file;
-        public readonly DateTime lastWrite;
-        public readonly Dictionary<string, SongProUpgrade> upgrades = new();
-        
-        public int UpgradeCount => upgrades.Count;
-        
-        private readonly object upgradeLock = new();
-
-        private FileListing? songDTA;
-        private FileListing? upgradeDta;
-        public int DTALastWrite
-        {
-            get
-            {
-                if (songDTA == null)
-                    return 0;
-                return songDTA.lastWrite;
-            }
-        }
-        public int UpgradeDTALastWrite
-        {
-            get
-            {
-                if (upgradeDta == null)
-                    return 0;
-                return upgradeDta.lastWrite;
-            }
-        }
-
-        public PackedCONGroup(CONFile file, DateTime lastWrite)
-        {
-            this.file = file;
-            this.lastWrite = lastWrite;
-        }
-
-        public void AddUpgrade(string name, SongProUpgrade upgrade) { lock (upgradeLock) upgrades[name] = upgrade; }
-
-        internal const string SONGSFILEPATH = "songs/songs.dta";
-        internal const string UPGRADESFILEPATH = "songs_upgrades/upgrades.dta";
-
-        public bool LoadUpgrades(out DTAFileReader? reader)
-        {
-            upgradeDta = file[UPGRADESFILEPATH];
-            if (upgradeDta == null)
-            {
-                reader = null;
-                return false;
-            }
-
-            reader = new(file.LoadSubFile(upgradeDta!)!, true);
-            return true;
-        }
-
-        public bool LoadSongs(out DTAFileReader? reader)
-        {
-            if (songDTA == null && !SetSongDTA())
-            {
-                reader = null;
-                return false;
-            }
-
-            reader = new(file.LoadSubFile(songDTA!)!, true);
-            return true;
-        }
-
-        public bool SetSongDTA()
-        {
-            songDTA = file[SONGSFILEPATH];
-            return songDTA != null;
-        }
-
-        public byte[] FormatUpgradesForCache(string filepath)
-        {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms);
-
-            writer.Write(filepath);
-            writer.Write(lastWrite.ToBinary());
-            writer.Write(upgradeDta!.lastWrite);
-            writer.Write(upgrades.Count);
-            foreach (var upgrade in upgrades)
-            {
-                writer.Write(upgrade.Key);
-                upgrade.Value.WriteToCache(writer);
-            }
-            return ms.ToArray();
-        }
-
-        public byte[] FormatEntriesForCache(string filepath, ref Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
-        {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms);
-
-            writer.Write(filepath);
-            writer.Write(songDTA!.lastWrite);
-            WriteEntriesToCache(writer, ref nodes);
-            return ms.ToArray();
-        }
-    }
-
-    internal class ExtractedConGroup : CONGroup
-    {
-        private readonly string dtaPath;
-        private readonly DateTime lastWrite;
-
-        public ExtractedConGroup(string dtaPath, DateTime lastWrite)
-        {
-            this.dtaPath = dtaPath;
-            this.lastWrite = lastWrite;
-        }
-
-        public DTAFileReader? LoadDTA()
-        {
-            try
-            {
-                return new(dtaPath);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public byte[] FormatEntriesForCache(string directory, ref Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
-        {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms);
-
-            writer.Write(directory);
-            writer.Write(lastWrite.ToBinary());
-            WriteEntriesToCache(writer, ref nodes);
-            return ms.ToArray();
-        }
-    }
-
-    internal class UpdateGroup
-    {
-        public readonly string directory;
-        private readonly DateTime dtaLastWrite;
-        public readonly List<string> updates = new();
-
-        public UpdateGroup(string directory, DateTime dtaLastWrite)
-        {
-            this.directory = directory;
-            this.dtaLastWrite = dtaLastWrite;
-        }
-
-        public byte[] FormatForCache()
-        {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms);
-
-            writer.Write(directory);
-            writer.Write(dtaLastWrite.ToBinary());
-            writer.Write(updates.Count);
-            for (int i = 0; i < updates.Count; ++i)
-                writer.Write(updates[i]);
-            return ms.ToArray();
-        }
-    }
-
-    internal class UpgradeGroup
-    {
-        public readonly string directory;
-        private readonly DateTime dtaLastWrite;
-        public readonly Dictionary<string, SongProUpgrade> upgrades = new();
-
-        public UpgradeGroup(string directory, DateTime dtaLastWrite)
-        {
-            this.directory = directory;
-            this.dtaLastWrite = dtaLastWrite;
-        }
-
-        public byte[] FormatForCache()
-        {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms);
-
-            writer.Write(directory);
-            writer.Write(dtaLastWrite.ToBinary());
-            writer.Write(upgrades.Count);
-            foreach (var upgrade in upgrades)
-            {
-                writer.Write(upgrade.Key);
-                upgrade.Value.WriteToCache(writer);
-            }
-            return ms.ToArray();
         }
     }
 }

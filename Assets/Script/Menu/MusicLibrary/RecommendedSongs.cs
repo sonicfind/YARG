@@ -1,7 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using YARG.Song;
+using YARG.Song.Entries;
 
 namespace YARG.UI.MusicLibrary
 {
@@ -25,11 +26,11 @@ namespace YARG.UI.MusicLibrary
             }
 
             // YARG songs first
-            _recommendedSongs.Sort((x, y) =>
+            _recommendedSongs.Sort((lhs, rhs) =>
             {
                 // This is technically YARG songs last because of the reverse below
-                if (x.Source.ToLowerInvariant() == "yarg") return -1;
-                if (y.Source.ToLowerInvariant() == "yarg") return 1;
+                if (lhs.Source.SortStr == "yarg") return -1;
+                if (rhs.Source.SortStr == "yarg") return 1;
                 return 0;
             });
 
@@ -139,7 +140,7 @@ namespace YARG.UI.MusicLibrary
             if (Random.value <= 0.6f)
             {
                 var yargSongs = SongContainer.Songs
-                    .Where(i => i.Source.ToLowerInvariant() == "yarg").ToList();
+                    .Where(i => i.Source.SortStr == "yarg").ToList();
 
                 // Skip if the user has no YARG songs :(
                 if (yargSongs.Count <= 0)
@@ -166,8 +167,7 @@ namespace YARG.UI.MusicLibrary
             // Add a completely random song (ten tries)
             for (int t = 0; t < TRIES; t++)
             {
-                var song = ((IList<SongEntry>) SongContainer.Songs).Pick();
-
+                var song = SongContainer.Songs[Random.Range(0, SongContainer.Count)];
                 if (_recommendedSongs.Contains(song))
                 {
                     continue;

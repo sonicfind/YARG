@@ -14,20 +14,20 @@ namespace YARG.Song.Entries.TrackScan.Instrument.ProKeys
         public readonly int difficulty;
         public Midi_ProKeys_Scanner(int difficulty) { this.difficulty = difficulty; }
 
-        public override bool IsNote() { return 48 <= note.value && note.value <= 72; }
+        protected override bool IsNote() { return 48 <= note.value && note.value <= 72; }
 
-        public override bool ParseLaneColor()
+        protected override bool ParseLaneColor()
         {
             lanes[note.value - 48] = true;
             return false;
         }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 48 || 72 < note.value || !lanes[note.value - 48])
                 return false;
 
-            value.Set(difficulty);
+            Validate(difficulty);
             return true;
         }
     }

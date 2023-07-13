@@ -12,6 +12,7 @@ namespace YARG.Serialization
     public unsafe class DTAFileReader : TxtReader_Base
     {
         private readonly List<int> nodeEnds = new();
+        //private static readonly Encoding Western = Encoding.GetEncoding(1252);
 
         public DTAFileReader(FrameworkFile file) : base(file) { SkipWhiteSpace(); }
 
@@ -142,22 +143,14 @@ namespace YARG.Serialization
             else if (inSquirley || inQuotes || inApostrophes)
                 throw new Exception("Improper end to text");
 
-            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(file.ptr + start, end - start));
+            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(file.ptr + start, end - start)).Replace("\\q", "\"");
         }
 
-        public List<short> ExtractList_Int16()
+        public List<int> ExtractList_Int()
         {
-            List<short> values = new();
+            List<int> values = new();
             while (*CurrentPtr != ')')
-                values.Add(ReadInt16());
-            return values;
-        }
-
-        public List<ushort> ExtractList_UInt16()
-        {
-            List<ushort> values = new();
-            while (*CurrentPtr != ')')
-                values.Add(ReadUInt16());
+                values.Add(ReadInt32());
             return values;
         }
 

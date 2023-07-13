@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -11,26 +12,24 @@ namespace YARG.Serialization
 {
     public static class XboxImageTextureGenerator
     {
-        public static async UniTask<Texture2D> GetTexture(byte[] xboxImageBytes, CancellationToken ct)
+        public static unsafe async UniTask<Texture2D> GetTexture(FrameworkFile xboxImage, CancellationToken ct)
         {
-            var ms = new MemoryStream(xboxImageBytes);
-
             // Parse header and get DXT blocks
-            byte[] header = ms.ReadBytes(32);
-            byte BitsPerPixel = header[1];
-            int Format = BitConverter.ToInt32(header, 2);
-            short Width = BitConverter.ToInt16(header, 7);
-            short Height = BitConverter.ToInt16(header, 9);
+            byte BitsPerPixel = xboxImage.ptr[1];
+            int Format = BinaryPrimitives.ReadInt32LittleEndian(new(xboxImage.ptr + 2, 4));
+            short Width = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 7, 2));
+            short Height = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 9, 2));
             bool isDXT1 = ((BitsPerPixel == 0x04) && (Format == 0x08));
-            ms.Seek(32, SeekOrigin.Begin);
-            byte[] DXTBlocks = ms.ReadBytes((int) (ms.Length - 32));
 
             ct.ThrowIfCancellationRequested();
 
             // Swap bytes because xbox is weird like that
-            for (int i = 0; i < DXTBlocks.Length / 2; i++)
+            byte buf;
+            for (int i = 32; i < xboxImage.Length; i += 2)
             {
-                (DXTBlocks[i * 2], DXTBlocks[i * 2 + 1]) = (DXTBlocks[i * 2 + 1], DXTBlocks[i * 2]);
+                buf = xboxImage.ptr[i];
+                xboxImage.ptr[i] = xboxImage.ptr[i + 1];
+                xboxImage.ptr[i + 1] = buf;
             }
 
             ct.ThrowIfCancellationRequested();
@@ -38,7 +37,7 @@ namespace YARG.Serialization
             // apply DXT1 OR DXT5 formatted bytes to a Texture2D
             var tex = new Texture2D(Width, Height,
                 (isDXT1) ? GraphicsFormat.RGBA_DXT1_SRGB : GraphicsFormat.RGBA_DXT5_SRGB, TextureCreationFlags.None);
-            tex.LoadRawTextureData(DXTBlocks);
+            tex.LoadRawTextureData((IntPtr)(xboxImage.ptr + 32), xboxImage.Length - 32);
             tex.Apply();
 
             return tex;

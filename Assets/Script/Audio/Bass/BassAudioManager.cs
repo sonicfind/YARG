@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,6 +9,7 @@ using ManagedBass;
 using ManagedBass.Fx;
 using ManagedBass.Mix;
 using UnityEngine;
+using YARG.Serialization;
 using YARG.Song;
 using DeviceType = ManagedBass.DeviceType;
 
@@ -259,7 +261,7 @@ namespace YARG.Audio.BASS
             IsAudioLoaded = true;
         }
 
-        public void LoadMogg(byte[] moggArray, List<(SongStem, int[], float[])> stemMaps, float speed)
+        public void LoadMogg(FrameworkFile file, List<(SongStem, int[], float[])> stemMaps, float speed)
         {
             Debug.Log("Loading mogg song");
             UnloadSong();
@@ -270,8 +272,13 @@ namespace YARG.Audio.BASS
             // https://www.un4seen.com/forum/?topic=20148.msg140872#msg140872
             const BassFlags flags = BassFlags.Prescan | BassFlags.Decode | BassFlags.AsyncFile | (BassFlags) 64;
 
-            int start = BitConverter.ToInt32(moggArray, 4);
-            int moggStreamHandle = Bass.CreateStream(moggArray, start, moggArray.Length - start, flags);
+            int moggStreamHandle;
+            unsafe
+            {
+                int start = BinaryPrimitives.ReadInt32LittleEndian(new(file.ptr + 4, 4));
+                moggStreamHandle = Bass.CreateStream((IntPtr)file.ptr, start, file.Length - start, flags);
+            }
+
             if (moggStreamHandle == 0)
             {
                 Debug.LogError($"Failed to load mogg file or position: {Bass.LastError}");
@@ -279,7 +286,7 @@ namespace YARG.Audio.BASS
             }
 
             // Initialize mixer
-            BassMoggStemMixer mixer = new(this, moggStreamHandle);
+            BassMoggStemMixer mixer = new(this, file, moggStreamHandle);
             if (!mixer.Create())
             {
                 throw new Exception($"Failed to create mixer: {Bass.LastError}");

@@ -35,7 +35,7 @@ namespace YARG.Data
                 'H' => Difficulty.HARD,
                 'X' => Difficulty.EXPERT,
                 'P' => Difficulty.EXPERT_PLUS,
-                _   => throw new System.Exception("Unknown difficulty.")
+                _   => throw new Exception("Unknown difficulty.")
             };
         }
 

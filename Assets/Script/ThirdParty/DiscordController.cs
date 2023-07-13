@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using Discord;
 using UnityEngine;
 using YARG.PlayMode;
 using YARG.Song;
+using YARG.Song.Entries;
 using YARG.UI;
 
 namespace YARG.ThirdParty

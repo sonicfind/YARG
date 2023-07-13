@@ -10,29 +10,33 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
 {
     public struct LegacyDrumScan
     {
-        private ScanValues _values;
-        private Types.DrumType _type;
+        private byte _validations;
+        private DrumType _type;
 
-        public ScanValues Values { get { return _values; } }
-        public Types.DrumType Type { get { return _type; } }
+        public bool cymbals;
 
-        public LegacyDrumScan(Types.DrumType type = Types.DrumType.UNKNOWN)
+        public byte ValidatedDiffs => _validations;
+        public DrumType Type => _type;
+
+        public LegacyDrumScan(bool cymbals, DrumType type = DrumType.UNKNOWN)
         {
-            _values = new(1);
+            this.cymbals = cymbals;
             _type = type;
+            _validations = 0;
         }
 
-        public Types.DrumType ScanMidi(MidiFileReader reader)
+        public DrumType ScanMidi(MidiFileReader reader)
         {
-            Midi_DrumLegacy_Scanner scanner = new();
-            _values = scanner.Scan(reader);
+            Midi_DrumLegacy_Scanner scanner = new(cymbals);
+            _validations = scanner.Scan(reader);
             return scanner.Type;
         }
 
         public bool ScanDotChart(ChartFileReader reader)
         {
             int index = reader.Difficulty;
-            if (_values[index])
+            int mask = 1 << index;
+            if ((_validations & mask) > 0)
                 return false;
 
             bool found = false;
@@ -45,7 +49,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
                     {
                         if (!found)
                         {
-                            _values.Set(index);
+                            _validations |= (byte) mask;
                             found = true;
                         }
 
@@ -53,7 +57,10 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
                             _type = Types.DrumType.FIVE_LANE;
                     }
                     else if (66 <= lane && lane <= 68)
+                    {
                         _type = Types.DrumType.FOUR_PRO;
+                        cymbals = true;
+                    }
 
                     if (found && Type != Types.DrumType.UNKNOWN)
                         return false;
@@ -66,13 +73,20 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
 
     public class Midi_DrumLegacy_Scanner : Midi_Drum_Scanner_Base
     {
-        private Types.DrumType _type;
-        public Types.DrumType Type { get { return _type; } }
+        private DrumType _type;
+        private bool _cymbals;
+        public DrumType Type { get { return _type; } }
+        public bool Cymbals => _cymbals;
 
-        public override bool IsFullyScanned() { return _type != Types.DrumType.UNKNOWN && value.subTracks == 31; }
-        public override bool IsNote() { return 60 <= note.value && note.value <= 101; }
+        public Midi_DrumLegacy_Scanner(bool forceProDrums)
+        {
+            _cymbals = forceProDrums;
+        }
 
-        public override bool ParseLaneColor()
+        protected override bool IsFullyScanned() { return validations == 31 && _type != DrumType.UNKNOWN; }
+        protected override bool IsNote() { return 60 <= note.value && note.value <= 101; }
+
+        protected override bool ParseLaneColor()
         {
             uint noteValue = note.value - 60;
             uint lane = LANEVALUES[noteValue];
@@ -88,7 +102,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
             return false;
         }
 
-        public override bool ParseLaneColor_Off()
+        protected override bool ParseLaneColor_Off()
         {
             if (note.value < 60 || 101 < note.value)
                 return false;
@@ -100,7 +114,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
                 uint lane = LANEVALUES[noteValue];
                 if (lane < 7)
                 {
-                    value.Set(diffIndex);
+                    Validate(diffIndex);
                     difficulties[diffIndex] = true;
                     return IsFullyScanned();
                 }
@@ -108,11 +122,12 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
             return false;
         }
 
-        public override bool ToggleExtraValues()
+        protected override bool ToggleExtraValues()
         {
             if (110 <= note.value && note.value <= 112)
             {
                 _type = Types.DrumType.FOUR_PRO;
+                _cymbals = true;
                 return IsFullyScanned();
             }
             return false;
