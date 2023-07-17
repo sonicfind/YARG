@@ -11,6 +11,7 @@ using UnityEngine;
 using YARG.Util;
 using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
+using YARG.UI;
 
 #nullable enable
 namespace YARG.Song.Library
@@ -27,6 +28,14 @@ namespace YARG.Song.Library
         UnsupportedEncryption,
         MissingMidi,
         PossibleCorruption
+    }
+
+    public enum ScanProgress
+    {
+        LoadingCache,
+        LoadingSongs,
+        Sorting,
+        WritingCache
     }
 
     public abstract class SongCache : IDisposable
@@ -64,6 +73,8 @@ namespace YARG.Song.Library
         public int Count { get { lock (entryLock) return _count; } }
         public int NumScannedDirectories { get { lock (dirLock) return preScannedDirectories.Count; } }
         public int BadSongCount { get { lock (badsongsLock) return badSongs.Count; } }
+
+        public ScanProgress Progress { get; private set; } = ScanProgress.LoadingCache;
 
         protected readonly List<UpdateGroup> updateGroups = new();
         protected readonly Dictionary<string, List<(string, DTAFileReader)>> updates = new();
@@ -133,11 +144,14 @@ namespace YARG.Song.Library
             Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
             if (!LoadCacheFile_Quick())
             {
+                ToastManager.ToastWarning("Song cache is not present or outdated - rescan required");
                 Debug.Log("Cache file unavailable or outdated");
                 return false;
             }
 
             Debug.Log($"Cache load successful");
+
+            Progress = ScanProgress.Sorting;
             MapCategories();
             Debug.Log("Finished quick scan");
             return true;
@@ -155,13 +169,17 @@ namespace YARG.Song.Library
                     Debug.Log($"Cache load failed - Unavailable or outdated");
             }
 
+            Progress = ScanProgress.LoadingSongs;
             FindNewEntries(baseDirectories);
             FinalizeIniEntries();
+
+            Progress = ScanProgress.Sorting;
             MapCategories();
 
             Debug.Log($"Attempting to write cache file '{CACHE_FILE}'");
             try
             {
+                Progress = ScanProgress.WritingCache;
                 SaveToFile();
                 Debug.Log($"Cache file write successful");
             }
