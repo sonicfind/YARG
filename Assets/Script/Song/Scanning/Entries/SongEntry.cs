@@ -27,12 +27,13 @@ namespace YARG.Song.Entries
         TITLE,
         ARTIST,
         ALBUM,
+        ARTIST_ALBUM,
         GENRE,
         YEAR,
         CHARTER,
         PLAYLIST,
-        SONG_LENGTH,
         SOURCE,
+        SONG_LENGTH,
     };
 
     
@@ -363,19 +364,41 @@ namespace YARG.Song.Entries
 
         public SortString GetKey(SongEntry entry)
         {
-            switch (attribute)
+            return attribute switch
             {
-                case SongAttribute.ARTIST: return entry.Artist;
-                case SongAttribute.ALBUM: return entry.Album;
-                case SongAttribute.GENRE: return entry.Genre;
-                case SongAttribute.CHARTER: return entry.Charter;
-                case SongAttribute.PLAYLIST: return entry.Playlist;
-                case SongAttribute.SOURCE: return entry.Source;
-                default:
-                    throw new Exception("stoopid");
-            }
+                SongAttribute.ARTIST => entry.Artist,
+                SongAttribute.ALBUM => entry.Album,
+                SongAttribute.GENRE => entry.Genre,
+                SongAttribute.CHARTER => entry.Charter,
+                SongAttribute.PLAYLIST => entry.Playlist,
+                SongAttribute.SOURCE => entry.Source,
+                _ => throw new Exception("stoopid"),
+            };
         }
 
         public int Compare(SongEntry x, SongEntry y)  { return x!.IsBelow(y!, attribute) ? -1 : 1; }
+    }
+
+    public class InstrumentComparer : IComparer<SongEntry>
+    {
+        private readonly NoteTrackType instrument;
+        public InstrumentComparer(NoteTrackType instrument)
+        {
+            this.instrument = instrument;
+        }
+
+        public int Compare(SongEntry x, SongEntry y)
+        {
+            sbyte intensity_x = x.GetValues(instrument).intensity;
+            sbyte intensity_y = y.GetValues(instrument).intensity;
+
+            if (intensity_x < intensity_y)
+                return -1;
+
+            if (intensity_y < intensity_x)
+                return 1;
+
+            return x!.IsBelow(y!, SongAttribute.UNSPECIFIED) ? -1 : 1;
+        }
     }
 }

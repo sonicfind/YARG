@@ -14,21 +14,23 @@ using UnityEngine.InputSystem;
 
 namespace YARG.Types
 {
+    public struct FlatMapNode<Key, T>
+        where T : new()
+       where Key : IComparable<Key>, IEquatable<Key>
+    {
+        public Key key;
+        public T obj;
+
+        public static bool operator <(FlatMapNode<Key, T> node, Key key) { return node.key.CompareTo(key) < 0; }
+
+        public static bool operator >(FlatMapNode<Key, T> node, Key key) { return node.key.CompareTo(key) < 0; }
+    }
+
 #nullable enable
-    public abstract unsafe class FlatMap_Base<Key, T> : IDisposable
+    public abstract unsafe class FlatMap_Base<Key, T> : IDisposable, IEnumerable
        where T : new()
        where Key : IComparable<Key>, IEquatable<Key>
     {
-        public struct Node
-        {
-            public Key key;
-            public T obj;
-
-            public static bool operator <(Node node, Key key) { return node.key.CompareTo(key) < 0; }
-
-            public static bool operator >(Node node, Key key) { return node.key.CompareTo(key) < 0; }
-        }
-
         internal static readonly int DEFAULTCAPACITY = 16;
 
         protected int _count;
@@ -41,7 +43,6 @@ namespace YARG.Types
         public abstract int Capacity { get; set; }
 
         public FlatMap_Base() { }
-        public FlatMap_Base(int capacity) { Capacity = capacity; }
         ~FlatMap_Base()
         {
             Dispose(false);
@@ -83,16 +84,24 @@ namespace YARG.Types
             Capacity = newcapacity;
         }
 
-        public abstract ref Node At_index(int index);
+        public abstract ref T Add(Key key, T obj);
 
-        public Enumerator GetEnumerator() { return new Enumerator(this); }
+        public abstract ref T Add(Key key, ref T obj);
 
-        public struct Enumerator : IEnumerator<Node>, IEnumerator
+        public abstract ref T Add(Key key);
+
+        public abstract void Add_NoReturn(Key key);
+
+        public abstract ref FlatMapNode<Key, T> At_index(int index);
+
+        public IEnumerator GetEnumerator() { return new Enumerator(this); }
+
+        public struct Enumerator : IEnumerator<FlatMapNode<Key, T>>, IEnumerator
         {
             private readonly FlatMap_Base<Key, T> _map;
             private int _index;
             private readonly int _version;
-            private Node _current;
+            private FlatMapNode<Key, T> _current;
 
             internal Enumerator(FlatMap_Base<Key, T> map)
             {
@@ -129,7 +138,7 @@ namespace YARG.Types
                 return false;
             }
 
-            public Node Current => _current;
+            public FlatMapNode<Key, T> Current => _current;
 
             object? IEnumerator.Current
             {
@@ -156,10 +165,10 @@ namespace YARG.Types
        where T : new()
        where Key : IComparable<Key>, IEquatable<Key>
     {
-        private Node[] _buffer = Array.Empty<Node>();
+        private FlatMapNode<Key, T>[] _buffer = Array.Empty<FlatMapNode<Key, T>>();
 
         public FlatMap() { }
-        public FlatMap(int capacity) : base(capacity) { }
+        public FlatMap(int capacity) { Capacity = capacity; }
 
         protected override void Dispose(bool disposing)
         {
@@ -170,7 +179,7 @@ namespace YARG.Types
 
             if (disposing)
             {
-                _buffer = Array.Empty<Node>();
+                _buffer = Array.Empty<FlatMapNode<Key, T>>();
             }
 
             _disposed = true;
@@ -204,7 +213,7 @@ namespace YARG.Types
                     }
                     else
                     {
-                        _buffer = Array.Empty<Node>();
+                        _buffer = Array.Empty<FlatMapNode<Key, T>>();
                         _capacity = 0;
                     }
                     ++_version;
@@ -235,7 +244,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key, T obj)
+        public override ref T Add(Key key, T obj)
         {
             CheckAndGrow();
 
@@ -246,7 +255,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key, ref T obj)
+        public override ref T Add(Key key, ref T obj)
         {
             CheckAndGrow();
 
@@ -257,7 +266,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key)
+        public override ref T Add(Key key)
         {
             CheckAndGrow();
 
@@ -268,7 +277,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public void Add_Back_NoReturn(Key key)
+        public override void Add_NoReturn(Key key)
         {
             CheckAndGrow();
 
@@ -281,11 +290,11 @@ namespace YARG.Types
         public ref T Get_Or_Add_Back(Key key)
         {
             if (_count == 0)
-                return ref Add_Back(key);
+                return ref Add(key);
 
             ref var node = ref _buffer[_count - 1];
             if (node < key)
-                return ref Add_Back(key);
+                return ref Add(key);
             return ref node.obj;
         }
 
@@ -319,7 +328,7 @@ namespace YARG.Types
 
         public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
 
-        public override ref Node At_index(int index)
+        public override ref FlatMapNode<Key, T> At_index(int index)
         {
             return ref _buffer[index];
         }
@@ -401,7 +410,7 @@ namespace YARG.Types
        where Key : unmanaged, IComparable<Key>, IEquatable<Key>
     {
         internal static readonly T BASE = new();
-        internal static readonly int SIZEOFNODE = sizeof(Node);
+        internal static readonly int SIZEOFNODE = sizeof(FlatMapNode<Key, T>);
 
         static NativeFlatMap()
         {
@@ -409,7 +418,7 @@ namespace YARG.Types
                 throw new Exception($"{nameof(T)} cannot be used in an unmanaged context");
         }
 
-        private Node* _buffer = null;
+        private FlatMapNode<Key, T>* _buffer = null;
 
         public NativeFlatMap() { }
         public NativeFlatMap(int capacity) { Capacity = capacity; }
@@ -459,7 +468,7 @@ namespace YARG.Types
                             Copier.MemCpy(newItems, _buffer, (nuint)(_count * SIZEOFNODE));
 
                         Marshal.FreeHGlobal((IntPtr) _buffer);
-                        _buffer = (Node*) newItems;
+                        _buffer = (FlatMapNode<Key, T>*) newItems;
                     }
                     else
                     {
@@ -500,7 +509,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key, T obj)
+        public override ref T Add(Key key, T obj)
         {
             CheckAndGrow();
 
@@ -511,7 +520,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key, ref T obj)
+        public override ref T Add(Key key, ref T obj)
         {
             CheckAndGrow();
 
@@ -522,7 +531,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public ref T Add_Back(Key key)
+        public override ref T Add(Key key)
         {
             CheckAndGrow();
 
@@ -533,7 +542,7 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public void Add_Back_NoReturn(Key key)
+        public override void Add_NoReturn(Key key)
         {
             CheckAndGrow();
 
@@ -546,11 +555,11 @@ namespace YARG.Types
         public ref T Get_Or_Add_Back(Key key)
         {
             if (_count == 0)
-                return ref Add_Back(key);
+                return ref Add(key);
 
             ref var node = ref _buffer[_count - 1];
             if (node < key)
-                return ref Add_Back(key);
+                return ref Add(key);
             return ref node.obj;
         }
 
@@ -583,7 +592,7 @@ namespace YARG.Types
 
         public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
 
-        public override ref Node At_index(int index)
+        public override ref FlatMapNode<Key, T> At_index(int index)
         {
             if (index >= Count)
                 throw new ArgumentOutOfRangeException(nameof(index));

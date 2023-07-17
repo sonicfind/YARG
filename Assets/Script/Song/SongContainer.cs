@@ -5,9 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using YARG.Settings;
 using YARG.Song.Entries;
 using YARG.Song.Library;
+using YARG.Types;
 using YARG.Util;
 
 namespace YARG.Song
@@ -16,19 +18,26 @@ namespace YARG.Song
     {
         private static Dictionary<Hash128, List<SongEntry>> _entries;
         private static List<SongEntry>    _songs;
-        public static TitleCategory       Titles { get; private set; }
-        public static MainCategory        Artists { get; private set; }
-        public static MainCategory        Albums { get; private set; }
-        public static MainCategory        Genres { get; private set; }
-        public static YearCategory        Years { get; private set; }
-        public static MainCategory        Charters { get; private set; }
-        public static MainCategory        Playlists { get; private set; }
-        public static MainCategory        Sources { get; private set; }
-        public static ArtistAlbumCategory ArtistAlbums { get; private set; }
-        public static SongLengthCategory  SongLengths { get; private set; }
+
+        private static FlatMap<SortString, List<SongEntry>> artists_sort;
+        private static FlatMap<SortString, List<SongEntry>> albums_sort;
+        private static FlatMap<SortString, List<SongEntry>> genres_sort;
+        private static FlatMap<SortString, List<SongEntry>> charters_sort;
+        private static FlatMap<SortString, List<SongEntry>> playlists_sort;
+        private static FlatMap<SortString, List<SongEntry>> sources_sort;
+
+        public static FlatMap<string, List<SongEntry>> Titles { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Artists { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Albums { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Genres { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Years { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Charters { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Playlists { get; private set; }
+        public static FlatMap<string, List<SongEntry>> Sources { get; private set; }
+        public static FlatMap<string, List<SongEntry>> ArtistAlbums { get; private set; }
+        public static FlatMap<string, List<SongEntry>> SongLengths { get; private set; }
 
         public static int Count => _songs.Count;
-
         public static IReadOnlyDictionary<Hash128, List<SongEntry>> SongsByHash => _entries;
         public static IReadOnlyList<SongEntry> Songs => _songs;
 
@@ -36,18 +45,18 @@ namespace YARG.Song
         {
             _songs = new();
             Titles = new();
-            Artists = new(SongAttribute.ARTIST);
-            Albums = new(SongAttribute.ALBUM);
-            Genres = new(SongAttribute.GENRE);
+            Artists = new();
+            Albums = new();
+            Genres = new();
             Years = new();
-            Charters = new(SongAttribute.CHARTER);
-            Playlists = new(SongAttribute.PLAYLIST);
-            Sources = new(SongAttribute.SOURCE);
+            Charters = new();
+            Playlists = new();
+            Sources = new();
             ArtistAlbums = new();
             SongLengths = new();
         }
 
-        public static async UniTask Scan(bool quick, Action<SongCache> updateUi = null, bool multithreaded = false)
+        public static async UniTask Scan(bool quick, Action<SongCache> updateUi = null, bool multithreaded = true)
         {
             using SongCache cache = multithreaded ? new SongCache_Parallel() : new SongCache_Serial();
             var scanTask = Task.Run(() =>
@@ -87,16 +96,117 @@ namespace YARG.Song
             foreach (var node in _entries)
                 _songs.AddRange(node.Value);
 
-            Titles = cache.titles;
-            Artists = cache.artists;
-            Albums = cache.albums;
-            Genres = cache.genres;
-            Years = cache.years;
-            Charters = cache.charters;
-            Playlists = cache.playlists;
-            Sources = cache.sources;
-            ArtistAlbums = cache.artistAlbums;
-            SongLengths = cache.songLengths;
+            Titles = cache.titles.GetSongSelectionList();
+            Years = cache.years.GetSongSelectionList();
+            ArtistAlbums = cache.artistAlbums.GetSongSelectionList();
+            SongLengths = cache.songLengths.GetSongSelectionList();
+
+            artists_sort = cache.artists.GetSongSelectionList();
+            albums_sort = cache.albums.GetSongSelectionList();
+            genres_sort = cache.genres.GetSongSelectionList();
+            charters_sort = cache.charters.GetSongSelectionList();
+            playlists_sort = cache.playlists.GetSongSelectionList();
+            sources_sort = cache.sources.GetSongSelectionList();
+
+            Artists = Convert(artists_sort);
+            Albums = Convert(albums_sort);
+            Genres = Convert(genres_sort);
+            Charters = Convert(charters_sort);
+            Playlists = Convert(playlists_sort);
+            Sources = Convert(sources_sort);
+
+            static FlatMap<string, List<SongEntry>> Convert(FlatMap<SortString, List<SongEntry>> list)
+            {
+                FlatMap<string, List<SongEntry>> map = new();
+                foreach (FlatMapNode<SortString, List<SongEntry>> node in list)
+                    map.Add(node.key, node.obj);
+                return map;
+            }
+        }
+
+        public static FlatMap<string, List<SongEntry>> GetSongList(SongAttribute sort)
+        {
+            return sort switch
+            {
+                SongAttribute.TITLE => Titles,
+                SongAttribute.ARTIST => Artists,
+                SongAttribute.ALBUM => Albums,
+                SongAttribute.GENRE => Genres,
+                SongAttribute.YEAR => Years,
+                SongAttribute.CHARTER => Charters,
+                SongAttribute.PLAYLIST => Playlists,
+                SongAttribute.SOURCE => Sources,
+                SongAttribute.ARTIST_ALBUM => ArtistAlbums,
+                SongAttribute.SONG_LENGTH => SongLengths,
+                _ => throw new Exception("stoopid"),
+            };
+        }
+
+        public static FlatMap<string, List<SongEntry>> Search(SongAttribute sort, string arg)
+        {
+            if (sort == SongAttribute.TITLE)
+            {
+                if (arg.Length == 0)
+                {
+                    FlatMap<string, List<SongEntry>> titleMap = new();
+                    foreach (FlatMapNode<string, List<SongEntry>> element in Titles)
+                        titleMap.Add(element.key, new(element.obj));
+                    return titleMap;
+                }
+
+                int i = 0;
+                while (i + 1 < arg.Length && !char.IsLetterOrDigit(arg[i]))
+                    ++i;
+
+                char character = arg[i];
+                string key = char.IsDigit(character) ? "0-9" : char.ToUpper(character).ToString();
+                var search = Titles[key];
+
+                List<SongEntry> result = new(search.Count);
+                foreach (var element in search)
+                    if (element.Name.SortStr.Contains(arg))
+                        result.Add(element);
+                return new() { { key, result } };
+            }
+
+            FlatMap<string, List<SongEntry>> map = new();
+            if (sort == SongAttribute.YEAR)
+            {
+                foreach (FlatMapNode<string, List<SongEntry>> element in Years)
+                {
+                    if (element.key.Contains(arg))
+                        map.Add(element.key, new(element.obj));
+                }
+                return map;
+            }
+
+            var elements = sort switch
+            {
+                SongAttribute.ARTIST => artists_sort,
+                SongAttribute.ALBUM => albums_sort,
+                SongAttribute.SOURCE => sources_sort,
+                SongAttribute.GENRE => genres_sort,
+                SongAttribute.CHARTER => charters_sort,
+                SongAttribute.PLAYLIST => playlists_sort,
+                _ => throw new Exception("stoopid"),
+            };
+
+            foreach (FlatMapNode<SortString, List<SongEntry>> element in elements)
+            {
+                if (arg.Length == 0)
+                {
+                    map.Add(element.key, new(element.obj));
+                    continue;
+                }
+
+                string key = element.key.SortStr;
+                if (sort == SongAttribute.ARTIST)
+                    key = SongSorting.RemoveArticle(key);
+
+                if (key.Contains(arg))
+                    map.Add(element.key, new(element.obj));
+            }
+            return map;
         }
     }
 }

@@ -32,5 +32,5 @@ namespace YARG.Types
         ProBass_17,
         ProBass_22,
         ProKeys
-};
+    };
 }

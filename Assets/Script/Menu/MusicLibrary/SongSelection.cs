@@ -1,6 +1,4 @@
-using System;
-using System.Text;
-using System.Globalization;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
@@ -17,6 +15,7 @@ using System.Threading;
 using YARG.Settings;
 using YARG.Song.Library;
 using YARG.Song.Entries;
+using YARG.Types;
 
 namespace YARG.UI.MusicLibrary
 {
@@ -25,9 +24,6 @@ namespace YARG.UI.MusicLibrary
         public static SongSelection Instance { get; private set; }
 
         public static bool RefreshFlag = true;
-
-        // This stuff should stay the same even after you exit the menus
-        private static SongSorting.Sort _sort = SongSorting.Sort.Song;
 
         private const int SONG_VIEW_EXTRA = 15;
         private const float SCROLL_TIME = 1f / 60f;
@@ -48,13 +44,14 @@ namespace YARG.UI.MusicLibrary
         [SerializeField]
         private Scrollbar _scrollbar;
 
+        private SongAttribute _sort = SongAttribute.TITLE;
         private string _nextSortCriteria = "Order by artist";
         private string _nextFilter = "Search artist";
 
         private List<ViewType> _viewList;
         private List<SongView> _songViewObjects;
 
-        private SortedSongList _sortedSongs;
+        private FlatMap<string, List<SongEntry>> _sortedSongs;
         private List<SongEntry> _recommendedSongs;
 
         private PreviewContext _previewContext;
@@ -121,9 +118,6 @@ namespace YARG.UI.MusicLibrary
         {
             // Set up preview context
             _previewContext = new(GameManager.AudioManager);
-
-            // Update sort name
-            _nextSortCriteria = SongSorting.GetNextSortButtonName(_sort);
 
             // Set navigation scheme
             var navigationScheme = GetNavigationScheme();
@@ -234,8 +228,27 @@ namespace YARG.UI.MusicLibrary
 
         public void NextSort()
         {
-            _sort = SongSorting.GetNextSortCriteria(_sort);
-            _nextSortCriteria = SongSorting.GetNextSortButtonName(_sort);
+            var next = (int) _sort + 1;
+            if (next >= Enum.GetNames(typeof(SongAttribute)).Length)
+            {
+                next = 1;
+            }
+            _sort = (SongAttribute) next;
+
+            _nextSortCriteria = _sort switch
+            {
+                SongAttribute.TITLE => "Order by Artist",
+                SongAttribute.ARTIST => "Order by Album",
+                SongAttribute.ALBUM => "Order by \"Artist - Album\"",
+                SongAttribute.ARTIST_ALBUM => "Order by Genre",
+                SongAttribute.GENRE => "Order by Year",
+                SongAttribute.YEAR => "Order by Charter",
+                SongAttribute.CHARTER => "Order by Playlist",
+                SongAttribute.PLAYLIST => "Order by Source",
+                SongAttribute.SOURCE => "Order by Duration",
+                SongAttribute.SONG_LENGTH => "Order by Genre",
+                _ => "Order by Song"
+            };
         }
 
         private void UpdateNavigationScheme()
@@ -364,13 +377,16 @@ namespace YARG.UI.MusicLibrary
                 GameManager.Instance.SelectedSong = null;
 
                 // Create the category
-                int count = _sortedSongs.SongCount();
+                int count = 0;
+                foreach (FlatMapNode<string, List<SongEntry>> section in _sortedSongs)
+                    count += section.obj.Count;
+
                 var categoryView = new CategoryViewType(
                     "SEARCH RESULTS",
                     $"<#00B6F5><b>{count}</b> <#006488>{(count == 1 ? "SONG" : "SONGS")}"
                 );
 
-                if (_sortedSongs.SectionNames.Count == 1)
+                if (_sortedSongs.Count == 1)
                 {
                     // If there is only one header, just replace it
                     _viewList[0] = categoryView;
@@ -401,15 +417,13 @@ namespace YARG.UI.MusicLibrary
         {
             _viewList = new();
 
-            foreach (var section in _sortedSongs.SectionNames)
+            foreach (FlatMapNode<string, List<SongEntry>> section in _sortedSongs)
             {
-                var songs = _sortedSongs.SongsInSection(section);
-
                 // Create header
-                _viewList.Add(new SortHeaderViewType(section, songs.Count));
+                _viewList.Add(new SortHeaderViewType(section.key, section.obj.Count));
 
                 // Add all of the songs
-                foreach (var song in songs)
+                foreach (var song in section.obj)
                 {
                     _viewList.Add(new SongViewType(song));
                 }
@@ -433,8 +447,7 @@ namespace YARG.UI.MusicLibrary
 
         private void AddSongsCount()
         {
-            var count = _viewList.Count;
-
+            var count = SongContainer.Count;
             _viewList.Insert(0, new CategoryViewType(
                 "ALL SONGS",
                 $"<#00B6F5><b>{count}</b> <#006488>{(count == 1 ? "SONG" : "SONGS")}",

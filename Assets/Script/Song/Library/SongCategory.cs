@@ -13,31 +13,20 @@ using System.Collections;
 
 namespace YARG.Song.Library
 {
-    public class CategoryNode
-    {
-        private readonly List<SongEntry> entries = new();
-        public void Add(SongEntry entry, EntryComparer comparer)
-        {
-            int index = entries.BinarySearch(entry, comparer);
-            entries.Insert(~index, entry);
-        }
-
-        public List<SongEntry>.Enumerator GetEnumerator() => entries.GetEnumerator();
-    }
-
-    public abstract class SongCategory<Key, Element>
-        where Element : new()
+    public abstract class SongCategory<Key>
         where Key : IComparable<Key>, IEquatable<Key>
     {
         protected readonly object elementLock = new();
-        protected readonly FlatMap<Key, Element> elements = new();
+        protected readonly FlatMap<Key, List<SongEntry>> elements = new();
 
         public abstract void Add(SongEntry entry);
 
-        public FlatMap<Key, Element>.Enumerator GetEnumerator() { return elements.GetEnumerator(); }
+        public FlatMap<Key, List<SongEntry>>.Enumerator GetEnumerator() { return (FlatMap<Key, List<SongEntry>>.Enumerator)elements.GetEnumerator(); }
+
+        public abstract FlatMap<Key, List<SongEntry>> GetSongSelectionList();
     }
 
-    public abstract class SerializableCategory<Key> : SongCategory<Key, CategoryNode>
+    public abstract class SerializableCategory<Key> : SongCategory<Key>
         where Key : IComparable<Key>, IEquatable<Key>
     {
         protected readonly SongAttribute attribute;
@@ -58,14 +47,19 @@ namespace YARG.Song.Library
 
         protected void Add(Key key, SongEntry entry)
         {
-            lock (elementLock) elements[key].Add(entry, comparer);
+            lock (elementLock)
+            {
+                var node = elements[key];
+                int index = node.BinarySearch(entry, comparer);
+                node.Insert(~index, entry);
+            }
         }
 
         public void WriteToCache(BinaryWriter fileWriter, ref Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
         {
             List<string> strings = new();
             int index = -1;
-            foreach (var element in elements)
+            foreach (var element in this)
             {
                 foreach (var entry in element.obj)
                 {
@@ -118,6 +112,11 @@ namespace YARG.Song.Library
         {
             Add(entry.GetStringAttribute(attribute), entry);
         }
+
+        public override FlatMap<SortString, List<SongEntry>> GetSongSelectionList()
+        {
+            return elements;
+        }
     }
 
     public class TitleCategory : SerializableCategory<string>
@@ -135,7 +134,15 @@ namespace YARG.Song.Library
             if (char.IsDigit(character))
                 Add("0-9", entry);
             else
-                Add(character.ToString(), entry);
+                Add(char.ToUpper(character).ToString(), entry);
+        }
+
+        public override FlatMap<string, List<SongEntry>> GetSongSelectionList()
+        {
+            FlatMap<string, List<SongEntry>> map = new();
+            foreach (var element in this)
+                map.Add(element.key, element.obj);
+            return map;
         }
     }
 
@@ -150,18 +157,37 @@ namespace YARG.Song.Library
             else
                 Add(entry.Year, entry);
         }
+
+        public override FlatMap<string, List<SongEntry>> GetSongSelectionList()
+        {
+            FlatMap<string, List<SongEntry>> map = new();
+            foreach (var element in this)
+                map.Add(element.key, element.obj);
+            return map;
+        }
     }
 
-    public class ArtistAlbumCategory : SongCategory<SortString, FlatMap<SortString, CategoryNode>>
+    public class ArtistAlbumCategory : SongCategory<string>
     {
         private static readonly EntryComparer comparer = new(SongAttribute.ALBUM);
         public override void Add(SongEntry entry)
         {
-            lock (elementLock) elements[entry.Artist][entry.Album].Add(entry, comparer);
+            string key = $"{entry.Artist.Str} - {entry.Album.Str}";
+            lock (elementLock)
+            {
+                var node = elements[key];
+                int index = node.BinarySearch(entry, comparer);
+                node.Insert(~index, entry);
+            }
+        }
+
+        public override FlatMap<string, List<SongEntry>> GetSongSelectionList()
+        {
+            return elements;
         }
     }
 
-    public class SongLengthCategory : SongCategory<string, CategoryNode>
+    public class SongLengthCategory : SongCategory<string>
     {
         private static readonly EntryComparer comparer = new(SongAttribute.SONG_LENGTH);
         public override void Add(SongEntry entry)
@@ -176,7 +202,76 @@ namespace YARG.Song.Library
                 <= 20.00 => "15:00 - 20:00",
                 _ => "20:00+",
             };
-            lock (elementLock) elements[key].Add(entry, comparer);
+
+            lock (elementLock)
+            {
+                var node = elements[key];
+                int index = node.BinarySearch(entry, comparer);
+                node.Insert(~index, entry);
+            }
+        }
+
+        public override FlatMap<string, List<SongEntry>> GetSongSelectionList()
+        {
+            return elements;
+        }
+    }
+
+    public class InstrumentCategory
+    {
+        private readonly NoteTrackType instrument;
+        private readonly string name;
+        private readonly InstrumentComparer comparer;
+        private readonly List<SongEntry> elements = new();
+        private readonly object elementLock = new();
+
+        public InstrumentCategory(NoteTrackType instrument)
+        {
+            this.instrument = instrument;
+            name = instrument switch
+            {
+                NoteTrackType.Lead => "Lead",
+                NoteTrackType.Lead_6 => "Lead GHL",
+                NoteTrackType.Bass => "Bass",
+                NoteTrackType.Bass_6 => "Bass GHL",
+                NoteTrackType.Rhythm => "Rhythm",
+                NoteTrackType.Coop => "Coop",
+                NoteTrackType.Keys => "Keys",
+                NoteTrackType.Drums_4 => "Drums",
+                NoteTrackType.Drums_4Pro => "Pro Drums",
+                NoteTrackType.Drums_5 => "GH Drums",
+                NoteTrackType.Vocals => "Vocals",
+                NoteTrackType.Harmonies => "Harmonies",
+                NoteTrackType.ProGuitar_17 => "Pro Guitar 17-Fret",
+                NoteTrackType.ProGuitar_22 => "Pro Guitar 22-Fret",
+                NoteTrackType.ProBass_17 => "Pro Bass 17-Fret",
+                NoteTrackType.ProBass_22 => "Pro Bass 22-Fret",
+                NoteTrackType.ProKeys => "Pro Keys",
+                _ => throw new ArgumentException(nameof(instrument)),
+            };
+            comparer = new InstrumentComparer(instrument);
+        }
+
+        public void Add(SongEntry entry)
+        {
+            if (entry.GetValues(instrument).subTracks == 0)
+                return;
+
+            lock (elementLock)
+            {
+                int index = elements.BinarySearch(entry, comparer);
+                elements.Insert(~index, entry);
+            }
+        }
+
+        public FlatMap<string, List<SongEntry>> GetSongSelectionList()
+        {
+            return new() { { name, elements } };
+        }
+
+        public FlatMap<string, List<SongEntry>> GetSongSelectionList_Clone()
+        {
+            return new() { { name, new(elements) } };
         }
     }
 }

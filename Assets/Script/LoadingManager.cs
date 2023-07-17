@@ -75,16 +75,6 @@ namespace YARG
         public void QueueSongRefresh(bool fast)
         {
             Queue(async () => { await ScanSongFolders(fast); });
-            QueueSongSort();
-        }
-
-        public void QueueSongSort()
-        {
-            Queue(async () =>
-            {
-                SetLoadingText("Sorting songs...");
-                await UniTask.RunOnThreadPool(SongSorting.GenerateSortCache);
-            });
         }
 
         private async UniTask ScanSongFolders(bool fast)
