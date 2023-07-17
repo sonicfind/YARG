@@ -37,7 +37,7 @@ namespace YARG.UI.MusicLibrary
             {
                 values.intensity = -1;
             }
-            else if (values.intensity < -1)
+            else if (values.intensity < 0)
             {
                 values.intensity = 0;
             }
