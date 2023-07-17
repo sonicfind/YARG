@@ -70,22 +70,34 @@ namespace YARG.Song.Entries
                 m_iniFile = iniFile;
             }
 
-            bool cymbals = ForceProDrums();
+            bool hasDrumPadFlags = false;
+            bool hasProModifier = false;
+            {
+                if (m_modifiers.TryGetValue("pro_drums", out var pro))
+                {
+                    hasProModifier = true;
+                    hasDrumPadFlags = pro[0].BOOL;
+                }
+            }
+            
             if (type == ChartType.CHART)
-                cymbals = Scan_Chart(file, cymbals);
+                hasDrumPadFlags = Scan_Chart(file, hasDrumPadFlags);
 
             if (GetModifier("name") == null)
                 return;
 
             if (type == ChartType.MID || type == ChartType.MIDI)
-                cymbals = Scan_Midi(file, GetDrumTypeFromModifier(), cymbals);
+                hasDrumPadFlags = Scan_Midi(file, GetDrumTypeFromModifier(), hasDrumPadFlags);
 
             if (!m_scans.CheckForValidScans())
                 return;
 
             m_scans.drums_4.subTracks = m_scans.drums_4pro.subTracks;
-            if (!cymbals)
-                m_scans.drums_4pro.subTracks = 0;
+            if (!hasDrumPadFlags)
+            {
+                if (hasProModifier || type == ChartType.CHART)
+                    m_scans.drums_4pro.subTracks = 0;
+            }
 
             m_chartType = type;
             m_chartFile = chartFile;
@@ -244,6 +256,8 @@ namespace YARG.Song.Entries
                 if (m_playlist.Str == string.Empty)
                     m_playlist = m_directory_playlist;
             }
+            else
+                m_playlist = m_directory_playlist;
 
             if (m_modifiers.TryGetValue("source", out var sources))
             {
@@ -359,17 +373,12 @@ namespace YARG.Song.Entries
 
             {
                 if (m_modifiers.TryGetValue("diff_drums_real", out var intensities))
-                    m_scans.drums_4pro.intensity = (sbyte)intensities[0].INT32;
+                {
+                    m_scans.drums_4pro.intensity = (sbyte) intensities[0].INT32;
+                    if (m_scans.drums_4.intensity == -1)
+                        m_scans.drums_4.intensity = m_scans.drums_4pro.intensity;
+                }
             }
-
-            if (m_scans.drums_4.intensity == -1)
-                m_scans.drums_4.intensity = m_scans.drums_4pro.intensity;
-
-            {
-                if (m_modifiers.TryGetValue("pro_drums", out var proDrums) && !proDrums[0].BOOL)
-                    m_scans.drums_4pro.subTracks = 0;
-            }
-
 
             {
                 if (m_modifiers.TryGetValue("diff_guitar_real", out var intensities))
@@ -500,13 +509,6 @@ namespace YARG.Song.Entries
             if (m_modifiers.TryGetValue("five_lane_drums", out var fivelanes))
                 return fivelanes[0].BOOL ? Types.DrumType.FIVE_LANE : Types.DrumType.FOUR_PRO;
             return Types.DrumType.UNKNOWN;
-        }
-
-        private bool ForceProDrums()
-        {
-            if (m_modifiers.TryGetValue("pro_drums", out var pro))
-                return pro[0].BOOL;
-            return false;
         }
     }
 }
