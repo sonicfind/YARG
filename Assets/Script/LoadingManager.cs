@@ -91,28 +91,33 @@ namespace YARG
 
         private void UpdateSongUi(SongCache cache)
         {
+            string phrase = string.Empty;
+            string subText = null;
             switch (cache.Progress)
             {
                 case ScanProgress.LoadingCache:
-                    SetLoadingText("Loading song cache...");
+                    phrase = "Loading song cache...";
                     break;
                 case ScanProgress.LoadingSongs:
-                    {
-                        string subText = $"Folders Scanned: {cache.NumScannedDirectories}\n" +
-                                         $"Songs Scanned: {cache.Count}\n" +
-                                         $"Errors: {cache.BadSongCount}";
-
-                        SetLoadingText("Loading songs...", subText);
-                        break;
-                    }
+                    phrase = "Loading songs...";
+                    break;
                 case ScanProgress.Sorting:
-                    SetLoadingText("Sorting songs...");
+                    phrase = "Sorting songs...";
                     break;
                 case ScanProgress.WritingCache:
-                    SetLoadingText("Writing song cache...");
+                    phrase = "Writing song cache...";
                     break;
             }
-            
+
+            switch (cache.Progress)
+            {
+                case ScanProgress.LoadingCache:
+                case ScanProgress.LoadingSongs:
+                    subText = $"Folders Scanned: {cache.NumScannedDirectories}\n" +
+                              $"Songs Scanned: {cache.Count}\n" +
+                              $"Errors: {cache.BadSongCount}"; break;
+            }
+            SetLoadingText(phrase, subText);
         }
 
 #if UNITY_EDITOR
