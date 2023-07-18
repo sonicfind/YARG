@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using YARG.Song;
@@ -41,12 +41,12 @@ namespace YARG.Serialization
             {
                 songs.Add(new SongData
                 {
-                    songName = song.Name,
-                    artistName = song.Artist,
-                    album = song.Album,
-                    genre = song.Genre,
-                    charter = song.Charter,
-                    year = song.Year,
+                    songName = song.Name.Str,
+                    artistName = song.Artist.Str,
+                    album = song.Album.Str,
+                    genre = song.Genre.Str,
+                    charter = song.Charter.Str,
+                    year = song.UnmodifiedYear,
                     songLength = (int) (song.SongLength * 1000f)
                 });
             }
