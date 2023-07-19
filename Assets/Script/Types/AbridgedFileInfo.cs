@@ -22,6 +22,12 @@ namespace YARG.Assets.Script.Types
             LastWriteTime = lastWrite;
         }
 
+        public bool IsStillValid()
+        {
+            FileInfo file = new(FullName);
+            return file.Exists && file.LastWriteTime == LastWriteTime;
+        }
+
         public static implicit operator AbridgedFileInfo(FileInfo info) => new(info);
     }
 }
