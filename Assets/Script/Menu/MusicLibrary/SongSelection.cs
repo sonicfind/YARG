@@ -31,7 +31,6 @@ namespace YARG.UI.MusicLibrary
         private static SongAttribute _sort = SongAttribute.TITLE;
         private string _nextSortCriteria = "Order by artist";
         private string _nextFilter = "Search artist";
-        private static SongSearching _searchBar = new();
 
         [SerializeField]
         private GameObject _songViewPrefab;
@@ -52,6 +51,7 @@ namespace YARG.UI.MusicLibrary
         private List<ViewType> _viewList;
         private List<SongView> _songViewObjects;
 
+        private SongSearching _searchBar = new();
         private FlatMap<string, List<SongEntry>> _sortedSongs;
         private List<SongEntry> _recommendedSongs;
 
