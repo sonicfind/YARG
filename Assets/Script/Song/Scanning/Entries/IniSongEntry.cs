@@ -413,12 +413,12 @@ namespace YARG.Song.Entries
             SetVocalsCount();
         }
 
-        public byte[] FormatCacheData(CategoryCacheWriteNode node)
+        public byte[] FormatCacheData(string relativeDirectory, CategoryCacheWriteNode node)
         {
             using MemoryStream ms = new();
             using BinaryWriter writer = new(ms);
 
-            writer.Write(Directory);
+            writer.Write(relativeDirectory);
             writer.Write((byte)m_chartType);
             writer.Write(m_chartFile!.LastWriteTime.ToBinary());
             writer.Write(m_iniFile != null);

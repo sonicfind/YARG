@@ -64,7 +64,7 @@ namespace YARG.Song
                 try
                 {
                     if (!quick || !cache.QuickScan())
-                        cache.FullScan(SettingsManager.Settings.SongFolders, !quick);
+                        cache.FullScan(!quick);
                 }
                 catch (Exception ex)
                 {

@@ -43,6 +43,9 @@ namespace YARG.Song.Entries
         private FileListing? moggListing;
         private FileListing? miloListing;
         private FileListing? imgListing;
+
+        public AbridgedFileInfo? DTA { get; private set; }
+
         public string SongID { get; private set; } = string.Empty;
         public uint AnimTempo { get; private set; }
         public string DrumBank { get; private set; } = string.Empty;
@@ -146,8 +149,9 @@ namespace YARG.Song.Entries
             FinishCacheRead(reader);
         }
 
-        public ConSongEntry(AbridgedFileInfo midi, AbridgedFileInfo? yargmogg, AbridgedFileInfo? mogg, AbridgedFileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
+        public ConSongEntry(AbridgedFileInfo midi, AbridgedFileInfo dta, AbridgedFileInfo? yargmogg, AbridgedFileInfo? mogg, AbridgedFileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
         {
+            DTA = dta;
             MidiPath = midi.FullName;
             MidiLastWrite = midi.LastWriteTime;
 
@@ -222,7 +226,7 @@ namespace YARG.Song.Entries
             return values;
         }
 
-        public ConSongEntry(CONFile conFile, string nodeName, DTAFileReader reader, ushort nodeIndex)
+        public ConSongEntry(CONFile conFile, string nodeName, DTAFileReader reader)
         {
             this.conFile = conFile;
             SetFromDTA(nodeName, reader);
@@ -246,13 +250,13 @@ namespace YARG.Song.Entries
 
             if (m_playlist.Str == string.Empty)
                 m_playlist = conFile.filename;
-            m_playlist_track = nodeIndex;
 
             Directory = Path.Combine(conFile.filename, midiDirectory);
         }
 
-        public ConSongEntry(string folder, string nodeName, DTAFileReader reader, ushort nodeIndex)
+        public ConSongEntry(string folder, AbridgedFileInfo dta, string nodeName, DTAFileReader reader)
         {
+            DTA = dta;
             SetFromDTA(nodeName, reader);
             
             string file = Path.Combine(folder, location);
@@ -280,7 +284,6 @@ namespace YARG.Song.Entries
 
             if (m_playlist.Str == string.Empty)
                 m_playlist = folder;
-            m_playlist_track = nodeIndex;
 
             Directory = Path.GetDirectoryName(MidiPath)!;
         }
@@ -992,7 +995,7 @@ namespace YARG.Song.Entries
                     case 0xF0:
                         break;
                     default:
-                        throw new Exception("Original unencrypted mogg replaced by an encrypted mogg");
+                        throw new Exception("Original supported mogg replaced by an unsupported mogg");
                 }
             }
 

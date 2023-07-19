@@ -291,6 +291,9 @@ namespace YARG.Song.Entries
                 case SongAttribute.PLAYLIST:
                     if (m_playlist_track != rhs.m_playlist_track)
                         return m_playlist_track < rhs.m_playlist_track;
+
+                    if (m_bandIntensity != rhs.m_bandIntensity)
+                        return m_bandIntensity < rhs.m_bandIntensity;
                     break;
                 case SongAttribute.SONG_LENGTH:
                     if (m_song_length != rhs.m_song_length)

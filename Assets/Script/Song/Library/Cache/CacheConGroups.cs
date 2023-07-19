@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Assets.Script.Types;
 using YARG.Serialization;
 using YARG.Song.Entries;
 
@@ -67,6 +68,9 @@ namespace YARG.Song.Library
 
     public class PackedCONGroup : CONGroup
     {
+        public const string SONGSFILEPATH = "songs/songs.dta";
+        public const string UPGRADESFILEPATH = "songs_upgrades/upgrades.dta";
+
         public readonly CONFile file;
         public readonly DateTime lastWrite;
         public readonly Dictionary<string, SongProUpgrade> upgrades = new();
@@ -109,27 +113,28 @@ namespace YARG.Song.Library
                 return;
 
             FileListing? moggListing = null;
-            FileInfo? moggInfo = null;
-            string midiFile = reader.ReadLEBString();
+            AbridgedFileInfo? moggInfo = null;
             if (reader.ReadBoolean())
             {
-                moggListing = file[midiFile];
+                moggListing = file[reader.ReadLEBString()];
                 if (moggListing == null || moggListing.lastWrite != reader.ReadInt32())
                     return;
             }
             else
             {
-                moggInfo = new FileInfo(midiFile);
-                if (!moggInfo.Exists || moggInfo.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
+                FileInfo info = new(reader.ReadLEBString());
+                if (!info.Exists || info.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
                     return;
+                moggInfo = info;
             }
 
-            FileInfo? updateInfo = null;
+            AbridgedFileInfo? updateInfo = null;
             if (reader.ReadBoolean())
             {
-                updateInfo = new FileInfo(reader.ReadLEBString());
-                if (!updateInfo.Exists || updateInfo.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
+                FileInfo info = new(reader.ReadLEBString());
+                if (!info.Exists || info.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
                     return;
+                updateInfo = info;
             }
 
             ConSongEntry currentSong = new(file, nodeName, midiListing, moggListing, moggInfo, updateInfo, reader, strings);
@@ -137,9 +142,6 @@ namespace YARG.Song.Library
         }
 
         public void AddUpgrade(string name, SongProUpgrade upgrade) { lock (upgradeLock) upgrades[name] = upgrade; }
-
-        internal const string SONGSFILEPATH = "songs/songs.dta";
-        internal const string UPGRADESFILEPATH = "songs_upgrades/upgrades.dta";
 
         public bool LoadUpgrades(out DTAFileReader? reader)
         {
@@ -203,13 +205,13 @@ namespace YARG.Song.Library
 
     public class ExtractedConGroup : CONGroup
     {
-        private readonly string dtaPath;
-        private readonly DateTime lastWrite;
+        public readonly AbridgedFileInfo dta;
+        public readonly DTAFileReader reader;
 
         public ExtractedConGroup(FileInfo dta)
         {
-            dtaPath = dta.FullName;
-            lastWrite = dta.LastWriteTime;
+            this.dta = dta;
+            reader = new(dta.FullName);
         }
 
         public override void ReadEntry(string nodeName, int index, BinaryFileReader reader, CategoryCacheStrings strings)
@@ -233,22 +235,10 @@ namespace YARG.Song.Library
 
             ConSongEntry currentSong;
             if (isYargMogg)
-                currentSong = new(midiInfo, moggInfo, null, updateInfo, reader, strings);
+                currentSong = new(midiInfo, dta, moggInfo, null, updateInfo, reader, strings);
             else
-                currentSong = new(midiInfo, null, moggInfo, updateInfo, reader, strings);
+                currentSong = new(midiInfo, dta, null, moggInfo, updateInfo, reader, strings);
             AddEntry(nodeName, index, currentSong);
-        }
-
-        public DTAFileReader? LoadDTA()
-        {
-            try
-            {
-                return new(dtaPath);
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         public byte[] FormatEntriesForCache(string directory, ref Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
@@ -257,7 +247,7 @@ namespace YARG.Song.Library
             using BinaryWriter writer = new(ms);
 
             writer.Write(directory);
-            writer.Write(lastWrite.ToBinary());
+            writer.Write(dta.LastWriteTime.ToBinary());
             WriteEntriesToCache(writer, ref nodes);
             return ms.ToArray();
         }

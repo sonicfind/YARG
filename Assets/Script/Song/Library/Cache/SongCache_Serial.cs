@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using TagLib;
 using UnityEngine;
 using YARG.Serialization;
+using YARG.Song.Entries;
 using YARG.Util;
 
 #nullable enable
@@ -14,15 +15,179 @@ namespace YARG.Song.Library
 {
     public class SongCache_Serial : SongCache
     {
-        protected override void FindNewEntries(List<string> baseDirectories)
+        protected override void FindNewEntries()
         {
-            for (int i = 0; i < baseDirectories.Count; ++i)
+            for (int i = 0; i < baseDirectories.Length; ++i)
                 ScanDirectory(new(baseDirectories[i]));
             LoadCONSongs();
             LoadExtractedCONSongs();
         }
 
-        protected override void ScanDirectory(DirectoryInfo directory)
+        protected override bool LoadCacheFile()
+        {
+            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+            {
+                FileInfo info = new(CACHE_FILE);
+                if (!info.Exists || info.Length < 28)
+                    return false;
+            }
+
+            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
+            if (fs.ReadInt32LE() != CACHE_VERSION)
+                return false;
+
+            using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
+            CategoryCacheStrings_Serial strings = new(reader);
+
+            int count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadIniGroup(reader, strings);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadUpdateDirectory(reader);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadUpgradeDirectory(reader);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadUpgradeCON(reader);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadCONGroup(reader, strings);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                ReadExtractedCONGroup(reader, strings);
+                reader.ExitSection();
+            }
+            Debug.Log($"Cache load successful");
+            return true;
+        }
+
+        protected override bool LoadCacheFile_Quick()
+        {
+            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+            {
+                FileInfo info = new(CACHE_FILE);
+                if (!info.Exists || info.Length < 28)
+                    return false;
+            }
+
+            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
+            if (fs.ReadInt32LE() != CACHE_VERSION)
+                return false;
+
+            using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
+            CategoryCacheStrings_Serial strings = new(reader);
+
+            int count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                QuickReadIniGroup(reader, strings);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.Position += length;
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                QuickReadUpgradeDirectory(reader);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                QuickReadUpgradeCON(reader);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                QuickReadCONGroup(reader, strings);
+                reader.ExitSection();
+            }
+
+            count = reader.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                int length = reader.ReadInt32();
+                reader.EnterSection(length);
+                QuickReadExtractedCONGroup(reader, strings);
+                reader.ExitSection();
+            }
+            Debug.Log($"Cache load successful");
+            return true;
+        }
+
+        protected override void MapCategories()
+        {
+            foreach (var entryList in entries)
+            {
+                foreach (var entry in entryList.Value)
+                {
+                    titles.Add(entry);
+                    artists.Add(entry);
+                    albums.Add(entry);
+                    genres.Add(entry);
+                    years.Add(entry);
+                    charters.Add(entry);
+                    playlists.Add(entry);
+                    sources.Add(entry);
+                    artistAlbums.Add(entry);
+                    songLengths.Add(entry);
+                }
+            }
+        }
+
+        private void ScanDirectory(DirectoryInfo directory)
         {
             string dirName = directory.FullName;
             if ((directory.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden || !FindOrMarkDirectory(dirName))
@@ -86,115 +251,38 @@ namespace YARG.Song.Library
                 ScanDirectory(subDirectories[i]);
         }
 
-        protected override void LoadCONSongs()
+        private void LoadCONSongs()
         {
             foreach (var node in conGroups)
                 loadCONGroup(node);
         }
 
-        protected override void LoadExtractedCONSongs()
+        private void LoadExtractedCONSongs()
         {
             foreach (var node in extractedConGroups)
                 loadExtractedCONGroup(node);
         }
 
-        protected override bool LoadCacheFile(List<string> baseDirectories)
+        private void ReadIniGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
-            {
-                FileInfo info = new(CACHE_FILE);
-                if (!info.Exists || info.Length < 28)
-                    return false;
-            }
-
-            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
-            if (fs.ReadInt32LE() != CACHE_VERSION)
-                return false;
-
-            using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
-            CategoryCacheStrings_Serial strings = new(reader);
+            string directory = reader.ReadLEBString();
+            if (!StartsWithBaseDirectory(directory))
+                return;
 
             int count = reader.ReadInt32();
             for (int i = 0; i < count; ++i)
             {
                 int length = reader.ReadInt32();
                 reader.EnterSection(length);
-                ReadIniEntry(reader, baseDirectories, strings);
+                ReadIniEntry(directory, reader, strings);
                 reader.ExitSection();
             }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.EnterSection(length);
-                ReadUpdateDirectory(reader, baseDirectories);
-                reader.ExitSection();
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.EnterSection(length);
-                ReadUpgradeDirectory(reader, baseDirectories);
-                reader.ExitSection();
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.EnterSection(length);
-                ReadUpgradeCON(reader, baseDirectories);
-                reader.ExitSection();
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.EnterSection(length);
-                ReadCONGroup(reader, baseDirectories, strings);
-                reader.ExitSection();
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.EnterSection(length);
-                ReadExtractedCONGroup(reader, baseDirectories, strings);
-                reader.ExitSection();
-            }
-            Debug.Log($"Cache load successful");
-            return true;
         }
 
-        protected override void ReadCONGroup(BinaryFileReader reader, List<string> baseDirectories, CategoryCacheStrings strings)
+        private void ReadCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            string filename = reader.ReadLEBString();
-            if (!StartsWithBaseDirectory(filename, baseDirectories))
-                return;
-
-            int dtaLastWrite = reader.ReadInt32();
-            if (!FindCONGroup(filename, out var group))
-            {
-                FileInfo info = new(filename);
-                if (!info.Exists)
-                    return;
-
-                MarkFile(filename);
-
-                var file = CONFile.LoadCON(info.FullName);
-                if (file == null)
-                    return;
-
-                group = new(file, info.LastWriteTime);
-                AddCONGroup(filename, group);
-            }
-
-            if (!group!.SetSongDTA() || group.DTALastWrite != dtaLastWrite)
+            var group = ReadCONGroupHeader(reader);
+            if (group == null)
                 return;
 
             int count = reader.ReadInt32();
@@ -214,21 +302,10 @@ namespace YARG.Song.Library
             }
         }
 
-        protected override void ReadExtractedCONGroup(BinaryFileReader reader, List<string> baseDirectories, CategoryCacheStrings strings)
+        private void ReadExtractedCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            string directory = reader.ReadLEBString();
-            if (!StartsWithBaseDirectory(directory, baseDirectories))
-                return;
-
-            FileInfo dtaInfo = new(Path.Combine(directory, "songs.dta"));
-            if (!dtaInfo.Exists)
-                return;
-
-            ExtractedConGroup group = new(dtaInfo);
-            MarkDirectory(directory);
-            AddExtractedCONGroup(directory, group);
-
-            if (dtaInfo.LastWriteTime != DateTime.FromBinary(reader.ReadInt64()))
+            var group = ReadExtractedCONGroupHeader(reader);
+            if (group == null)
                 return;
 
             int count = reader.ReadInt32();
@@ -252,82 +329,27 @@ namespace YARG.Song.Library
             Task.WaitAll(entryTasks.ToArray());
         }
 
-        protected override bool LoadCacheFile_Quick()
+        private void QuickReadIniGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
-            {
-                FileInfo info = new(CACHE_FILE);
-                if (!info.Exists || info.Length < 28)
-                    return false;
-            }
-
-            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
-            if (fs.ReadInt32LE() != CACHE_VERSION)
-                return false;
-
-            using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
-            CategoryCacheStrings_Serial strings = new(reader);
+            string directory = reader.ReadLEBString();
+            if (!StartsWithBaseDirectory(directory))
+                return;
 
             int count = reader.ReadInt32();
             for (int i = 0; i < count; ++i)
             {
                 int length = reader.ReadInt32();
-                using var sectionReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadIniEntry(sectionReader, strings);
+                reader.EnterSection(length);
+                QuickReadIniEntry(directory, reader, strings);
+                reader.ExitSection();
             }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                reader.Position += length;
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                using var sectionReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadUpgradeDirectory(sectionReader);
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                using var sectionReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadUpgradeCON(sectionReader);
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                using var sectionReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadCONGroup(sectionReader, strings);
-            }
-
-            count = reader.ReadInt32();
-            for (int i = 0; i < count; ++i)
-            {
-                int length = reader.ReadInt32();
-                using var sectionReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadExtractedCONGroup(sectionReader, strings);
-            }
-            Debug.Log($"Cache load successful");
-            return true;
         }
 
-        protected override void QuickReadCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
+        private void QuickReadCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            string filename = reader.ReadLEBString();
-            reader.Position += 4;
-            if (!FindCONGroup(filename, out var group))
-            {
-                if (!CreateCONGroup(filename, out group))
-                    return;
-                AddCONGroup(filename, group!);
-            }
+            var group = QuickReadCONGroupHeader(reader);
+            if (group == null)
+                return;
 
             int count = reader.ReadInt32();
             for (int i = 0; i < count; ++i)
@@ -341,10 +363,12 @@ namespace YARG.Song.Library
             }
         }
 
-        protected override void QuickReadExtractedCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
+        private void QuickReadExtractedCONGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
-            reader.Position += reader.ReadLEB();
-            reader.Position += 8;
+            var dta = QuickReadExtractedCONGroupHeader(reader);
+            if (dta == null)
+                return;
+
             int count = reader.ReadInt32();
             for (int i = 0; i < count; ++i)
             {
@@ -353,27 +377,7 @@ namespace YARG.Song.Library
                 int length = reader.ReadInt32();
 
                 using var entryReader = reader.CreateReaderFromCurrentPosition(length);
-                QuickReadExtractedCONEntry(name, entryReader, strings);
-            }
-        }
-
-        protected override void MapCategories()
-        {
-            foreach (var entryList in entries)
-            {
-                foreach (var entry in entryList.Value)
-                {
-                    titles.Add(entry);
-                    artists.Add(entry);
-                    albums.Add(entry);
-                    genres.Add(entry);
-                    years.Add(entry);
-                    charters.Add(entry);
-                    playlists.Add(entry);
-                    sources.Add(entry);
-                    artistAlbums.Add(entry);
-                    songLengths.Add(entry);
-                }
+                QuickReadExtractedCONEntry(name, dta, entryReader, strings);
             }
         }
     }
