@@ -5,48 +5,49 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Assets.Script.Types;
 
 namespace YARG.Song.Entries
 {
     public class SongProUpgrade
     {
-        public DateTime UpgradeLastWrite { get; protected set; }
+        public AbridgedFileInfo Midi { get;  private set; }
 #nullable enable
         private readonly CONFile? conFile;
         public FileListing? UpgradeMidiListing { get; private set; }
-        public string UpgradeMidiPath { get; private set; } = string.Empty;
 
         public SongProUpgrade(CONFile? conFile, FileListing? listing, DateTime lastWrite)
         {
             this.conFile = conFile;
             UpgradeMidiListing = listing;
-            UpgradeLastWrite = lastWrite;
+            Midi = new(UpgradeMidiListing != null ? UpgradeMidiListing.Filename : string.Empty, lastWrite);
         }
 
         public SongProUpgrade(string filename, DateTime lastWrite)
         {
-            UpgradeMidiPath = filename;
-            UpgradeLastWrite = lastWrite;
+            Midi = new(filename, lastWrite);
         }
 
         public void WriteToCache(BinaryWriter writer)
         {
-            writer.Write(UpgradeLastWrite.ToBinary());
+            writer.Write(Midi.LastWriteTime.ToBinary());
         }
 
         public FrameworkFile? LoadUpgradeMidi()
         {
-            if (UpgradeMidiPath == string.Empty)
+            if (Midi.FullName == string.Empty)
+                return null;
+
+            if (conFile != null)
             {
-                if (conFile == null || UpgradeMidiListing == null)
+                if (UpgradeMidiListing == null || UpgradeMidiListing.lastWrite != Midi.LastWriteTime)
                     return null;
                 return new FrameworkFile_Pointer(conFile.LoadSubFile(UpgradeMidiListing)!, true);
             }
 
-            FileInfo info = new(UpgradeMidiPath);
-            if (!info.Exists || info.LastWriteTime != UpgradeLastWrite)
+            if (!Midi.IsStillValid())
                 return null;
-            return new FrameworkFile_Alloc(UpgradeMidiPath);
+            return new FrameworkFile_Alloc(Midi.FullName);
         }
     }
 }

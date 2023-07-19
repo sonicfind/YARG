@@ -103,21 +103,17 @@ namespace YARG.Song.Entries
 
         public Encoding MidiEncoding { get; private set; } = Latin1;
 
-        public string MidiPath { get; private set; } = string.Empty;
-        public DateTime MidiLastWrite { get; private set; }
+        private string midiPath = string.Empty;
+        public AbridgedFileInfo Midi { get; private set; }
 
-        // _update.mid info, if it exists
         public AbridgedFileInfo? UpdateMidi { get; private set; } = null;
 
-        // .mogg info
         public AbridgedFileInfo? Mogg { get; private set; } = null;
         public AbridgedFileInfo? Yarg_Mogg { get; private set; } = null;
 
-        // .milo info
         public AbridgedFileInfo? Milo { get; private set; } = null;
         public uint VenueVersion { get; private set; }
 
-        // image info
         public AbridgedFileInfo? Image { get; private set; } = null;
 
         private string location = string.Empty;
@@ -147,10 +143,12 @@ namespace YARG.Song.Entries
         public float[] VocalsStemValues { get; private set; } = Array.Empty<float>();
         public float[] CrowdStemValues { get; private set; } = Array.Empty<float>();
 
-        public ConSongEntry(CONFile file, string nodeName, FileListing? midi, FileListing? moggListing, AbridgedFileInfo? moggInfo, AbridgedFileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
+        public ConSongEntry(CONFile file, string nodeName, FileListing? midi, DateTime midiLastWrite, FileListing? moggListing, AbridgedFileInfo? moggInfo, AbridgedFileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
         {
             conFile = file;
             midiListing = midi;
+            Midi = new(midi != null ? midi.Filename : string.Empty, midiLastWrite);
+
             if (moggListing != null)
                 this.moggListing = moggListing;
             else if (moggInfo != null)
@@ -195,8 +193,7 @@ namespace YARG.Song.Entries
         public ConSongEntry(AbridgedFileInfo midi, AbridgedFileInfo dta, AbridgedFileInfo? yargmogg, AbridgedFileInfo? mogg, AbridgedFileInfo? updateInfo, BinaryFileReader reader, CategoryCacheStrings strings) : base(reader, strings)
         {
             DTA = dta;
-            MidiPath = midi.FullName;
-            MidiLastWrite = midi.LastWriteTime;
+            Midi = midi;
 
             if (yargmogg != null)
                 Yarg_Mogg = yargmogg;
@@ -275,15 +272,17 @@ namespace YARG.Song.Entries
             this.conFile = conFile;
             SetFromDTA(nodeName, reader);
 
-            if (MidiPath == string.Empty)
-                MidiPath = location + ".mid";
+            if (midiPath == string.Empty)
+                midiPath = location + ".mid";
 
-            midiListing = conFile[MidiPath];
+            midiListing = conFile[midiPath];
             if (midiListing == null)
-                throw new Exception($"Required midi file '{MidiPath}' was not located");
-            moggListing = conFile[location + ".mogg"];
+                throw new Exception($"Required midi file '{midiPath}' was not located");
 
+            Midi = new(midiPath, midiListing.lastWrite);
             string midiDirectory = conFile[midiListing.pathIndex].Filename;
+
+            moggListing = conFile[location + ".mogg"];
 
             if (!location.StartsWith($"songs/{nodeName}"))
                 nodeName = midiDirectory.Split('/')[1];
@@ -305,13 +304,13 @@ namespace YARG.Song.Entries
             
             string file = Path.Combine(folder, location);
 
-            if (MidiPath == string.Empty)
-                MidiPath = file + ".mid";
+            if (midiPath == string.Empty)
+                midiPath = file + ".mid";
 
-            FileInfo midiInfo = new(MidiPath);
+            FileInfo midiInfo = new(midiPath);
             if (!midiInfo.Exists)
-                throw new Exception($"Required midi file '{MidiPath}' was not located");
-            MidiLastWrite = midiInfo.LastWriteTime;
+                throw new Exception($"Required midi file '{midiPath}' was not located");
+            Midi = midiInfo;
 
             FileInfo mogg = new(file + ".yarg_mogg");
             if (mogg.Exists)
@@ -329,7 +328,7 @@ namespace YARG.Song.Entries
             if (m_playlist.Str == string.Empty)
                 m_playlist = folder;
 
-            Directory = Path.GetDirectoryName(MidiPath)!;
+            Directory = Path.GetDirectoryName(midiPath)!;
         }
 
         public (bool, bool) SetFromDTA(string nodeName, DTAFileReader reader)
@@ -516,7 +515,7 @@ namespace YARG.Song.Entries
                             core = new[] { reader.ReadFloat() };
                         break;
                     case "hopo_threshold": m_hopo_frequency = reader.ReadUInt32(); break;
-                    case "midi_file": MidiPath = reader.ExtractText(); break;
+                    case "midi_file": midiPath = reader.ExtractText(); break;
                 }
                 reader.EndNode();
             }
@@ -839,16 +838,16 @@ namespace YARG.Song.Entries
             using MemoryStream ms = new();
             using BinaryWriter writer = new(ms);
 
+            writer.Write(Midi.FullName);
+            writer.Write(Midi.LastWriteTime.ToBinary());
+
             if (conFile != null)
             {
-                writer.Write(midiListing!.Filename);
-                writer.Write(midiListing.lastWrite);
-
                 if (Mogg == null)
                 {
                     writer.Write(true);
                     writer.Write(moggListing!.Filename);
-                    writer.Write(moggListing.lastWrite);
+                    writer.Write(moggListing.lastWrite.ToBinary());
                 }
                 else
                 {
@@ -859,9 +858,6 @@ namespace YARG.Song.Entries
             }
             else
             {
-                writer.Write(MidiPath);
-                writer.Write(MidiLastWrite.ToBinary());
-
                 if (Yarg_Mogg != null)
                 {
                     writer.Write(true);
@@ -971,10 +967,9 @@ namespace YARG.Song.Entries
                 return new FrameworkFile_Pointer(conFile.LoadSubFile(midiListing)!, true);
             }
 
-            FileInfo info = new(MidiPath);
-            if (!info.Exists || info.LastWriteTime != MidiLastWrite)
+            if (!Midi.IsStillValid())
                 return null;
-            return new FrameworkFile_Alloc(MidiPath);
+            return new FrameworkFile_Alloc(Midi.FullName);
         }
 
         public FrameworkFile_Alloc? LoadMidiUpdateFile()

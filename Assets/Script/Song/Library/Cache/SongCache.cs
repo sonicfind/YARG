@@ -41,7 +41,7 @@ namespace YARG.Song.Library
 
     public abstract class SongCache : IDisposable
     {
-        protected const int CACHE_VERSION = 23_07_19_02;
+        protected const int CACHE_VERSION = 23_07_19_03;
         protected static readonly object dirLock = new();
         protected static readonly object fileLock = new();
         protected static readonly object iniLock = new();
@@ -536,7 +536,7 @@ namespace YARG.Song.Library
                         {
                             string name = reader.ReadLEBString();
                             var lastWrite = DateTime.FromBinary(reader.ReadInt64());
-                            if (!group.upgrades.TryGetValue(name, out var upgrade) || upgrade!.UpgradeLastWrite != lastWrite)
+                            if (!group.upgrades.TryGetValue(name, out var upgrade) || upgrade!.Midi.LastWriteTime != lastWrite)
                                 AddInvalidSong(name);
                         }
                         return;
@@ -547,7 +547,7 @@ namespace YARG.Song.Library
             for (int i = 0; i < count; i++)
             {
                 AddInvalidSong(reader.ReadLEBString());
-                reader.Position += 4;
+                reader.Position += 8;
             }
         }
 
@@ -555,32 +555,29 @@ namespace YARG.Song.Library
         {
             string filename = cacheReader.ReadLEBString();
             var conLastWrite = DateTime.FromBinary(cacheReader.ReadInt64());
-            int dtaLastWrite = cacheReader.ReadInt32();
+            var dtaLastWrite = DateTime.FromBinary(cacheReader.ReadInt64());
             int count = cacheReader.ReadInt32();
 
-            if (StartsWithBaseDirectory(filename))
+            if (StartsWithBaseDirectory(filename) && CreateCONGroup(filename, out var group))
             {
-                if (CreateCONGroup(filename, out var group))
+                AddCONGroup(filename, group!);
+                if (group!.LoadUpgrades(out var reader))
                 {
-                    AddCONGroup(filename, group!);
+                    AddCONUpgrades(group, reader!);
 
-                    if (group!.LoadUpgrades(out var reader))
+                    if (group.UpgradeDTALastWrite == dtaLastWrite)
                     {
-                        AddCONUpgrades(group, reader!);
-
-                        if (group.UpgradeDTALastWrite == dtaLastWrite)
+                        if (group.lastWrite != conLastWrite)
                         {
-                            if (group.lastWrite != conLastWrite)
+                            for (int i = 0; i < count; i++)
                             {
-                                for (int i = 0; i < count; i++)
-                                {
-                                    string name = cacheReader.ReadLEBString();
-                                    if (group.upgrades[name].UpgradeLastWrite != DateTime.FromBinary(cacheReader.ReadInt64()))
-                                        AddInvalidSong(name);
-                                }
+                                string name = cacheReader.ReadLEBString();
+                                var lastWrite = DateTime.FromBinary(cacheReader.ReadInt64());
+                                if (group.upgrades[name].Midi.LastWriteTime != lastWrite)
+                                    AddInvalidSong(name);
                             }
-                            return;
                         }
+                        return;
                     }
                 }
             }
@@ -588,7 +585,7 @@ namespace YARG.Song.Library
             for (int i = 0; i < count; i++)
             {
                 AddInvalidSong(cacheReader.ReadLEBString());
-                cacheReader.Position += 4;
+                cacheReader.Position += 8;
             }
         }
 
@@ -598,7 +595,7 @@ namespace YARG.Song.Library
             if (!StartsWithBaseDirectory(filename))
                 return null;
 
-            int dtaLastWrite = reader.ReadInt32();
+            var dtaLastWrite = DateTime.FromBinary(reader.ReadInt64());
             if (!FindCONGroup(filename, out var group))
             {
                 FileInfo info = new(filename);
@@ -720,7 +717,7 @@ namespace YARG.Song.Library
         protected PackedCONGroup? QuickReadCONGroupHeader(BinaryFileReader reader)
         {
             string filename = reader.ReadLEBString();
-            int dtaLastWrite = reader.ReadInt32();
+            var dtaLastWrite = DateTime.FromBinary(reader.ReadInt64());
             if (!FindCONGroup(filename, out var group))
             {
                 if (!CreateCONGroup(filename, out group))
@@ -748,14 +745,14 @@ namespace YARG.Song.Library
         protected void QuickReadCONEntry(CONFile file, string nodeName, BinaryFileReader reader, CategoryCacheStrings strings)
         {
             var midiListing = file[reader.ReadLEBString()];
-            reader.Position += 4;
+            var midiLastWrite = DateTime.FromBinary(reader.ReadInt64());
 
             FileListing? moggListing = null;
             AbridgedFileInfo? moggInfo = null;
             if (reader.ReadBoolean())
             {
                 moggListing = file[reader.ReadLEBString()];
-                reader.Position += 4;
+                reader.Position += 8;
             }
             else
             {
@@ -772,7 +769,7 @@ namespace YARG.Song.Library
                 updateInfo = new(updateName, updateTime);
             }
 
-            ConSongEntry currentSong = new(file, nodeName, midiListing, moggListing, moggInfo, updateInfo, reader, strings);
+            ConSongEntry currentSong = new(file, nodeName, midiListing, midiLastWrite, moggListing, moggInfo, updateInfo, reader, strings);
             if (upgrades.TryGetValue(nodeName, out var upgrade))
                 currentSong.Upgrade = upgrade.Item2;
 
@@ -930,8 +927,7 @@ namespace YARG.Song.Library
                 FileInfo file = new(Path.Combine(directory, $"{name}_plus.mid"));
                 if (file.Exists)
                 {
-                    var lastWrite = file.LastWriteTime;
-                    if (CanAddUpgrade(name, ref lastWrite))
+                    if (CanAddUpgrade(name, file.LastWriteTime))
                     {
                         SongProUpgrade upgrade = new(file.FullName, file.LastWriteTime);
                         group!.upgrades[name] = upgrade;
@@ -970,10 +966,9 @@ namespace YARG.Song.Library
 
                 if (listing != null)
                 {
-                    var lastWrite = DateTime.FromBinary(listing.lastWrite);
-                    if (CanAddUpgrade_CONInclusive(name, ref lastWrite))
+                    if (CanAddUpgrade_CONInclusive(name, listing.lastWrite))
                     {
-                        SongProUpgrade upgrade = new(file, listing, lastWrite);
+                        SongProUpgrade upgrade = new(file, listing, listing.lastWrite);
                         group.upgrades[name] = upgrade;
                         AddUpgrade(name, reader.Clone(), upgrade);
                         RemoveCONEntry(name);
@@ -1001,7 +996,7 @@ namespace YARG.Song.Library
             return currentSong.Scan(name);
         }
 
-        private bool CanAddUpgrade(string shortname, ref DateTime lastWrite)
+        private bool CanAddUpgrade(string shortname, DateTime lastWrite)
         {
             lock (upgradeLock)
             {
@@ -1009,7 +1004,7 @@ namespace YARG.Song.Library
                 {
                     if (group.upgrades.TryGetValue(shortname, out var currUpgrade))
                     {
-                        if (currUpgrade.UpgradeLastWrite >= lastWrite)
+                        if (currUpgrade.Midi.LastWriteTime >= lastWrite)
                             return false;
                         group.upgrades.Remove(shortname);
                         break;
@@ -1019,7 +1014,7 @@ namespace YARG.Song.Library
             return true;
         }
 
-        private bool CanAddUpgrade_CONInclusive(string shortname, ref DateTime lastWrite)
+        private bool CanAddUpgrade_CONInclusive(string shortname, DateTime lastWrite)
         {
             lock (conLock)
             {
@@ -1028,7 +1023,7 @@ namespace YARG.Song.Library
                     var upgrades = group.Value.upgrades;
                     if (upgrades.TryGetValue(shortname, out var currUpgrade))
                     {
-                        if (currUpgrade!.UpgradeLastWrite >= lastWrite)
+                        if (currUpgrade!.Midi.LastWriteTime >= lastWrite)
                             return false;
                         upgrades.Remove(shortname);
                         return true;
@@ -1036,7 +1031,7 @@ namespace YARG.Song.Library
                 }
             }
 
-            return CanAddUpgrade(shortname, ref lastWrite);
+            return CanAddUpgrade(shortname, lastWrite);
         }
 
         private void RemoveCONEntry(string shortname)

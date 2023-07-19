@@ -20,7 +20,7 @@ namespace YARG.Serialization
         public readonly int firstBlock;
         public readonly short pathIndex;
         public readonly int size;
-        public readonly int lastWrite;
+        public readonly DateTime lastWrite;
 
         public unsafe FileListing(byte* data)
         {
@@ -31,7 +31,7 @@ namespace YARG.Serialization
             firstBlock = BitConverter.ToInt32(new byte[4] { data[0x2F], data[0x30], data[0x31], 0x00 });
             pathIndex = BitConverter.ToInt16(new byte[2] { data[0x33], data[0x32] });
             size = BitConverter.ToInt32(new byte[4] { data[0x37], data[0x36], data[0x35], data[0x34] });
-            lastWrite = BitConverter.ToInt32(new byte[4] { data[0x3B], data[0x3A], data[0x39], data[0x38] });
+            lastWrite = DateTime.FromBinary(BitConverter.ToInt32(new byte[4] { data[0x3B], data[0x3A], data[0x39], data[0x38] }));
         }
 
         public void SetParentDirectory(string parentDirectory)

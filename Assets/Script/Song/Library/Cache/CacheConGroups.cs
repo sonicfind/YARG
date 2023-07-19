@@ -81,21 +81,21 @@ namespace YARG.Song.Library
 
         private FileListing? songDTA;
         private FileListing? upgradeDta;
-        public int DTALastWrite
+        public DateTime DTALastWrite
         {
             get
             {
                 if (songDTA == null)
-                    return 0;
+                    return DateTime.MinValue;
                 return songDTA.lastWrite;
             }
         }
-        public int UpgradeDTALastWrite
+        public DateTime UpgradeDTALastWrite
         {
             get
             {
                 if (upgradeDta == null)
-                    return 0;
+                    return DateTime.MinValue;
                 return upgradeDta.lastWrite;
             }
         }
@@ -109,7 +109,8 @@ namespace YARG.Song.Library
         public override void ReadEntry(string nodeName, int index, BinaryFileReader reader, CategoryCacheStrings strings)
         {
             var midiListing = file[reader.ReadLEBString()];
-            if (midiListing == null || midiListing.lastWrite != reader.ReadInt32())
+            var midiLastWrite = DateTime.FromBinary(reader.ReadInt64());
+            if (midiListing == null || midiListing.lastWrite != midiLastWrite)
                 return;
 
             FileListing? moggListing = null;
@@ -117,7 +118,7 @@ namespace YARG.Song.Library
             if (reader.ReadBoolean())
             {
                 moggListing = file[reader.ReadLEBString()];
-                if (moggListing == null || moggListing.lastWrite != reader.ReadInt32())
+                if (moggListing == null || moggListing.lastWrite != DateTime.FromBinary(reader.ReadInt64()))
                     return;
             }
             else
@@ -137,7 +138,7 @@ namespace YARG.Song.Library
                 updateInfo = info;
             }
 
-            ConSongEntry currentSong = new(file, nodeName, midiListing, moggListing, moggInfo, updateInfo, reader, strings);
+            ConSongEntry currentSong = new(file, nodeName, midiListing, midiLastWrite, moggListing, moggInfo, updateInfo, reader, strings);
             AddEntry(nodeName, index, currentSong);
         }
 
@@ -181,7 +182,7 @@ namespace YARG.Song.Library
 
             writer.Write(filepath);
             writer.Write(lastWrite.ToBinary());
-            writer.Write(upgradeDta!.lastWrite);
+            writer.Write(upgradeDta!.lastWrite.ToBinary());
             writer.Write(upgrades.Count);
             foreach (var upgrade in upgrades)
             {
@@ -197,7 +198,7 @@ namespace YARG.Song.Library
             using BinaryWriter writer = new(ms);
 
             writer.Write(filepath);
-            writer.Write(songDTA!.lastWrite);
+            writer.Write(songDTA!.lastWrite.ToBinary());
             WriteEntriesToCache(writer, ref nodes);
             return ms.ToArray();
         }
