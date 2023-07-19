@@ -276,7 +276,7 @@ namespace YARG.Song.Entries
             writer.Write(m_loadingPhrase);
         }
 
-        public bool IsBelow(SongEntry rhs, SongAttribute attribute)
+        public virtual bool IsBelow(SongEntry rhs, SongAttribute attribute)
         {
             switch (attribute)
             {

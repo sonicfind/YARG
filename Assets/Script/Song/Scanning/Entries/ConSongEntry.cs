@@ -31,6 +31,46 @@ namespace YARG.Song.Entries
         MissingMidi,
         PossibleCorruption
     }
+
+    public class CONDifficulties
+    {
+        public short band = -1;
+        public short lead_5 = -1;
+        public short bass_5 = -1;
+        public short rhythm = -1;
+        public short coop = -1;
+        public short keys = -1;
+        public short drums_4 = -1;
+        public short drums_4pro = -1;
+        public short drums_5 = -1;
+        public short proguitar = -1;
+        public short probass = -1;
+        public short proKeys = -1;
+        public short leadVocals = -1;
+        public short harmonyVocals = -1;
+
+        public CONDifficulties() { }
+        public CONDifficulties(BinaryFileReader reader)
+        {
+            unsafe
+            {
+                fixed (short* diffs = &band)
+                    reader.CopyTo((byte*)diffs, 14 * sizeof(short));
+            }
+        }
+
+        public void WriteToCache(BinaryWriter writer)
+        {
+            unsafe
+            {
+                fixed (short* diffs = &band)
+                {
+                    byte* yay = (byte*)diffs;
+                    writer.Write(new ReadOnlySpan<byte>(yay, 14 * sizeof(short)));
+                }
+            }
+        }
+    }
 #nullable enable
     public class ConSongEntry : SongEntry
     {
@@ -45,6 +85,8 @@ namespace YARG.Song.Entries
         private FileListing? imgListing;
 
         public AbridgedFileInfo? DTA { get; private set; }
+
+        private readonly CONDifficulties difficulties = new();
 
         public string SongID { get; private set; } = string.Empty;
         public uint AnimTempo { get; private set; }
@@ -146,6 +188,7 @@ namespace YARG.Song.Entries
                         Image = info;
                 }
             }
+            difficulties = new(reader);
             FinishCacheRead(reader);
         }
 
@@ -165,6 +208,7 @@ namespace YARG.Song.Entries
 
             Milo = new(reader.ReadLEBString());
             Image = new(reader.ReadLEBString());
+            difficulties = new(reader);
             FinishCacheRead(reader);
         }
 
@@ -590,49 +634,69 @@ namespace YARG.Song.Entries
 
         private void RankLoop(ref DTAFileReader reader)
         {
+            int diff = 0;
             while (reader.StartNode())
             {
-                switch (reader.GetNameOfNode())
+                string name = reader.GetNameOfNode();
+                diff = reader.ReadInt32();
+                switch (name)
                 {
                     case "drum":
                     case "drums":
-                        {
-                            SetRank(ref m_scans.drums_4.intensity, reader.ReadInt32(), DrumDiffMap);
-                            if (m_scans.drums_4pro.intensity == -1)
-                                m_scans.drums_4pro.intensity = m_scans.drums_4.intensity;
-                            break;
-                        }
-                    case "guitar": SetRank(ref m_scans.lead_5.intensity, reader.ReadInt32(), GuitarDiffMap); break;
-                    case "bass": SetRank(ref m_scans.bass_5.intensity, reader.ReadInt32(), BassDiffMap); break;
-                    case "vocals": SetRank(ref m_scans.leadVocals.intensity, reader.ReadInt32(), VocalsDiffMap); break;
-                    case "keys": SetRank(ref m_scans.keys.intensity, reader.ReadInt32(), KeysDiffMap); break;
+                        difficulties.drums_4 = (short)diff;
+                        SetRank(ref m_scans.drums_4.intensity, diff, DrumDiffMap);
+                        if (m_scans.drums_4pro.intensity == -1)
+                            m_scans.drums_4pro.intensity = m_scans.drums_4.intensity;
+                        break;
+                    case "guitar":
+                        difficulties.lead_5 = (short)diff;
+                        SetRank(ref m_scans.lead_5.intensity, diff, GuitarDiffMap);
+                        break;
+                    case "bass":
+                        difficulties.bass_5 = (short) diff;
+                        SetRank(ref m_scans.bass_5.intensity, diff, BassDiffMap);
+                        break;
+                    case "vocals":
+                        difficulties.leadVocals = (short)diff;
+                        SetRank(ref m_scans.leadVocals.intensity, diff, VocalsDiffMap);
+                        break;
+                    case "keys":
+                        difficulties.keys = (short)diff;
+                        SetRank(ref m_scans.keys.intensity, diff, KeysDiffMap);
+                        break;
                     case "realGuitar":
                     case "real_guitar":
-                        {
-                            SetRank(ref m_scans.proguitar_17.intensity, reader.ReadInt32(), RealGuitarDiffMap);
-                            m_scans.proguitar_22.intensity = m_scans.proguitar_17.intensity;
-                            break;
-                        }
+                        difficulties.proguitar = (short)diff;
+                        SetRank(ref m_scans.proguitar_17.intensity, diff, RealGuitarDiffMap);
+                        m_scans.proguitar_22.intensity = m_scans.proguitar_17.intensity;
+                        break;
                     case "realBass":
                     case "real_bass":
-                        {
-                            SetRank(ref m_scans.probass_17.intensity, reader.ReadInt32(), RealBassDiffMap);
-                            m_scans.probass_22.intensity = m_scans.probass_17.intensity;
-                            break;
-                        }
+                        difficulties.probass = (short)diff;
+                        SetRank(ref m_scans.probass_17.intensity, diff, RealBassDiffMap);
+                        m_scans.probass_22.intensity = m_scans.probass_17.intensity;
+                        break;
                     case "realKeys":
-                    case "real_keys": SetRank(ref m_scans.proKeys.intensity, reader.ReadInt32(), RealKeysDiffMap); break;
+                    case "real_keys":
+                        difficulties.proKeys = (short)diff;
+                        SetRank(ref m_scans.proKeys.intensity, diff, RealKeysDiffMap);
+                        break;
                     case "realDrums":
                     case "real_drums":
-                        {
-                            SetRank(ref m_scans.drums_4pro.intensity, reader.ReadInt32(), RealDrumsDiffMap);
-                            if (m_scans.drums_4.intensity == -1)
-                                m_scans.drums_4.intensity = m_scans.drums_4pro.intensity;
-                            break;
-                        }
+                        difficulties.drums_5 = difficulties.drums_4pro = (short)diff;
+                        SetRank(ref m_scans.drums_4pro.intensity, diff, RealDrumsDiffMap);
+                        if (m_scans.drums_4.intensity == -1)
+                            m_scans.drums_4.intensity = m_scans.drums_4pro.intensity;
+                        break;
                     case "harmVocals":
-                    case "vocal_harm": SetRank(ref m_scans.harmonyVocals.intensity, reader.ReadInt32(), HarmonyDiffMap); break;
-                    case "band": SetRank(ref m_bandIntensity, reader.ReadInt32(), BandDiffMap); break;
+                    case "vocal_harm":
+                        difficulties.harmonyVocals = (short) diff;
+                        SetRank(ref m_scans.harmonyVocals.intensity, diff, HarmonyDiffMap);
+                        break;
+                    case "band":
+                        difficulties.band = (short) diff;
+                        SetRank(ref m_bandIntensity, diff, BandDiffMap);
+                        break;
                 }
                 reader.EndNode();
             }
@@ -839,6 +903,7 @@ namespace YARG.Song.Entries
                 WriteFileInfo(Image, writer);
             }
 
+            difficulties.WriteToCache(writer);
             writer.Write(Directory);
             writer.Write(AnimTempo);
             writer.Write(SongID);
@@ -979,6 +1044,13 @@ namespace YARG.Song.Entries
                 return conFile.GetMoggVersion(moggListing!) == 0x0A;
 
             throw new Exception("Mogg file not present");
+        }
+
+        public override bool IsBelow(SongEntry rhs, SongAttribute attribute)
+        {
+            if (attribute == SongAttribute.PLAYLIST && rhs is ConSongEntry other)
+                return difficulties.band < other.difficulties.band;
+            return base.IsBelow(rhs, attribute);
         }
 
         public override void LoadAudio(IAudioManager manager, float speed, params SongStem[] ignoreStems)
