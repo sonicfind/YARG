@@ -28,6 +28,11 @@ namespace YARG.UI.MusicLibrary
         private const int SONG_VIEW_EXTRA = 15;
         private const float SCROLL_TIME = 1f / 60f;
 
+        private static SongAttribute _sort = SongAttribute.TITLE;
+        private string _nextSortCriteria = "Order by artist";
+        private string _nextFilter = "Search artist";
+        private static SongSearching _searchBar = new();
+
         [SerializeField]
         private GameObject _songViewPrefab;
 
@@ -43,10 +48,6 @@ namespace YARG.UI.MusicLibrary
 
         [SerializeField]
         private Scrollbar _scrollbar;
-
-        private SongAttribute _sort = SongAttribute.TITLE;
-        private string _nextSortCriteria = "Order by artist";
-        private string _nextFilter = "Search artist";
 
         private List<ViewType> _viewList;
         private List<SongView> _songViewObjects;
@@ -169,7 +170,6 @@ namespace YARG.UI.MusicLibrary
                     () => { CurrentSelection?.PrimaryButtonClick(); }),
                 new NavigationScheme.Entry(MenuAction.Back, "Back", Back),
                 new NavigationScheme.Entry(MenuAction.Shortcut1, _nextSortCriteria, ChangeSongOrder),
-                new NavigationScheme.Entry(MenuAction.Shortcut2, _nextFilter, ChangeFilter),
                 new NavigationScheme.Entry(MenuAction.Shortcut3, "(Hold) Section", () => { })
             }, false);
         }
@@ -235,6 +235,11 @@ namespace YARG.UI.MusicLibrary
             }
             _sort = (SongAttribute) next;
 
+            SetNextSortCriteria();
+        }
+
+        private void SetNextSortCriteria()
+        {
             _nextSortCriteria = _sort switch
             {
                 SongAttribute.TITLE => "Order by Artist",
@@ -246,7 +251,7 @@ namespace YARG.UI.MusicLibrary
                 SongAttribute.CHARTER => "Order by Playlist",
                 SongAttribute.PLAYLIST => "Order by Source",
                 SongAttribute.SOURCE => "Order by Duration",
-                SongAttribute.SONG_LENGTH => "Order by Genre",
+                SongAttribute.SONG_LENGTH => "Order by Song",
                 _ => "Order by Song"
             };
         }
@@ -255,51 +260,6 @@ namespace YARG.UI.MusicLibrary
         {
             Navigator.Instance.PopScheme();
             Navigator.Instance.PushScheme(GetNavigationScheme());
-        }
-
-        private void ChangeFilter()
-        {
-            if (CurrentSelection is not SongViewType)
-            {
-                return;
-            }
-
-            UpdateFilter();
-            UpdateFilterButtonName();
-            UpdateNavigationScheme();
-        }
-
-        private void UpdateFilter()
-        {
-            if (CurrentSelection is not SongViewType view)
-            {
-                return;
-            }
-
-            var text = _searchField.text;
-
-            if (string.IsNullOrEmpty(text) || text.StartsWith("source:"))
-            {
-                var artist = view.SongEntry.Artist;
-                _searchField.text = $"artist:{artist}";
-                return;
-            }
-
-            if (text.StartsWith("artist:"))
-            {
-                var source = view.SongEntry.Source;
-                _searchField.text = $"source:{source}";
-            }
-        }
-
-        private void UpdateFilterButtonName()
-        {
-            _nextFilter = _nextFilter switch
-            {
-                "Search artist" => "Search source",
-                "Search source" => "Search artist",
-                _               => "Search artist"
-            };
         }
 
         private void Update()
@@ -368,7 +328,14 @@ namespace YARG.UI.MusicLibrary
         {
             SetRecommendedSongs();
 
-            _sortedSongs = SongSearching.Search(_searchField.text, _sort);
+            var oldSort = _sort;
+            _sortedSongs = _searchBar.Search(_searchField.text, ref _sort);
+
+            if (oldSort != _sort)
+            {
+                SetNextSortCriteria();
+                UpdateNavigationScheme();
+            }
 
             AddSongs();
 

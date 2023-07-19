@@ -20,7 +20,7 @@ using static YARG.Song.SongSorting;
 
 namespace YARG.Song
 {
-    public static class SongSearching
+    public class SongSearching
     {
         private static readonly List<(string, string)> SearchLeniency = new()
         {
@@ -68,7 +68,62 @@ namespace YARG.Song
             }
         }
 
-        private static List<(FilterNode, FlatMap<string, List<SongEntry>>)> filters = new();
+        private List<(FilterNode, FlatMap<string, List<SongEntry>>)> filters = new();
+
+        public FlatMap<string, List<SongEntry>> Search(string value, ref SongAttribute sort)
+        {
+            var currentFilters = GetFilters(value.Split(';'));
+            if (currentFilters.Count == 0)
+            {
+                filters.Clear();
+                return SongContainer.GetSongList(sort);
+            }
+
+            int currFilterIndex = 0;
+            int prevFilterIndex = 0;
+            while (currFilterIndex < currentFilters.Count && prevFilterIndex < filters.Count && currentFilters[currFilterIndex].StartsWith(filters[prevFilterIndex].Item1))
+            {
+                do
+                {
+                    ++prevFilterIndex;
+                } while (prevFilterIndex < filters.Count && currentFilters[currFilterIndex].StartsWith(filters[prevFilterIndex].Item1));
+                if (currentFilters[currFilterIndex] != filters[prevFilterIndex - 1].Item1)
+                    break;
+                ++currFilterIndex;
+            }
+
+            if (currFilterIndex == 0 && (prevFilterIndex == 0 || currentFilters[0].attribute != SongAttribute.UNSPECIFIED))
+            {
+                if (currentFilters[0].attribute != SongAttribute.UNSPECIFIED)
+                    sort = currentFilters[0].attribute;
+
+                if (prevFilterIndex < filters.Count)
+                    filters[prevFilterIndex] = new(currentFilters[0], SearchSongs(currentFilters[0]));
+                else
+                    filters.Add(new(currentFilters[0], SearchSongs(currentFilters[0])));
+
+                ++prevFilterIndex;
+                ++currFilterIndex;
+            }
+
+            while (currFilterIndex < currentFilters.Count)
+            {
+                var filter = currentFilters[currFilterIndex];
+                var searchList = SearchSongs(filter, Clone(filters[prevFilterIndex - 1].Item2));
+
+                if (prevFilterIndex < filters.Count)
+                    filters[prevFilterIndex] = new(filter, searchList);
+                else
+                    filters.Add(new(filter, searchList));
+
+                ++currFilterIndex;
+                ++prevFilterIndex;
+            }
+
+            if (prevFilterIndex < filters.Count)
+                filters.RemoveRange(prevFilterIndex, filters.Count - prevFilterIndex);
+            return filters[prevFilterIndex - 1].Item2;
+        }
 
         private static FlatMap<string, List<SongEntry>> Clone(FlatMap<string, List<SongEntry>> original)
         {
@@ -81,7 +136,7 @@ namespace YARG.Song
             return clone;
         }
 
-        private static string RemoveWhitespace(string str)
+        public static string RemoveWhitespace(string str)
         {
             int index = 0;
             while (index < str.Length && str[index] <= 32)
@@ -154,59 +209,6 @@ namespace YARG.Song
                     break;
             }
             return nodes;
-        }
-
-        // TODO: Make search query separate. This gets rid of the need of a tuple in SearchSongs
-        public static FlatMap<string, List<SongEntry>> Search(string value, SongAttribute sort)
-        {
-            var currentFilters = GetFilters(value.Split(';'));
-            if (currentFilters.Count == 0)
-            {
-                filters.Clear();
-                return SongContainer.GetSongList(sort);
-            }
-
-            int currFilterIndex = 0;
-            int prevFilterIndex = 0;
-            while (currFilterIndex < currentFilters.Count && prevFilterIndex < filters.Count && currentFilters[currFilterIndex].StartsWith(filters[prevFilterIndex].Item1))
-            {
-                do
-                {
-                    ++prevFilterIndex;
-                } while (prevFilterIndex < filters.Count && currentFilters[currFilterIndex].StartsWith(filters[prevFilterIndex].Item1));
-                if (currentFilters[currFilterIndex] != filters[prevFilterIndex - 1].Item1)
-                    break;
-                ++currFilterIndex;
-            }
-
-            if (currFilterIndex == 0 && (prevFilterIndex == 0 || currentFilters[0].attribute != SongAttribute.UNSPECIFIED))
-            {
-                if (prevFilterIndex < filters.Count)
-                    filters[prevFilterIndex] = new(currentFilters[0], SearchSongs(currentFilters[0]));
-                else
-                    filters.Add(new(currentFilters[0], SearchSongs(currentFilters[0])));
-
-                ++prevFilterIndex;
-                ++currFilterIndex;
-            }
-
-            while (currFilterIndex < currentFilters.Count)
-            {
-                var filter = currentFilters[currFilterIndex];
-                var searchList = SearchSongs(filter, Clone(filters[prevFilterIndex - 1].Item2));
-
-                if (prevFilterIndex < filters.Count)
-                    filters[prevFilterIndex] = new(filter, searchList);
-                else
-                    filters.Add(new(filter, searchList));
-
-                ++currFilterIndex;
-                ++prevFilterIndex;
-            }
-
-            if (prevFilterIndex < filters.Count)
-                filters.RemoveRange(prevFilterIndex, filters.Count - prevFilterIndex);
-            return filters[prevFilterIndex - 1].Item2;
         }
 
         private static FlatMap<string, List<SongEntry>> SearchSongs(FilterNode arg)
