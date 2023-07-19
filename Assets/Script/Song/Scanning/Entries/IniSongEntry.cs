@@ -509,6 +509,18 @@ namespace YARG.Song.Entries
             }
         }
 
+        public override bool ValidateChartFile()
+        {
+            if (m_iniFile == null)
+            {
+                if (File.Exists(Path.Combine(Directory, "song.ini")))
+                    return false;
+            }
+            else if (!m_iniFile.IsStillValid())
+                return false;
+            return m_chartFile!.IsStillValid();
+        }
+
         private DrumType GetDrumTypeFromModifier()
         {
             if (m_modifiers.TryGetValue("five_lane_drums", out var fivelanes))

@@ -357,6 +357,7 @@ namespace YARG.Song.Entries
         public abstract UniTask<bool> LoadPreviewAudio(IAudioManager manager, float speed);
         //public abstract YARGSong? LoadChart();
         public abstract YargChart LoadChart_Original();
+        public abstract bool ValidateChartFile();
     }
 
     public class EntryComparer : IComparer<SongEntry>

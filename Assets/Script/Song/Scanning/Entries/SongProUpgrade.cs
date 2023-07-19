@@ -33,6 +33,16 @@ namespace YARG.Song.Entries
             writer.Write(Midi.LastWriteTime.ToBinary());
         }
 
+        public bool Validate()
+        {
+            if (Midi.FullName == string.Empty)
+                return false;
+
+            if (conFile != null)
+                return UpgradeMidiListing != null && UpgradeMidiListing.lastWrite == Midi.LastWriteTime;
+            return Midi.IsStillValid();
+        }
+
         public FrameworkFile? LoadUpgradeMidi()
         {
             if (Midi.FullName == string.Empty)

@@ -1217,6 +1217,19 @@ namespace YARG.Song.Entries
             return chart;
         }
 
+        public override bool ValidateChartFile()
+        {
+            if (UpdateMidi != null && !UpdateMidi.IsStillValid())
+                return false;
+
+            if (Upgrade != null && !Upgrade.Validate())
+                return false;
+
+            if (midiListing == null)
+                return conFile == null && Midi.IsStillValid() && DTA!.IsStillValid();
+            return midiListing.lastWrite == Midi.LastWriteTime;
+        }
+
         private float[] CalculateStemValues(int[] indices, float[] pan, float[] volume, HashSet<int> pending)
         {
             float[] values = new float[2 * indices.Length];
