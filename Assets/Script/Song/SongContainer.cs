@@ -172,12 +172,12 @@ namespace YARG.Song
             FlatMap<string, List<SongEntry>> map = new();
             if (sort == SongAttribute.YEAR)
             {
+                List<SongEntry> entries = new();
                 foreach (FlatMapNode<string, List<SongEntry>> element in Years)
-                {
-                    if (element.key.Contains(arg))
-                        map.Add(element.key, new(element.obj));
-                }
-                return map;
+                    foreach (var entry in element.obj)
+                        if (entry.Year.Contains(arg))
+                            entries.Add(entry);
+                return new() { { arg, entries } };
             }
 
             var elements = sort switch
