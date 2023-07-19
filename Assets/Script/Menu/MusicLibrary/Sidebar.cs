@@ -7,7 +7,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
-using XboxSTFS;
 using YARG.Data;
 using YARG.Serialization;
 using YARG.Song;

@@ -8,7 +8,6 @@ using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using Melanchall.DryWetMidi.MusicTheory;
 using UnityEngine;
-using XboxSTFS;
 using YARG.Chart;
 using YARG.Data;
 using YARG.DiffDownsample;
