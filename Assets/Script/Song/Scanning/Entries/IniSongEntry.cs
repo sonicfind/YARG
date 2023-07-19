@@ -410,6 +410,11 @@ namespace YARG.Song.Entries
                     m_scans.harmonyVocals.intensity = (sbyte)intensities[0].INT32;
             }
 
+            {
+                if (m_modifiers.TryGetValue("loading_phrase", out var phrase))
+                    m_loadingPhrase = phrase[0].STR;
+            }
+
             SetVocalsCount();
         }
 

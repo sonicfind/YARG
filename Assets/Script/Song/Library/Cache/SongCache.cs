@@ -41,7 +41,7 @@ namespace YARG.Song.Library
 
     public abstract class SongCache : IDisposable
     {
-        protected const int CACHE_VERSION = 23_07_19_01;
+        protected const int CACHE_VERSION = 23_07_19_02;
         protected static readonly object dirLock = new();
         protected static readonly object fileLock = new();
         protected static readonly object iniLock = new();
