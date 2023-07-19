@@ -51,6 +51,11 @@ namespace YARG.Types
             return _hashCode == other._hashCode;
         }
 
+        public override string ToString()
+        {
+            return _str;
+        }
+
         public static implicit operator SortString(string str) => new(str);
         public static implicit operator string(SortString str) => str.Str;
     }
