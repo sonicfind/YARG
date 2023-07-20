@@ -3,26 +3,33 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using YARG.Audio;
 
 namespace YARG.Serialization
 {
+    public class XboxImageSettings
+    {
+        public readonly byte bitsPerPixel;
+        public readonly int format;
+        public readonly int width;
+        public readonly int height;
+        public XboxImageSettings(FrameworkFile xboxImage)
+        {
+            unsafe
+            {
+                bitsPerPixel = xboxImage.ptr[1];
+                format = BinaryPrimitives.ReadInt32LittleEndian(new(xboxImage.ptr + 2, 4));
+                width = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 7, 2));
+                height = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 9, 2));
+            }
+        }
+    }
+
     public static class XboxImageTextureGenerator
     {
-        public static unsafe async UniTask<Texture2D> GetTexture(FrameworkFile xboxImage, CancellationToken ct)
+#nullable enable
+        public static unsafe XboxImageSettings? GetTexture(FrameworkFile xboxImage, CancellationToken ct)
         {
-            // Parse header and get DXT blocks
-            byte BitsPerPixel = xboxImage.ptr[1];
-            int Format = BinaryPrimitives.ReadInt32LittleEndian(new(xboxImage.ptr + 2, 4));
-            short Width = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 7, 2));
-            short Height = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 9, 2));
-            bool isDXT1 = ((BitsPerPixel == 0x04) && (Format == 0x08));
-
-            ct.ThrowIfCancellationRequested();
-
             // Swap bytes because xbox is weird like that
             byte buf;
             for (int i = 32; i < xboxImage.Length; i += 2)
@@ -32,15 +39,9 @@ namespace YARG.Serialization
                 xboxImage.ptr[i + 1] = buf;
             }
 
-            ct.ThrowIfCancellationRequested();
-
-            // apply DXT1 OR DXT5 formatted bytes to a Texture2D
-            var tex = new Texture2D(Width, Height,
-                (isDXT1) ? GraphicsFormat.RGBA_DXT1_SRGB : GraphicsFormat.RGBA_DXT5_SRGB, TextureCreationFlags.None);
-            tex.LoadRawTextureData((IntPtr)(xboxImage.ptr + 32), xboxImage.Length - 32);
-            tex.Apply();
-
-            return tex;
+            if (ct.IsCancellationRequested)
+                return null;
+            return new XboxImageSettings(xboxImage);
         }
     }
 }

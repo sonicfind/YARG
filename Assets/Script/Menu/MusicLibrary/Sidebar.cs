@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using YARG.Data;
@@ -290,26 +292,23 @@ namespace YARG.UI.MusicLibrary
 #nullable enable
         private async UniTask LoadRbConCover(ConSongEntry entry)
         {
-            Texture2D texture = null;
-            try
+            var file = entry.LoadImgFile();
+            if (file == null) return;
+
+            XboxImageSettings? settings = null;
+            await Task.Run(() => settings = XboxImageTextureGenerator.GetTexture(file, _cancellationToken.Token));
+            if (settings != null)
             {
-                var file = entry.LoadImgFile();
-                if (file == null) return;
-
-                texture = await XboxImageTextureGenerator.GetTexture(file, _cancellationToken.Token);
-
+                bool isDXT1 = ((settings.bitsPerPixel == 0x04) && (settings.format == 0x08));
+                var texture = new Texture2D(settings.width, settings.height, (isDXT1) ? GraphicsFormat.RGBA_DXT1_SRGB : GraphicsFormat.RGBA_DXT5_SRGB, TextureCreationFlags.None);
+                unsafe
+                {
+                    texture.LoadRawTextureData((IntPtr) (file.ptr + 32), file.Length - 32);
+                }
+                texture.Apply();
                 _albumCover.texture = texture;
                 _albumCover.color = Color.white;
                 _albumCover.uvRect = new Rect(0f, 0f, 1f, -1f);
-            }
-            catch (OperationCanceledException)
-            {
-                // Dispose of the texture (prevent memory leaks)
-                if (texture != null)
-                {
-                    // This might seem weird, but we are destroying the *texture*, not the UI image.
-                    Destroy(texture);
-                }
             }
         }
 
