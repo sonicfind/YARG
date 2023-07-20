@@ -137,6 +137,18 @@ namespace YARG.UI.MusicLibrary
             _searchBoxShouldBeEnabled = true;
         }
 
+        private void OnDisable()
+        {
+            Navigator.Instance.PopScheme();
+
+            if (!_previewCanceller.IsCancellationRequested)
+            {
+                _previewCanceller.Cancel();
+            }
+
+            _previewContext = null;
+        }
+
         private void SetSelectedIndex(int value)
         {
             // Wrap value to bounds
@@ -170,6 +182,7 @@ namespace YARG.UI.MusicLibrary
                     () => { CurrentSelection?.PrimaryButtonClick(); }),
                 new NavigationScheme.Entry(MenuAction.Back, "Back", Back),
                 new NavigationScheme.Entry(MenuAction.Shortcut1, _nextSortCriteria, ChangeSongOrder),
+                new NavigationScheme.Entry(MenuAction.Shortcut2, "Clear Search", ResetScreen),
                 new NavigationScheme.Entry(MenuAction.Shortcut3, "(Hold) Section", () => { })
             }, false);
         }
@@ -194,18 +207,6 @@ namespace YARG.UI.MusicLibrary
             }
 
             SelectedIndex++;
-        }
-
-        private void OnDisable()
-        {
-            Navigator.Instance.PopScheme();
-
-            if (!_previewCanceller.IsCancellationRequested)
-            {
-                _previewCanceller.Cancel();
-            }
-
-            _previewContext = null;
         }
 
         private void UpdateSongViews()
@@ -496,6 +497,20 @@ namespace YARG.UI.MusicLibrary
             _recommendedSongs = RecommendedSongs.GetRecommendedSongs();
         }
 
+        public void ResetScreen()
+        {
+            bool searchBoxHasContent = !string.IsNullOrEmpty(_searchField.text);
+
+            if (searchBoxHasContent)
+            {
+                ClearSearchBox();
+                UpdateSearch();
+                ResetSearchButton();
+                UpdateNavigationScheme();
+            }
+            SelectedIndex = 2;
+        }
+
         public void Back()
         {
             bool searchBoxHasContent = !string.IsNullOrEmpty(_searchField.text);
@@ -506,16 +521,9 @@ namespace YARG.UI.MusicLibrary
                 UpdateSearch();
                 ResetSearchButton();
                 UpdateNavigationScheme();
-                return;
             }
-
-            if (SelectedIndex > 2)
-            {
-                SelectedIndex = 2;
-                return;
-            }
-
-            MainMenu.Instance.ShowMainMenu();
+            else
+                MainMenu.Instance.ShowMainMenu();
         }
 
         private void ClearSearchBox()
