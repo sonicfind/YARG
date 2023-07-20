@@ -58,18 +58,8 @@ namespace YARG.Serialization
         }
 
         internal static readonly byte[] HEADERTRACK = Encoding.ASCII.GetBytes("[Song]");
-        internal static readonly byte[] SYNCTRACK =   Encoding.ASCII.GetBytes("[SyncTrack]");
-        internal static readonly byte[] EVENTTRACK =  Encoding.ASCII.GetBytes("[Events]");
-        internal static readonly EventCombo TEMPO =       new(Encoding.ASCII.GetBytes("B"),  ChartEvent.BPM );
-        internal static readonly EventCombo TIMESIG =     new(Encoding.ASCII.GetBytes("TS"), ChartEvent.TIME_SIG );
-        internal static readonly EventCombo ANCHOR =      new(Encoding.ASCII.GetBytes("A"),  ChartEvent.ANCHOR );
         internal static readonly EventCombo TEXT =        new(Encoding.ASCII.GetBytes("E"),  ChartEvent.EVENT );
-        internal static readonly EventCombo SECTION =     new(Encoding.ASCII.GetBytes("SE"), ChartEvent.SECTION );
         internal static readonly EventCombo NOTE =        new(Encoding.ASCII.GetBytes("N"),  ChartEvent.NOTE );
-        internal static readonly EventCombo SPECIAL =     new(Encoding.ASCII.GetBytes("S"),  ChartEvent.SPECIAL );
-        internal static readonly EventCombo LYRIC =       new(Encoding.ASCII.GetBytes("L"),  ChartEvent.LYRIC );
-        internal static readonly EventCombo VOCAL =       new(Encoding.ASCII.GetBytes("V"),  ChartEvent.VOCAL );
-        internal static readonly EventCombo PERC =        new(Encoding.ASCII.GetBytes("VP"), ChartEvent.VOCAL_PERCUSSION );
 
         internal static readonly byte[][] DIFFICULTIES =
         {
@@ -91,13 +81,9 @@ namespace YARG.Serialization
             new(Encoding.ASCII.GetBytes("GHLBass]"),      NoteTracks_Chart.GHLBass ),
         };
 
-        internal static readonly EventCombo[] EVENTS_SYNC   = { TEMPO, TIMESIG, ANCHOR };
-        internal static readonly EventCombo[] EVENTS_EVENTS = { TEXT, SECTION, };
-        internal static readonly EventCombo[] EVENTS_DIFF   = { NOTE, SPECIAL, TEXT, };
+        internal static readonly EventCombo[] EVENTS_DIFF   = { NOTE, TEXT, };
 
         static ChartFileReader() { }
-
-        internal const double TEMPO_FACTOR = 60000000000;
 
         private readonly TxtFileReader reader;
         private bool disposeReader = false;
@@ -138,24 +124,6 @@ namespace YARG.Serialization
         public bool ValidateHeaderTrack()
         {
             return ValidateTrack(HEADERTRACK);
-        }
-
-        public bool ValidateSyncTrack()
-        {
-            if (!ValidateTrack(SYNCTRACK))
-                return false;
-
-            eventSet = EVENTS_SYNC;
-            return true;
-        }
-
-        public bool ValidateEventsTrack()
-        {
-            if (!ValidateTrack(EVENTTRACK))
-                return false;
-
-            eventSet = EVENTS_EVENTS;
-            return true;
         }
 
         public bool ValidateDifficulty()
@@ -239,19 +207,9 @@ namespace YARG.Serialization
             return new(position, ChartEvent.UNKNOWN);
         }
 
-        public void SkipEvent()
-        {
-            reader.GotoNextLine();
-        }
-
         public void NextEvent()
         {
             reader.GotoNextLine();
-        }
-
-        public ReadOnlySpan<byte> ExtractText()
-        {
-            return reader.ExtractTextSpan();
         }
 
         public (uint, ulong) ExtractLaneAndSustain()
@@ -259,34 +217,6 @@ namespace YARG.Serialization
             uint lane = reader.ReadUInt32();
             ulong sustain = reader.ReadUInt64();
             return new(lane, sustain);
-        }
-
-        public SpecialPhrase ExtractSpecialPhrase()
-        {
-            nuint type = reader.ReadUInt32();
-            ulong duration = reader.ReadUInt64();
-            return new((SpecialPhraseType)type, duration);
-        }
-
-        public uint ExtractMicrosPerQuarter()
-        {
-            return (uint)Math.Round(TEMPO_FACTOR / reader.ReadUInt32());
-        }
-
-        public ulong ExtractAnchor()
-        {
-            return reader.ReadUInt64();
-        }
-
-        public TimeSig ExtractTimeSig()
-        {
-            ulong numerator = reader.ReadUInt64();
-            ulong denom = 255, metro = 0, n32nds = 0;
-            if (reader.ReadUInt64(ref denom))
-                if (reader.ReadUInt64(ref metro))
-                    reader.ReadUInt64(ref n32nds);
-
-            return new TimeSig((byte)numerator, (byte)denom, (byte)metro, (byte)n32nds);
         }
 
         public void SkipTrack()

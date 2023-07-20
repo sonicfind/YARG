@@ -57,12 +57,6 @@ namespace YARG.Serialization
         public uint velocity;
     };
 
-    public struct ControlChange
-    {
-        public uint Controller { get; set; }
-        public uint Value { get; set; }
-    };
-
     public struct MidiParseEvent
     {
         public ulong position;
