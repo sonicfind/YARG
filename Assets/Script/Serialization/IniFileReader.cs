@@ -39,8 +39,15 @@ namespace YARG.Serialization
 
         public bool IsStartOfSection()
         { 
-            if (reader.IsEndOfFile() || reader.PeekByte() != '[')
+            if (reader.IsEndOfFile())
                 return false;
+
+            if (reader.PeekByte() != '[')
+            {
+                SkipSection();
+                if (reader.IsEndOfFile())
+                    return false;
+            }
 
             byte* curr = reader.CurrentPtr;
             long length = 0;
@@ -111,7 +118,8 @@ namespace YARG.Serialization
             reader.GotoNextLine();
             while (IsStillCurrentSection())
             {
-                if (validNodes.TryGetValue(reader.ExtractModifierName(), out var node))
+                var name = reader.ExtractModifierName().ToLower();
+                if (validNodes.TryGetValue(name, out var node))
                 {
                     var mod = node.CreateModifier(reader);
                     if (modifiers.TryGetValue(node.outputName, out var list))

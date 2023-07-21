@@ -332,10 +332,10 @@ namespace YARG.Serialization
         public Dictionary<string, List<Modifier>> ExtractModifiers(Dictionary<string, ModifierNode> validNodes)
         {
             Dictionary<string, List<Modifier>> modifiers = new();
-            reader.GotoNextLine();
             while (IsStillCurrentTrack())
             {
-                if (validNodes.TryGetValue(reader.ExtractModifierName(), out var node))
+                var name = reader.ExtractModifierName();
+                if (validNodes.TryGetValue(name, out var node))
                 {
                     var mod = node.CreateModifier(reader);
                     if (modifiers.TryGetValue(node.outputName, out var list))

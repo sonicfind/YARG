@@ -147,7 +147,7 @@ namespace YARG.Serialization
             ReadOnlySpan<byte> name = new(file.ptr + _position, curr - _position);
             _position = curr;
             SkipWhiteSpace();
-            return Encoding.UTF8.GetString(name).ToLower();
+            return Encoding.UTF8.GetString(name);
         }
     }
 }
