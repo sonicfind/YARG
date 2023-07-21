@@ -58,8 +58,11 @@ namespace YARG.Types
 
         protected abstract void Dispose(bool disposing);
 
-        public virtual void Clear()
+        public void Clear()
         {
+            for (int i = 0; i < _count; ++i)
+                At_index(i) = default;
+
             if (_count > 0)
                 _version++;
             _count = 0;
@@ -84,15 +87,127 @@ namespace YARG.Types
             Capacity = newcapacity;
         }
 
-        public abstract ref T Add(Key key, T obj);
+        public void TrimExcess()
+        {
+            if (_count < _capacity)
+                Capacity = _count;
+        }
 
-        public abstract ref T Add(Key key, ref T obj);
+        public ref T Add(Key key, ref T obj)
+        {
+            CheckAndGrow();
+
+            int index = _count++;
+            ref var node = ref At_index(index);
+            node.key = key;
+            node.obj = obj;
+            return ref node.obj;
+        }
+
+        public ref T Add(Key key, T obj)
+        {
+            CheckAndGrow();
+
+            int index = _count++;
+            ref var node = ref At_index(index);
+            node.key = key;
+            node.obj = obj;
+            return ref node.obj;
+        }
 
         public abstract ref T Add(Key key);
 
+        public void Add_NoReturn(Key key, T obj)
+        {
+            CheckAndGrow();
+
+            int index = _count++;
+            ref var node = ref At_index(index);
+            node.key = key;
+            node.obj = obj;
+        }
+
         public abstract void Add_NoReturn(Key key);
 
+        public void Pop()
+        {
+            if (_count == 0)
+                throw new Exception("Pop on emtpy map");
+
+            At_index(_count - 1) = default;
+            --_count;
+            ++_version;
+        }
+
+        public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
+
+        public int Find_Or_Add_index(int searchIndex, Key key) { return Find_or_emplace_index(searchIndex, key); }
+
+        public ref T Find_Or_Add(int searchIndex, Key key)
+        {
+            int index = Find_or_emplace_index(searchIndex, key);
+            return ref At_index(index).obj;
+        }
+
+        protected abstract int Find_or_emplace_index(int searchIndex, Key key);
+
+        public ref T At(Key key)
+        {
+            int index = Find(0, key);
+            if (index < 0)
+                throw new KeyNotFoundException();
+            return ref At_index(index).obj;
+        }
+
+        public ref T Get_Or_Add_Back(Key key)
+        {
+            if (_count == 0)
+                return ref Add(key);
+
+            ref var node = ref At_index(_count - 1);
+            if (node < key)
+                return ref Add(key);
+            return ref node.obj;
+        }
+
+        public ref T Traverse_Backwards_Until(Key key)
+        {
+            int index = _count;
+            while (index > 0)
+                if (At_index(--index).key.CompareTo(key) <= 0)
+                    break;
+            return ref At_index(index).obj;
+        }
+
         public abstract ref FlatMapNode<Key, T> At_index(int index);
+
+        public ref T Last() { return ref At_index(_count - 1).obj; }
+
+        public bool ValidateLastKey(Key key)
+        {
+            return _count > 0 && At_index(_count - 1).key.Equals(key);
+        }
+
+        public bool Contains(Key key) { return Find(0, key) >= 0; }
+
+        public int Find(int searchIndex, Key key)
+        {
+            int lo = searchIndex;
+            int hi = Count - (searchIndex + 1);
+            while (lo <= hi)
+            {
+                int curr = lo + ((hi - lo) >> 1);
+                int order = At_index(curr).key.CompareTo(key);
+
+                if (order == 0) return curr;
+                if (order < 0)
+                    lo = curr + 1;
+                else
+                    hi = curr - 1;
+            }
+
+            return ~lo;
+        }
 
         public IEnumerator GetEnumerator() { return new Enumerator(this); }
 
@@ -185,14 +300,6 @@ namespace YARG.Types
             _disposed = true;
         }
 
-        public override void Clear()
-        {
-            for (uint i = 0; i < _count; ++i)
-                _buffer[i] = default;
-
-            base.Clear();
-        }
-
         public override int Capacity
         {
             get => _capacity;
@@ -222,12 +329,6 @@ namespace YARG.Types
             }
         }
 
-        public void TrimExcess()
-        {
-            if (_count < _capacity)
-                Capacity = _count;
-        }
-
         public ref T Insert(int index, Key key, T? obj)
         {
             CheckAndGrow();
@@ -244,101 +345,19 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public override ref T Add(Key key, T obj)
-        {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = obj;
-            return ref node.obj;
-        }
-
-        public override ref T Add(Key key, ref T obj)
-        {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = obj;
-            return ref node.obj;
-        }
-
         public override ref T Add(Key key)
         {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = new();
-            return ref node.obj;
+            return ref Add(key, new());
         }
 
         public override void Add_NoReturn(Key key)
         {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = new();
+            Add_NoReturn(key, new());
         }
-
-        public ref T Get_Or_Add_Back(Key key)
-        {
-            if (_count == 0)
-                return ref Add(key);
-
-            ref var node = ref _buffer[_count - 1];
-            if (node < key)
-                return ref Add(key);
-            return ref node.obj;
-        }
-
-        public ref T Traverse_Backwards_Until(Key key)
-        {
-            int index = _count;
-            var arr = _buffer.AsSpan();
-            while (index > 0)
-                if (arr[--index].key.CompareTo(key) <= 0)
-                    break;
-            return ref arr[index].obj;
-        }
-
-        public void Pop()
-        {
-            if (_count == 0)
-                throw new Exception("Pop on emtpy map");
-
-            _buffer[_count - 1] = default;
-            --_count;
-            ++_version;
-        }
-
-        public int Find_Or_Add_index(int searchIndex, Key key) { return Find_or_emplace_index(searchIndex, key); }
-
-        public ref T Find_Or_Add(int searchIndex, Key key)
-        {
-            int index = Find_or_emplace_index(searchIndex, key);
-            return ref _buffer[index].obj;
-        }
-
-        public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
 
         public override ref FlatMapNode<Key, T> At_index(int index)
         {
             return ref _buffer[index];
-        }
-
-        public ref T At(Key key)
-        {
-            int index = BinarySearch(0, key);
-            if (index < 0)
-                throw new KeyNotFoundException();
-            return ref _buffer[index].obj;
         }
 
         public void RemoveAt(int index)
@@ -355,18 +374,9 @@ namespace YARG.Types
             ++_version;
         }
 
-        public ref T Last() { return ref _buffer[_count - 1].obj; }
-
-        public bool ValidateLastKey(Key key)
+        protected override int Find_or_emplace_index(int searchIndex, Key key)
         {
-            return _count > 0 && _buffer[_count - 1].key.Equals(key);
-        }
-
-        public bool Contains(Key key) { return BinarySearch(0, key) >= 0; }
-
-        private int Find_or_emplace_index(int searchIndex, Key key)
-        {
-            int index = BinarySearch(searchIndex, key);
+            int index = Find(searchIndex, key);
             if (index < 0)
             {
                 CheckAndGrow();
@@ -384,32 +394,13 @@ namespace YARG.Types
             }
             return index;
         }
-
-        private int BinarySearch(int searchIndex, Key key)
-        {
-            int lo = searchIndex;
-            int hi = Count - (searchIndex + 1);
-            var arr = _buffer.AsSpan();
-            while (lo <= hi)
-            {
-                int curr = lo + ((hi - lo) >> 1);
-                int order = arr[curr].key.CompareTo(key);
-
-                if (order == 0) return curr;
-                if (order < 0)
-                    lo = curr + 1;
-                else
-                    hi = curr - 1;
-            }
-            return ~lo;
-        }
     }
 
     public unsafe class NativeFlatMap<Key, T> : FlatMap_Base<Key, T>
        where T : unmanaged
        where Key : unmanaged, IComparable<Key>, IEquatable<Key>
     {
-        internal static readonly T BASE = new();
+        internal static T BASE = new();
         internal static readonly int SIZEOFNODE = sizeof(FlatMapNode<Key, T>);
 
         static NativeFlatMap()
@@ -437,14 +428,6 @@ namespace YARG.Types
             }
 
             _disposed = true;
-        }
-
-        public override void Clear()
-        {
-            for (uint i = 0; i < _count; ++i)
-                _buffer[i] = default;
-
-            base.Clear();
         }
 
         public override int Capacity
@@ -482,12 +465,6 @@ namespace YARG.Types
             }
         }
 
-        public void TrimExcess()
-        {
-            if (_count < _capacity)
-                Capacity = _count;
-        }
-
         public ref T Insert(int index, Key key)
         {
             return ref Insert(index, key, BASE);
@@ -509,88 +486,15 @@ namespace YARG.Types
             return ref node.obj;
         }
 
-        public override ref T Add(Key key, T obj)
-        {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = obj;
-            return ref node.obj;
-        }
-
-        public override ref T Add(Key key, ref T obj)
-        {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = obj;
-            return ref node.obj;
-        }
-
         public override ref T Add(Key key)
         {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = BASE;
-            return ref node.obj;
+            return ref Add(key, ref BASE);
         }
 
         public override void Add_NoReturn(Key key)
         {
-            CheckAndGrow();
-
-            int index = _count++;
-            ref var node = ref _buffer[index];
-            node.key = key;
-            node.obj = BASE;
+            Add_NoReturn(key, BASE);
         }
-
-        public ref T Get_Or_Add_Back(Key key)
-        {
-            if (_count == 0)
-                return ref Add(key);
-
-            ref var node = ref _buffer[_count - 1];
-            if (node < key)
-                return ref Add(key);
-            return ref node.obj;
-        }
-
-        public ref T Traverse_Backwards_Until(Key key)
-        {
-            int index = _count;
-            while (index > 0)
-                if (_buffer[--index].key.CompareTo(key) <= 0)
-                    break;
-            return ref _buffer[index].obj;
-        }
-
-        public void Pop()
-        {
-            if (_count == 0)
-                throw new Exception("Pop on emtpy map");
-
-            _buffer[_count - 1] = default;
-            --_count;
-            ++_version;
-        }
-
-        public int Find_Or_Add_index(int searchIndex, Key key) { return Find_or_emplace_index(searchIndex, key); }
-
-        public ref T Find_Or_Add(int searchIndex, Key key)
-        {
-            int index = Find_or_emplace_index(searchIndex, key);
-            return ref _buffer[index].obj;
-        }
-
-        public ref T this[Key key] { get { return ref Find_Or_Add(0, key); } }
 
         public override ref FlatMapNode<Key, T> At_index(int index)
         {
@@ -598,14 +502,6 @@ namespace YARG.Types
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             return ref _buffer[index];
-        }
-
-        public ref T At(Key key)
-        {
-            int index = BinarySearch(0, key);
-            if (index < 0)
-                throw new KeyNotFoundException();
-            return ref _buffer[index].obj;
         }
 
         public void RemoveAt(int index)
@@ -620,18 +516,9 @@ namespace YARG.Types
             ++_version;
         }
 
-        public ref T Last() { return ref _buffer[_count - 1].obj; }
-
-        public bool ValidateLastKey(Key key)
+        protected override int Find_or_emplace_index(int searchIndex, Key key)
         {
-            return _count > 0 && _buffer[_count - 1].key.Equals(key);
-        }
-
-        public bool Contains(Key key) { return BinarySearch(0, key) >= 0; }
-
-        private int Find_or_emplace_index(int searchIndex, Key key)
-        {
-            int index = BinarySearch(searchIndex, key);
+            int index = Find(searchIndex, key);
             if (index < 0)
             {
                 index = ~index;
@@ -648,45 +535,16 @@ namespace YARG.Types
             }
             return index;
         }
-
-        private int BinarySearch(int searchIndex, Key key)
-        {
-            int lo = searchIndex;
-            int hi = Count - (searchIndex + 1);
-            while (lo <= hi)
-            {
-                int curr = lo + ((hi - lo) >> 1);
-                int order = _buffer[curr].key.CompareTo(key);
-
-                if (order == 0) return curr;
-                if (order < 0)
-                    lo = curr + 1;
-                else
-                    hi = curr - 1;
-            }
-
-            return ~lo;
-        }
     }
 
 
     public class TimedFlatMap<T> : FlatMap<ulong, T>
         where T : new()
     {
-        public float GetLastNodeTime()
-        {
-            if (IsEmpty()) return 0.0f;
-            return At_index(Count - 1).key;
-        }
     }
 
     public class TimedNativeFlatMap<T> : NativeFlatMap<ulong, T>
         where T : unmanaged
     {
-        public float GetLastNodeTime()
-        {
-            if (IsEmpty()) return 0.0f;
-            return At_index(Count - 1).key;
-        }
     }
 }
