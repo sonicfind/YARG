@@ -182,8 +182,12 @@ namespace YARG.Serialization
             return true;
         }
 
+        public ref MidiParseEvent GetParsedEvent() { return ref m_event; }
+
+        public ushort GetTickRate() { return m_header.tickRate; }
         public ushort GetTrackNumber() { return m_trackCount; }
         public MidiParseEvent GetEvent() { return m_event; }
+        public byte GetMultiplierNote() { return m_multiplierNote; }
 
         public ReadOnlySpan<byte> ExtractTextOrSysEx()
         {
@@ -196,6 +200,32 @@ namespace YARG.Serialization
             note.velocity = m_reader.ReadByte();
         }
 
+        public MidiNote ExtractMidiNote()
+        {
+            MidiNote note = new();
+            ExtractMidiNote(ref note);
+            return note;
+        }
+        public ControlChange ExtractControlChange()
+        {
+            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(2);
+            return new ControlChange()
+            {
+                Controller = bytes[0],
+                Value = bytes[1],
+            };
+        }
+
+        public uint ExtractMicrosPerQuarter()
+        {
+            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(3);
+            return (uint)(bytes[0] << 16) | BinaryPrimitives.ReadUInt16BigEndian(bytes[1..]);
+        }
+        public TimeSig ExtractTimeSig()
+        {
+            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(4);
+            return new TimeSig(bytes[0], bytes[1], bytes[2], bytes[3]);
+        }
         private void ProcessHeaderChunk()
         {
             if (!m_reader.CompareTag(TRACKTAGS[0]))
