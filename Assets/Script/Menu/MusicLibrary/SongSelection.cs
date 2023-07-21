@@ -16,6 +16,7 @@ using YARG.Settings;
 using YARG.Song.Library;
 using YARG.Song.Entries;
 using YARG.Types;
+using YARG.Util;
 
 namespace YARG.UI.MusicLibrary
 {
@@ -59,7 +60,7 @@ namespace YARG.UI.MusicLibrary
         private CancellationTokenSource _previewCanceller = new();
 
         public IReadOnlyList<ViewType> ViewList => _viewList;
-        public ViewType CurrentSelection => _selectedIndex < _viewList?.Count ? _viewList[_selectedIndex] : null;
+        public ViewType CurrentSelection => 0 <= _selectedIndex &&_selectedIndex < _viewList?.Count ? _viewList[_selectedIndex] : null;
 
         private int _selectedIndex;
 
@@ -329,21 +330,12 @@ namespace YARG.UI.MusicLibrary
         {
             SetRecommendedSongs();
 
-            var oldSort = _sort;
-            _sortedSongs = _searchBar.Search(_searchField.text, ref _sort);
-
-            if (oldSort != _sort)
-            {
-                SetNextSortCriteria();
-                UpdateNavigationScheme();
-            }
+            _sortedSongs = _searchBar.Search(_searchField.text, _sort);
 
             AddSongs();
 
             if (!string.IsNullOrEmpty(_searchField.text))
             {
-                GameManager.Instance.SelectedSong = null;
-
                 // Create the category
                 int count = 0;
                 foreach (FlatMapNode<string, List<SongEntry>> section in _sortedSongs)
@@ -365,15 +357,22 @@ namespace YARG.UI.MusicLibrary
                     _viewList.Insert(0, categoryView);
                 }
             }
-            else
+            else if (SongContainer.Count > 0)
             {
                 AddSongsCount();
                 AddAllRecommendedSongs();
                 AddRecommendSongsHeader();
                 AddRandomSongHeader();
+                ClearIfNoSongs();
+            }
+            else
+            {
+                _viewList.Clear();
+                UpdateSongViews();
+                return;
             }
 
-            ClearIfNoSongs();
+            
 
             SetSelectedIndex();
             // These are both called by the above:
@@ -466,8 +465,13 @@ namespace YARG.UI.MusicLibrary
             if (GameManager.Instance.SelectedSong != null)
             {
                 int index = GetIndexOfSelectedSong();
-                SelectedIndex = Mathf.Max(1, index);
-                return;
+                if (index >= 0)
+                {
+                    SelectedIndex = Mathf.Max(1, index);
+                    return;
+                }
+                else
+                    GameManager.Instance.SelectedSong = null;
             }
 
             if (!string.IsNullOrEmpty(_searchField.text))
@@ -484,7 +488,9 @@ namespace YARG.UI.MusicLibrary
             var selectedSong = GameManager.Instance.SelectedSong;
 
             // Get the first index after the recommended songs
-            int startOfSongs = _viewList.FindIndex(i => i is SortHeaderViewType);
+            int startOfSongs = _viewList.FindIndex(i => i is SortHeaderViewType || i is CategoryViewType);
+            if (startOfSongs < 0)
+                return -1;
 
             int songIndex = _viewList.FindIndex(startOfSongs,
                 song => song is SongViewType songType && songType.SongEntry == selectedSong);

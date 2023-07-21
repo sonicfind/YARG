@@ -70,7 +70,7 @@ namespace YARG.Song
 
         private List<(FilterNode, FlatMap<string, List<SongEntry>>)> filters = new();
 
-        public FlatMap<string, List<SongEntry>> Search(string value, ref SongAttribute sort)
+        public FlatMap<string, List<SongEntry>> Search(string value, SongAttribute sort)
         {
             var currentFilters = GetFilters(value.Split(';'));
             if (currentFilters.Count == 0)
@@ -94,9 +94,6 @@ namespace YARG.Song
 
             if (currFilterIndex == 0 && (prevFilterIndex == 0 || currentFilters[0].attribute != SongAttribute.UNSPECIFIED))
             {
-                if (currentFilters[0].attribute != SongAttribute.UNSPECIFIED)
-                    sort = currentFilters[0].attribute;
-
                 if (prevFilterIndex < filters.Count)
                     filters[prevFilterIndex] = new(currentFilters[0], SearchSongs(currentFilters[0]));
                 else
