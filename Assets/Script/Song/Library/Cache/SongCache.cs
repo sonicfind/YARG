@@ -1157,7 +1157,6 @@ namespace YARG.Song.Library
 
         private byte[] FormatIniEntriesToCache(string baseDirectory, Dictionary<SongEntry, CategoryCacheWriteNode> nodes)
         {
-            int subIndex = baseDirectory.Length + 1;
             List<(string, IniSongEntry)> group = new();
             foreach (var node in iniEntries)
             {
@@ -1165,9 +1164,10 @@ namespace YARG.Song.Library
                 {
                     var entry = node.Value[i];
                     string directory = entry.Directory;
-                    if (entry.Directory.StartsWith(baseDirectory))
+                    string relative = Path.GetRelativePath(baseDirectory, directory);  
+                    if (relative.Length < directory.Length)
                     {
-                        group.Add(new(directory[subIndex..], entry));
+                        group.Add(new(relative, entry));
                         node.Value.RemoveAt(i);
                     }
                     else
