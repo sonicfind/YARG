@@ -146,7 +146,7 @@ namespace YARG.Song.Entries
                 if (m_modifiers.TryGetValue(node.Key, out var modifiers))
                     modifiers.AddRange(node.Value);
                 else
-                    m_modifiers.Add(node.Key, modifiers!);
+                    m_modifiers.Add(node.Key, node.Value);
             }
 
             LegacyDrumScan legacy = new(cymbals, GetDrumTypeFromModifier());
