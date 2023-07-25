@@ -457,13 +457,22 @@ namespace YARG.Song.Entries
                             break;
                         }
                     case "extra_authoring":
-                        foreach (string str in reader.ExtractList_String())
                         {
-                            if (str == "disc_update")
+                            string authors = string.Empty;
+                            foreach (string str in reader.ExtractList_String())
                             {
-                                discUpdate = true;
-                                break;
+                                if (str == "disc_update")
+                                    discUpdate = true;
+                                else if (authors == string.Empty && m_charter == s_DEFAULT_CHARTER)
+                                    authors = str;
+                                else
+                                {
+                                    if (authors == string.Empty)
+                                        authors = m_charter;
+                                    authors += ", " + str;
+                                }
                             }
+                            m_charter = authors;
                         }
                         break;
                 }
