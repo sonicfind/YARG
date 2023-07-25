@@ -209,6 +209,8 @@ namespace YARG.Types
             return ~lo;
         }
 
+        public abstract FlatMapNode<Key, T>[] ToArray();
+
         public IEnumerator GetEnumerator() { return new Enumerator(this); }
 
         public struct Enumerator : IEnumerator<FlatMapNode<Key, T>>, IEnumerator
@@ -394,6 +396,13 @@ namespace YARG.Types
             }
             return index;
         }
+
+        public override FlatMapNode<Key, T>[] ToArray()
+        {
+            var arr = new FlatMapNode<Key, T>[_count];
+            Array.Copy(_buffer, arr, _count);
+            return arr;
+        }
     }
 
     public unsafe class NativeFlatMap<Key, T> : FlatMap_Base<Key, T>
@@ -534,6 +543,16 @@ namespace YARG.Types
                 ++_version;
             }
             return index;
+        }
+
+        public override FlatMapNode<Key, T>[] ToArray()
+        {
+            var arr = new FlatMapNode<Key, T>[_count];
+            fixed (FlatMapNode<Key, T>* b = arr)
+            {
+                Copier.MemCpy(b, _buffer, (nuint) (_count * sizeof(FlatMapNode<Key, T>)));
+            }
+            return arr;
         }
     }
 

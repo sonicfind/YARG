@@ -145,9 +145,13 @@ namespace YARG.Song.Chart
             uint multipliedTickrate = 4u * Tickrate;
             uint denominator = 0;
             uint metronome = 24;
+            uint numerator = 4;
             for (int i = 0; i < m_sync.timeSigs.Count; ++i)
             {
                 var node = m_sync.timeSigs.At_index(i);
+                if (node.obj.Numerator > 0)
+                    numerator = node.obj.Numerator;
+
                 if (node.obj.Denominator != 255)
                     denominator = 1u << node.obj.Denominator;
 
@@ -156,7 +160,8 @@ namespace YARG.Song.Chart
 
                 uint markersPerClick = 6 * denominator / metronome;
                 ulong ticksPerMarker = multipliedTickrate / denominator;
-                ulong ticksPerMeasure = (multipliedTickrate * node.obj.Numerator) / denominator;
+                ulong ticksPerMeasure = (multipliedTickrate * numerator) / denominator;
+                bool isIrregular = numerator > 4 || (numerator & 1) == 1;
 
                 ulong endTime;
                 if (i + 1 < m_sync.timeSigs.Count)
@@ -168,19 +173,27 @@ namespace YARG.Song.Chart
                 {
                     ulong position = node.key;
                     var style = BeatStyle.MEASURE;
-                    for (uint n = 0; n < node.obj.Numerator && position < endTime;)
+                    int clickSpacing = (int)markersPerClick;
+                    int triplSpacing = 3 * (int)markersPerClick;
+                    for (int leftover = (int)numerator; leftover > 0 && position < endTime;)
                     {
-                        uint m = 0;
+                        int clicksLeft = clickSpacing;
                         do
                         {
                             m_beatMap.Add_NoReturn(position, style);
                             position += ticksPerMarker;
                             style = BeatStyle.WEAK;
-                            ++m;
-                            ++n;
-                        } while (m < markersPerClick && position < endTime);
+                            --clicksLeft;
+                            --leftover;
+                        } while (clicksLeft > 0 && leftover > 0 && position < endTime);
                         style = BeatStyle.STRONG;
 
+                        if (isIrregular && leftover > 0 && position < endTime && markersPerClick < leftover && 2 * leftover < triplSpacing)
+                        {
+                            // leftover < 1.5 * spacing
+                            clickSpacing = leftover;
+                        }
+                        
                     }
                     node.key += ticksPerMeasure;
                 }

@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using YARG.Util;
-using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
 using YARG.UI;
 using YARG.Settings;

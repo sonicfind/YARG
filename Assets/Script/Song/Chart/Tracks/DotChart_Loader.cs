@@ -16,7 +16,7 @@ namespace YARG.Song.Chart
         internal static readonly byte[] SOLOEND = Encoding.ASCII.GetBytes("soloend");
 
         public static bool Load<T>(ref DifficultyTrack<T> diff, ChartFileReader reader)
-            where T : INote, IReadableFromDotChart, new()
+            where T : class, INote, IReadableFromDotChart, new()
         {
             if (diff.IsOccupied())
                 return false;

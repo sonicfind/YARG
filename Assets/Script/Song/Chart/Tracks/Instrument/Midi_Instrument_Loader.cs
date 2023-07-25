@@ -146,7 +146,7 @@ namespace YARG.Song.Chart
     }
 
     public abstract class Midi_Instrument_Loader<T> : Midi_Loader_Base<InstrumentTrack<T>>
-        where T : INote, new()
+        where T : class, INote, new()
     {
         internal static readonly byte[] SOLO = { 103 };
         internal static readonly byte[] TREMOLO = { 126 };

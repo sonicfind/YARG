@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
 {
@@ -21,23 +23,39 @@ namespace YARG.Song.Chart.Notes
         TAP
     }
 
-    public class PlayableNote_Guitar : PlayableNote
+    public struct PlayableNote_Guitar : IPlayableNote
     {
         private readonly string mesh;
         private readonly PlayableGuitarType type;
+        private readonly SubNote[] lanes;
 
-        public PlayableNote_Guitar(string mesh, PlayableGuitarType type, List<SubNote> lanes) : base(lanes)
+        private OverdrivePhrase? overdrive;
+        private SoloPhrase? solo;
+
+        public PlayableNote_Guitar(string mesh, PlayableGuitarType type, SubNote[] lanes)
         {
             this.mesh = mesh;
             this.type = type;
+            this.lanes = lanes;
+            overdrive = null;
+            solo = null;
         }
 
-        public override HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots)
+        public void AttachPhrase(PlaytimePhrase phrase)
+        {
+            Debug.Assert(phrase != null);
+            if (phrase is OverdrivePhrase overdrivePhrase)
+                overdrive = overdrivePhrase;
+            else if (phrase is SoloPhrase soloPhrase)
+                solo = soloPhrase;
+        }
+
+        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots)
         {
             return HitStatus.Hit;
         }
 
-        public override HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots)
+        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots)
         {
             return HitStatus.Hit;
         }
@@ -78,7 +96,7 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        protected (PlayableGuitarType, List<SubNote>) ConstructTypeAndNotes(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
+        protected (PlayableGuitarType, SubNote[]) ConstructTypeAndNotes(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
         {
             var notes = new List<SubNote>();
             for (int i = 0; i < lanes.Length; ++i)
@@ -107,7 +125,7 @@ namespace YARG.Song.Chart.Notes
                     type = isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
                 }
             }
-            return new(type, notes);
+            return new(type, notes.ToArray());
         }
 
         public bool IsChorded()

@@ -15,14 +15,13 @@ namespace YARG.Types
         LyricLine = 4,
         RangeShift = 5,
         HarmonyLine = 6,
-        Arpeggio = 7,
         StarPower_Diff = 8,
         BRE = 64,
         Tremolo = 65,
         Trill = 66,
         LyricShift = 67,
-        Chord_Numbering = 68,
     }
+
     public struct SpecialPhrase
     {
         private ulong _duration;

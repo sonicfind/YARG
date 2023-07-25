@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using YARG.Assets.Script.Types;
 using YARG.Serialization;
 using YARG.Song.Entries;
+using YARG.Types;
 
 #nullable enable
 namespace YARG.Song.Library

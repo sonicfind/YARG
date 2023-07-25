@@ -193,5 +193,11 @@ namespace YARG.Song.Chart.Notes
         {
             return NumActive > 0;
         }
+
+#nullable enable
+        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

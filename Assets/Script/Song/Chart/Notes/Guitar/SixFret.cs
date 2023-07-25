@@ -11,9 +11,9 @@ namespace YARG.Song.Chart.Notes
         public SixFret() : base(7) { }
 
 #nullable enable
-        public PlayableNote_Guitar ConvertToPlayable(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
+        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
         {
-            (var type, var notes) = ConstructTypeAndNotes(position, prevPosition, prevNote);
+            (var type, var notes) = ConstructTypeAndNotes(position, prevPosition, prevNote as SixFret);
             string mesh = type switch
             {
                 PlayableGuitarType.STRUM => "SixFret",
@@ -21,7 +21,7 @@ namespace YARG.Song.Chart.Notes
                 PlayableGuitarType.TAP => "SixFretTap",
                 _ => throw new Exception("stoopid")
             };
-            return new(mesh, type, notes);
+            return new PlayableNote_Guitar(mesh, type, notes);
         }
 
         internal static readonly uint[] SIXFRETLANES = new uint[5] { 4, 5, 6, 1, 2 };

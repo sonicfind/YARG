@@ -14,9 +14,7 @@ using YARG.Chart;
 using YARG.Serialization.Parser;
 using UnityEngine;
 using Melanchall.DryWetMidi.Core;
-using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
-using static UnityEditor.FilePathAttribute;
 using YARG.Song.Chart;
 
 namespace YARG.Song.Entries

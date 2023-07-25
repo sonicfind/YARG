@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using YARG.Assets.Script.Types;
+using YARG.Types;
 
 namespace YARG.Song.Entries
 {

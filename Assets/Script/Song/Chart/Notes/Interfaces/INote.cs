@@ -6,19 +6,33 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using YARG.Types;
+using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
 namespace YARG.Song.Chart.Notes
 {
     public interface INote
     {
+
         public bool HasActiveNotes();
         public ulong GetLongestSustain();
+
+#nullable enable
+        public IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote);
     }
 
     public class InputHandler
     {
+        public readonly int laneCount;
+
         private List<(ulong, object)> inputs;
         private readonly object inputLock;
+
+        public InputHandler(int laneCount)
+        {
+            inputs = new();
+            inputLock = new();
+            this.laneCount = laneCount;
+        }
 
         public List<(ulong, object)> GetInputs()
         {
@@ -38,37 +52,25 @@ namespace YARG.Song.Chart.Notes
         Missed
     };
 
-    public class Player
+    public abstract class Player
     {
-        private readonly OverdrivePhrase[] overdrives;
-        private int overdriveIndex = 0;
-        private float overdrive = 0;
-        private float overdriveOffset = 0;
+        protected readonly List<(ulong, OverdrivePhrase)> overdrives = new();
+        protected int overdriveIndex = 0;
+        protected float overdrive = 0;
+        protected float overdriveOffset = 0;
 
-        private readonly SoloPhrase[] soloes;
-        private int soloIndex = 0;
-        private float soloPercentage = 0;
-        private bool soloActive = false;
-        private bool soloBoxUpdated = false;
+        protected (int, int) visibleNoteRange = new(0, 0);
+        protected InputHandler inputHandler;
 
-        private readonly (ulong, PlayableNote)[] notes;
-        private (int, int) visibleNoteRange = new(0, 0);
-        private (int, int) hittableNotes = new(0, 0);
-        private readonly (ulong, ulong) hitWindow = new(55, 55);
-
-        private readonly PlayableNote[] sustainedNotes;
-        private readonly InputHandler inputHandler;
-        private readonly List<(ulong, object)> inputSnapshots = new(2);
-        private int comboCount = 0;
-        private int notesHit = 0;
-
-        public Player(OverdrivePhrase[] overdrives, SoloPhrase[] soloes, (ulong, PlayableNote)[] notes, InputHandler inputHandler, int numLanes)
+        protected Player(InputHandler inputHandler)
         {
-            this.overdrives = overdrives;
-            this.soloes = soloes;
-            this.notes = notes;
             this.inputHandler = inputHandler;
-            sustainedNotes = new PlayableNote[numLanes];
+        }
+
+        public virtual void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
+        {
+            if (phrase is OverdrivePhrase overdrive)
+                overdrives.Add(new(position, overdrive));
         }
 
         public void AddOverdrive(float overdrive)
@@ -86,13 +88,49 @@ namespace YARG.Song.Chart.Notes
             overdriveIndex++;
         }
 
+        public abstract void Update(ulong position);
+
+        protected abstract bool HandleStatus(HitStatus status);
+    }
+
+    public class Player_Instrument : Player
+    {
+        private List<(ulong, ulong, SoloPhrase)> soloes = new();
+        private int soloIndex = 0;
+        private float soloPercentage = 0;
+        private bool soloActive = false;
+        private bool soloBoxUpdated = false;
+
+        private readonly (ulong, IPlayableNote)[] notes;
+        private readonly (ulong, ulong) hitWindow = new(55, 55);
+        private (int, int) hittableNotes = new(0, 0);
+
+        private readonly IPlayableNote[] sustainedNotes;
+        private readonly List<(ulong, object)> inputSnapshots = new(2);
+        private int comboCount = 0;
+
+        public Player_Instrument((ulong, IPlayableNote)[] notes, InputHandler inputHandler) : base(inputHandler)
+        {
+            this.notes = notes;
+            this.inputHandler = inputHandler;
+            sustainedNotes = new IPlayableNote[inputHandler.laneCount];
+        }
+
+        public override void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
+        {
+            if (phrase is SoloPhrase solo)
+                soloes.Add(new(position, end, solo));
+            else
+                base.AttachPhrase(position, end, phrase);
+        }
+
         public void UpdateSolo(float percentage)
         {
             soloBoxUpdated = true;
             soloPercentage = percentage;
         }
 
-        public void Update(ulong position)
+        public override void Update(ulong position)
         {
             ulong startOfWindow = position + hitWindow.Item1;
             while (hittableNotes.Item2 < notes.Length && notes[hittableNotes.Item2].Item1 < startOfWindow)
@@ -103,7 +141,7 @@ namespace YARG.Song.Chart.Notes
             while (inputIndex < inputs.Count && hittableNotes.Item1 < hittableNotes.Item2)
             {
                 var input = inputs[inputIndex];
-                
+
                 if (comboCount > 0)
                 {
                     int noteIndex = hittableNotes.Item1;
@@ -143,25 +181,25 @@ namespace YARG.Song.Chart.Notes
 
             }
 
-            if (soloIndex < soloes.Length && soloes[soloIndex].start <= position)
+            if (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
             {
                 if (!soloActive)
                     soloActive = true;
-                else if (soloes[soloIndex].end <= position)
+                else if (soloes[soloIndex].Item2 <= position)
                 {
                     soloActive = false;
                     while (true)
                     {
                         // TODO - Add solo score
                         soloIndex++;
-                        if (soloIndex >= soloes.Length || position < soloes[soloIndex].start)
+                        if (soloIndex >= soloes.Count || position < soloes[soloIndex].Item1)
                         {
                             // Run "End of solo" action w/ result
                             int solo = soloIndex - 1;
                             break;
                         }
 
-                        if (position < soloes[soloIndex].end)
+                        if (position < soloes[soloIndex].Item2)
                         {
                             soloActive = true;
                             break;
@@ -170,14 +208,14 @@ namespace YARG.Song.Chart.Notes
                 }
             }
 
-            if (overdriveIndex < overdrives.Length && position >= overdrives[overdriveIndex].start)
+            if (overdriveIndex < overdrives.Count && position >= overdrives[overdriveIndex].Item1)
 
 
                 overdrive += overdriveOffset;
             Math.Clamp(overdrive, 0, 1);
         }
 
-        private bool HandleStatus(HitStatus status)
+        protected override bool HandleStatus(HitStatus status)
         {
             switch (status)
             {
@@ -197,64 +235,7 @@ namespace YARG.Song.Chart.Notes
         }
     }
 
-    public class OverdrivePhrase
-    {
-        public readonly ulong start;
-
-        private readonly Player player;
-        private readonly int numNotesInPhrase;
-        private int numNotesHit;
-
-        public bool ValidStatus { get; private set; } = true;
-
-        public OverdrivePhrase(ulong start, Player player, int numNotesInPhrase)
-        {
-            this.start = start;
-            this.player = player;
-            this.numNotesInPhrase = numNotesInPhrase;
-            numNotesHit = 0;
-        }
-
-        public void AddHits(int hits)
-        {
-            numNotesHit += hits;
-            if (numNotesHit == numNotesInPhrase)
-                player.AddOverdrive(.25f);
-        }
-
-        public void Invalidate()
-        {
-            ValidStatus = false;
-            player.IncrementOverdrive();
-        }
-    }
-
-    public class SoloPhrase
-    {
-        public readonly ulong start;
-        public readonly ulong end;
-
-        private readonly Player player;
-        private readonly int numNotesInPhrase;
-        private int numNotesHit;
-
-        public SoloPhrase(ulong start, ulong end, Player player, int numNotesInPhrase)
-        {
-            this.player = player;
-            this.start = start;
-            this.end = end;
-            this.numNotesInPhrase = numNotesInPhrase;
-            numNotesHit = 0;
-        }
-
-        public void AddHits(int hits)
-        {
-            numNotesHit += hits;
-            player.UpdateSolo(numNotesHit / (float) numNotesInPhrase);
-        }
-    }
-
-    public class SubNote
+    public readonly struct SubNote
     {
         public readonly int index;
         public readonly ulong endTick;
@@ -265,31 +246,10 @@ namespace YARG.Song.Chart.Notes
         }
     }
 
-#nullable enable
-    public abstract class PlayableNote
+    public interface IPlayableNote
     {
-        protected readonly List<SubNote> lanes;
-        protected OverdrivePhrase? overdrive;
-        protected SoloPhrase? solo;
-
-        protected PlayableNote(List<SubNote> lanes)
-        {
-            this.lanes = lanes;
-        }
-
-        public void AttachOverdrivePhrase(OverdrivePhrase phrase)
-        {
-            Debug.Assert(phrase != null);
-            overdrive = phrase;
-        }
-
-        public void AttachSoloPhrase(SoloPhrase phrase)
-        {
-            Debug.Assert(phrase != null);
-            solo = phrase;
-        }
-
-        public abstract HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots);
-        public abstract HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots);
+        public void AttachPhrase(PlaytimePhrase phrase);
+        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots);
+        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots);
     }
 }

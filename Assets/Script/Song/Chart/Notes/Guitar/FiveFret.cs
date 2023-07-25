@@ -13,9 +13,9 @@ namespace YARG.Song.Chart.Notes
         public FiveFret() : base(6) { }
 
 #nullable enable
-        public PlayableNote_Guitar ConvertToPlayable(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
+        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
         {
-            (var type, var notes) = ConstructTypeAndNotes(position, prevPosition, prevNote);
+            (var type, var notes) = ConstructTypeAndNotes(position, prevPosition, prevNote as FiveFret);
             string mesh = type switch
             {
                 PlayableGuitarType.STRUM => "FiveFret",
@@ -23,7 +23,7 @@ namespace YARG.Song.Chart.Notes
                 PlayableGuitarType.TAP => "FiveFretTap",
                 _ => throw new Exception("stoopid")
             };
-            return new(mesh, type, notes);
+            return new PlayableNote_Guitar(mesh, type, notes);
         }
 
         public bool Set_From_Chart(uint lane, ulong length)

@@ -133,5 +133,11 @@ namespace YARG.Song.Chart.Notes
                 Emphasis = EmphasisType.None;
             return Emphasis;
         }
+
+#nullable enable
+        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

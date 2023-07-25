@@ -19,7 +19,9 @@ using YARG.Input;
 using YARG.Serialization;
 using YARG.Serialization.Parser;
 using YARG.Settings;
+using YARG.Song;
 using YARG.Song.Chart;
+using YARG.Song.Chart.Notes;
 using YARG.Song.Entries;
 using YARG.UI;
 using YARG.Venue;
@@ -313,8 +315,11 @@ namespace YARG.PlayMode
 
         private void LoadChart()
         {
-            chart = Song.LoadChart_Original();
+            chart = SongContainer.Songs[1].LoadChart_Original();
             chartNew = Song.LoadChart();
+
+            InputHandler handler = new(5);
+            var players = chartNew.m_tracks.lead_5.SetupPlayers(new() { { 3, new[] { handler } } });
 
             // initialize current tempo
             if (chart.beats.Count > 2)

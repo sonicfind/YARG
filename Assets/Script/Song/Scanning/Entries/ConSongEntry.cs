@@ -18,7 +18,6 @@ using YARG.Data;
 using YARG.Serialization.Parser;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
-using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
 using YARG.Song.Chart;
 

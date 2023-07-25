@@ -9,7 +9,7 @@ using YARG.Song.Chart.Notes;
 namespace YARG.Song.Chart
 {
     public class InstrumentTrack_Base<Difficulty> : Track
-        where Difficulty : Track, new()
+        where Difficulty : Track, IDifficultyTrack, new()
     {
         protected readonly Difficulty[] difficulties = new Difficulty[4] { new(), new(), new(), new(), };
         public override bool IsOccupied()
@@ -44,10 +44,19 @@ namespace YARG.Song.Chart
             }
             return endTime;
         }
+
+        public Player_Instrument[] SetupPlayers(Dictionary<int, InputHandler[]> playerMapping)
+        {
+            var result = new List<Player_Instrument>();
+            var phrases = !specialPhrases.IsEmpty() ? specialPhrases : null;
+            foreach ((int diffIndex, var handlers) in playerMapping)
+                result.AddRange(difficulties[diffIndex].SetupPlayers(handlers, phrases));
+            return result.ToArray();
+        }
     }
 
     public class InstrumentTrack<T> : InstrumentTrack_Base<DifficultyTrack<T>>
-        where T : INote, new()
+        where T : class, INote, new()
     {
     }
 }

@@ -34,5 +34,8 @@ namespace YARG.Song.Chart.Notes
             }
             return sustain;
         }
+
+#nullable enable
+        public abstract IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote);
     }
 }

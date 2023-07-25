@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace YARG.Assets.Script.Types
+namespace YARG.Types
 {
     public class AbridgedFileInfo
     {

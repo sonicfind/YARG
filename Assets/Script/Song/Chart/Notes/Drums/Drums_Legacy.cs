@@ -48,5 +48,11 @@ namespace YARG.Song.Chart.Notes
             else
                 return DrumType.UNKNOWN;
         }
+
+#nullable enable
+        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
