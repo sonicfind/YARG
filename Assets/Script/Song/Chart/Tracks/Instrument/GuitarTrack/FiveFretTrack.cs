@@ -148,7 +148,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 ulong colorPosition = difficulties[diffIndex].notes[lane];
                 if (colorPosition != ulong.MaxValue)
                 {
-                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane] = currEvent.position - colorPosition;
+                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[(int)lane] = currEvent.position - colorPosition;
                     difficulties[diffIndex].notes[lane] = ulong.MaxValue;
                 }
             }
