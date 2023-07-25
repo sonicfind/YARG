@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using TagLib.Riff;
 using UnityEngine;
 using YARG.Util;
 using YARG.Assets.Script.Types;
@@ -41,7 +40,7 @@ namespace YARG.Song.Library
 
     public abstract class SongCache : IDisposable
     {
-        protected const int CACHE_VERSION = 23_07_19_03;
+        protected const int CACHE_VERSION = 23_07_25_01;
         protected static readonly object dirLock = new();
         protected static readonly object fileLock = new();
         protected static readonly object iniLock = new();
@@ -255,7 +254,7 @@ namespace YARG.Song.Library
                     entry.FinishScan();
         }
 
-        protected bool ScanIniEntry(FileInfo?[] charts, FileInfo? ini)
+        protected bool ScanIniEntry(string?[] charts, string? ini)
         {
             for (int i = ini != null ? 0 : 2; i < 3; ++i)
             {
@@ -264,7 +263,7 @@ namespace YARG.Song.Library
                 {
                     try
                     {
-                        using FrameworkFile_Alloc file = new(chart.FullName);
+                        using FrameworkFile_Alloc file = new(chart);
                         IniSongEntry entry = new(file, chart, ini, CHARTTYPES[i].Item2);
                         if (entry.ScannedSuccessfully())
                         {
@@ -272,13 +271,13 @@ namespace YARG.Song.Library
                                 AddIniEntry(entry);
                         }
                         else if (entry.GetModifier("name") == null)
-                            AddToBadSongs(chart.FullName, ScanResult.NoName);
+                            AddToBadSongs(chart, ScanResult.NoName);
                         else
-                            AddToBadSongs(chart.FullName, ScanResult.NoNotes);
+                            AddToBadSongs(chart, ScanResult.NoNotes);
                     }
                     catch
                     {
-                        AddToBadSongs(chart.DirectoryName, ScanResult.IniEntryCorruption);
+                        AddToBadSongs(Path.GetDirectoryName(chart), ScanResult.IniEntryCorruption);
                     }
                     return true;
                 }
@@ -286,62 +285,53 @@ namespace YARG.Song.Library
             return false;
         }
 
-        protected bool TryAddUpdateDirectory(DirectoryInfo directory)
+        protected bool TraversalPreTest(string directory)
         {
-            if (directory.Name == "songs_updates")
+            if (!FindOrMarkDirectory(directory))
+                return false;
+
+            string filename = Path.GetFileName(directory);
+            if (filename == "songs_updates")
             {
-                string dirName = directory.FullName;
-                FileInfo dta = new(Path.Combine(dirName, "songs_updates.dta"));
+                FileInfo dta = new(Path.Combine(directory, "songs_updates.dta"));
                 if (dta.Exists)
                 {
-                    UpdateGroupAdd(dirName, dta);
-                    return true;
+                    UpdateGroupAdd(directory, dta);
+                    return false;
                 }
             }
-            return false;
-        }
-
-        protected bool TryAddUpgradeDirectory(DirectoryInfo directory)
-        {
-            if (directory.Name == "song_upgrades")
+            else if (filename == "song_upgrades")
             {
-                string dirName = directory.FullName;
-                FileInfo dta = new(Path.Combine(dirName, "upgrades.dta"));
+                FileInfo dta = new(Path.Combine(directory, "upgrades.dta"));
                 if (dta.Exists)
                 {
-                    UpgradeGroupAdd(dirName, dta);
-                    return true;
+                    UpgradeGroupAdd(directory, dta);
+                    return false;
                 }
             }
-            return false;
-        }
-
-        protected bool TryAddExtractedCONDirectory(DirectoryInfo directory)
-        {
-            if (directory.Name == "songs")
+            else if (filename == "songs")
             {
-                string dirName = directory.FullName;
-                FileInfo dta = new(Path.Combine(dirName, "songs.dta"));
+                FileInfo dta = new(Path.Combine(directory, "songs.dta"));
                 if (dta.Exists)
                 {
-                    AddExtractedCONGroup(dirName, new(dta));
-                    return true;
+                    AddExtractedCONGroup(directory, new(dta));
+                    return false;
                 }
             }
-            return false;
+            return true;
         }
 
-        protected void AddPossibleCON(FileInfo info)
+        protected void AddPossibleCON(string filename)
         {
-            if (!FindOrMarkFile(info.FullName))
+            if (!FindOrMarkFile(filename))
                 return;
 
-            var file = CONFile.LoadCON(info.FullName);
+            var file = CONFile.LoadCON(filename);
             if (file == null)
                 return;
 
-            PackedCONGroup group = new(file, info.LastWriteTime);
-            AddCONGroup(info.FullName, group);
+            PackedCONGroup group = new(file, File.GetLastWriteTime(filename));
+            AddCONGroup(filename, group);
 
             if (group.LoadUpgrades(out var reader))
                 AddCONUpgrades(group, reader!);

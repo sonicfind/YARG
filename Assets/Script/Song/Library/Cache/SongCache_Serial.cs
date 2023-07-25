@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TagLib;
 using UnityEngine;
 using YARG.Serialization;
 using YARG.Song.Entries;
@@ -17,8 +16,11 @@ namespace YARG.Song.Library
     {
         protected override void FindNewEntries()
         {
-            for (int i = 0; i < baseDirectories.Length; ++i)
-                ScanDirectory(new(baseDirectories[i]));
+            foreach (string directory in baseDirectories)
+            {
+                if ((File.GetAttributes(directory) & FileAttributes.Hidden) != FileAttributes.Hidden)
+                    ScanDirectory(directory);
+            }
             LoadCONSongs();
             LoadExtractedCONSongs();
         }
@@ -187,68 +189,62 @@ namespace YARG.Song.Library
             }
         }
 
-        private void ScanDirectory(DirectoryInfo directory)
+        private void ScanDirectory(string directory)
         {
-            string dirName = directory.FullName;
-            if ((directory.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden || !FindOrMarkDirectory(dirName))
+            if (!TraversalPreTest(directory))
                 return;
 
-            if (TryAddUpdateDirectory(directory) || TryAddUpgradeDirectory(directory) || TryAddExtractedCONDirectory(directory))
-                return;
-
-            var charts = new FileInfo?[3];
-            FileInfo? ini = null;
-            List<DirectoryInfo> subDirectories = new();
-            List<FileInfo> files = new();
+            var charts = new string?[3];
+            string? ini = null;
+            List<string> subfiles = new();
 
             try
             {
-                foreach (var info in directory.EnumerateFileSystemInfos())
+                foreach (var subFile in Directory.EnumerateFileSystemEntries(directory))
                 {
-                    string filename = info.Name.ToLower();
-                    if ((info.Attributes & FileAttributes.Directory) > 0)
+                    string lowercase = Path.GetFileName(subFile).ToLower();
+                    if (lowercase == "song.ini")
                     {
-                        subDirectories.Add((info as DirectoryInfo)!);
-                        continue;
-                    }
-
-                    var file = (info as FileInfo)!;
-                    if (filename == "song.ini")
-                    {
-                        ini = file;
+                        ini = subFile;
                         continue;
                     }
 
                     bool found = false;
                     for (int i = 0; i < 3; ++i)
                     {
-                        if (filename == CHARTTYPES[i].Item1)
+                        if (lowercase == CHARTTYPES[i].Item1)
                         {
-                            charts[i] = file;
+                            charts[i] = subFile;
                             found = true;
                             break;
                         }
                     }
 
                     if (!found)
-                        files.Add(file);
+                        subfiles.Add(subFile);
                 }
             }
             catch (Exception e)
             {
                 Debug.Log(e.Message);
-                Debug.Log(directory.FullName);
+                Debug.Log(directory);
                 return;
             }
 
             if (ScanIniEntry(charts, ini))
                 return;
 
-            for (int i = 0; i < files.Count; ++i)
-                AddPossibleCON(files[i]);
-
-            for (int i = 0; i < subDirectories.Count; ++i)
-                ScanDirectory(subDirectories[i]);
+            foreach (string file in subfiles)
+            {
+                var attributes = File.GetAttributes(file);
+                if ((attributes & FileAttributes.Directory) == FileAttributes.Directory)
+                {
+                    if ((attributes & FileAttributes.Hidden) != FileAttributes.Hidden)
+                        ScanDirectory(file);
+                }
+                else
+                    AddPossibleCON(file);
+            }
         }
 
         private void LoadCONSongs()

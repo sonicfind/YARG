@@ -62,12 +62,12 @@ namespace YARG.Song.Entries
         private readonly AbridgedFileInfo? m_chartFile;
         private readonly AbridgedFileInfo? m_iniFile;
 
-        public IniSongEntry(FrameworkFile file, FileInfo chartFile, FileInfo? iniFile, ChartType type)
+        public IniSongEntry(FrameworkFile file, string chartFile, string? iniFile, ChartType type)
         {
             if (iniFile != null)
             {
-                m_modifiers = IniHandler.ReadSongIniFile(iniFile.FullName);
-                m_iniFile = iniFile;
+                m_modifiers = IniHandler.ReadSongIniFile(iniFile);
+                m_iniFile = new(iniFile);
             }
 
             bool hasDrumPadFlags = false;
@@ -100,8 +100,8 @@ namespace YARG.Song.Entries
             }
 
             m_chartType = type;
-            m_chartFile = chartFile;
-            Directory = chartFile.DirectoryName!;
+            m_chartFile = new(chartFile);
+            Directory = Path.GetDirectoryName(chartFile);
             m_directory_playlist.Str = Path.GetDirectoryName(Directory)!;
             m_hash = file.CalcHash128();
         }
