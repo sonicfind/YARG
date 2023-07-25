@@ -1,3 +1,4 @@
+﻿using ManagedBass;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -49,7 +50,7 @@ namespace YARG.PlayMode
 
         protected List<NoteInfo> Chart =>
             Play.Instance.chart
-                .GetChartByName(player.chosenInstrument)[(int) player.chosenDifficulty];
+                .GetChart(player.chosenInstrument)[(int) player.chosenDifficulty];
 
         // Track notes
         protected int visualChartIndex = 0;
@@ -162,7 +163,7 @@ namespace YARG.PlayMode
 
         public int MaxCombo => _maxCombo;
 
-        public int MaxMultiplier => (player.chosenInstrument == "bass" ? 6 : 4) * (IsStarPowerActive ? 2 : 1);
+        public int MaxMultiplier => (player.chosenInstrument == Instrument.BASS ? 6 : 4) * (IsStarPowerActive ? 2 : 1);
         public int Multiplier => Mathf.Min((Combo / 10 + 1) * (IsStarPowerActive ? 2 : 1), MaxMultiplier);
         public bool recentlyBelowMaxMultiplier = true;
 
@@ -271,7 +272,7 @@ namespace YARG.PlayMode
             // Solos and SP cannot share notes, so we can save some iteration time and only go start-to-end once overall
             int spNoteIndex = 0;
             int soloNoteIndex = 0;
-            bool chordsAreSingleNote = player.chosenInstrument is not ("drums" or "realDrums" or "ghDrums");
+            bool chordsAreSingleNote = player.chosenInstrument is not (Instrument.DRUMS or Instrument.REAL_DRUMS or Instrument.GH_DRUMS);
             foreach (var eventInfo in Play.Instance.chart.events)
             {
                 if (eventInfo.name == spName)
@@ -645,7 +646,7 @@ namespace YARG.PlayMode
             {
                 // Top 10 programming moments
                 // Should affect both "bass" and "proBass"
-                if (player.chosenInstrument.Contains("ass"))
+                if (player.chosenInstrument is Instrument.BASS or Instrument.REAL_BASS)
                 {
                     // int triggerThreshold = IsStarPowerActive ? MaxMultiplier / 2 : MaxMultiplier;
 

@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,12 +19,26 @@ using YARG.Input;
 using YARG.Serialization;
 using YARG.Serialization.Parser;
 using YARG.Settings;
+using YARG.Song.Chart;
 using YARG.Song.Entries;
 using YARG.UI;
 using YARG.Venue;
 
 namespace YARG.PlayMode
 {
+    public class AudioTrackNode
+    {
+        public readonly Instrument baseInstrument;
+        public readonly Instrument realInstrument;
+        public readonly SongStem[] stems;
+        public AudioTrackNode(Instrument baseInstrument, Instrument realInstrument, SongStem[] stems)
+        {
+            this.baseInstrument = baseInstrument;
+            this.realInstrument = realInstrument;
+            this.stems = stems;
+        }
+    }
+
     public class Play : MonoBehaviour
     {
         public static Play Instance { get; private set; }
@@ -51,13 +66,11 @@ namespace YARG.PlayMode
         [field: SerializeField]
         public Camera DefaultCamera { get; private set; }
 
-        private OccurrenceList<string> audioLowering = new();
-        private OccurrenceList<string> audioReverb = new();
+        private OccurrenceList<Instrument> audioLowering = new();
+        private List<Instrument> audioReverb = new();
         private Dictionary<SongStem, (float percent, bool enabled)> audioPitchBend = new(
             AudioHelpers.PitchBendAllowedStems.Select((stem) => new KeyValuePair<SongStem, (float, bool)>(stem, (0f, false)))
         );
-
-        private int stemsReverbed;
 
         private bool audioRunning;
         private float realSongTime;
@@ -67,6 +80,7 @@ namespace YARG.PlayMode
         public float SongLength { get; private set; }
 
         public YargChart chart;
+        public YARGSong chartNew;
 
         [Space]
         [SerializeField]
@@ -131,8 +145,26 @@ namespace YARG.PlayMode
 
         public SongEntry Song => GameManager.Instance.SelectedSong;
 
-        private bool playingRhythm = false;
         private bool playingVocals = false;
+
+        private readonly AudioTrackNode[] AudioArrays =
+        {
+            new(Instrument.GUITAR, Instrument.REAL_GUITAR, new[] { SongStem.Guitar }),
+            new(Instrument.RHYTHM, Instrument.INVALID, new[] { SongStem.Rhythm }),
+            new(Instrument.BASS,   Instrument.REAL_BASS, new[] { SongStem.Bass }),
+            new(Instrument.KEYS,   Instrument.REAL_KEYS, new[] { SongStem.Keys }),
+            new(Instrument.DRUMS,  Instrument.REAL_DRUMS, new[] { SongStem.Drums, SongStem.Drums1, SongStem.Drums2, SongStem.Drums3, SongStem.Drums4 }),
+        };
+
+        private readonly AudioTrackNode[] AudioArrays_Rhythmless =
+        {
+            new(Instrument.GUITAR, Instrument.REAL_GUITAR, new[] { SongStem.Guitar}),
+            new(Instrument.BASS,  Instrument.REAL_BASS, new[] { SongStem.Bass, SongStem.Rhythm }),
+            new(Instrument.KEYS,  Instrument.REAL_KEYS, new[] { SongStem.Keys }),
+            new(Instrument.DRUMS, Instrument.REAL_DRUMS, new[] { SongStem.Drums, SongStem.Drums1, SongStem.Drums2, SongStem.Drums3, SongStem.Drums4 }),
+        };
+
+        private AudioTrackNode[] currAudioArrays = Array.Empty<AudioTrackNode>();
 
         private void Awake()
         {
@@ -164,36 +196,10 @@ namespace YARG.PlayMode
 
             GameUI.Instance.SetLoadingText("Loading chart...");
 
-            // Load chart (from midi, upgrades, etc.)
             LoadChart();
 
-            // Adjust song length if needed
-            // The [end] event is allowed to make the chart shorter (but not longer)
-
-            int i = chart.events.Count - 1;
-            while (i > 0 && chart.events[i].time > SongLength)
-                --i;
-
-            if (i >= 0 && chart.events[i].name == "end")
-                SongLength = chart.events[i].time;
-
-            // The song length must include all notes in the chart
-            foreach (var part in chart.AllParts)
-            {
-                foreach (var difficulty in part)
-                {
-                    if (difficulty.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    var lastNote = difficulty[^1];
-                    if (lastNote.EndTime > SongLength)
-                    {
-                        SongLength = lastNote.EndTime;
-                    }
-                }
-            }
+            if (chartNew.LastNoteTick <= chartNew.EndTick && chartNew.EndTick < SongLength)
+                SongLength = chartNew.EndTick;
 
             // Finally, append some additional time so the song doesn't just end immediately
             SongLength += SONG_END_DELAY * speed;
@@ -202,23 +208,24 @@ namespace YARG.PlayMode
 
             // Spawn tracks
             _tracks = new List<AbstractTrack>();
+            currAudioArrays = AudioArrays_Rhythmless;
             int trackIndex = 0;
             foreach (var player in PlayerManager.players)
             {
-                if (player.chosenInstrument == null)
+                if (player.chosenInstrument == Instrument.INVALID)
                 {
                     // Skip players that are sitting out
                     continue;
                 }
 
                 // Temporary, will make a better system later
-                if (player.chosenInstrument == "rhythm")
+                if (player.chosenInstrument == Instrument.RHYTHM)
                 {
-                    playingRhythm = true;
+                    currAudioArrays = AudioArrays;
                 }
 
                 // Temporary, same here
-                if (player.chosenInstrument is "vocals" or "harmVocals")
+                if (player.chosenInstrument is Instrument.VOCALS or Instrument.HARMONY)
                 {
                     playingVocals = true;
                 }
@@ -276,16 +283,16 @@ namespace YARG.PlayMode
                     // Fix for non-Windows machines
                     // Probably there's a better way to do this.
 #if UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-					Renderer[] renderers = bg.GetComponentsInChildren<Renderer>();
+                    Renderer[] renderers = bg.GetComponentsInChildren<Renderer>();
 
-					foreach (Renderer renderer in renderers) {
-						Material[] materials = renderer.sharedMaterials;
+                    foreach (Renderer renderer in renderers) {
+                        Material[] materials = renderer.sharedMaterials;
 
-						for (int i = 0; i < materials.Length; i++) {
-							Material material = materials[i];
-							material.shader = Shader.Find(material.shader.name);
-						}
-					}
+                        for (int i = 0; i < materials.Length; i++) {
+                            Material material = materials[i];
+                            material.shader = Shader.Find(material.shader.name);
+                        }
+                    }
 #endif
 
                     var bgInstance = Instantiate(bg);
@@ -307,6 +314,7 @@ namespace YARG.PlayMode
         private void LoadChart()
         {
             chart = Song.LoadChart_Original();
+            chartNew = Song.LoadChart();
 
             // initialize current tempo
             if (chart.beats.Count > 2)
@@ -389,64 +397,7 @@ namespace YARG.PlayMode
                 realSongTime += Time.deltaTime * speed;
             }
 
-            UpdateAudio(new[]
-            {
-                "guitar", "realGuitar"
-            }, new[]
-            {
-                "guitar"
-            });
-
-            // Swap what tracks depending on what instrument is playing
-            if (playingRhythm)
-            {
-                // Mute rhythm
-                UpdateAudio(new[]
-                {
-                    "rhythm",
-                }, new[]
-                {
-                    "rhythm"
-                });
-
-                // Mute bass
-                UpdateAudio(new[]
-                {
-                    "bass", "realBass"
-                }, new[]
-                {
-                    "bass",
-                });
-            }
-            else
-            {
-                // Mute bass
-                UpdateAudio(new[]
-                {
-                    "bass", "realBass"
-                }, new[]
-                {
-                    "bass", "rhythm"
-                });
-            }
-
-            // Mute keys
-            UpdateAudio(new[]
-            {
-                "keys", "realKeys"
-            }, new[]
-            {
-                "keys"
-            });
-
-            // Mute drums
-            UpdateAudio(new[]
-            {
-                "drums", "realDrums"
-            }, new[]
-            {
-                "drums", "drums_1", "drums_2", "drums_3", "drums_4"
-            });
+            UpdateAudio();
 
             // Update whammy pitch state
             UpdateWhammyPitch();
@@ -486,64 +437,51 @@ namespace YARG.PlayMode
             audioRunning = false;
         }
 
-        private void UpdateAudio(string[] trackNames, string[] stemNames)
+        private void UpdateAudio()
         {
             if (SettingsManager.Settings.MuteOnMiss.Data)
             {
-                // Get total amount of players with the instrument (and the amount lowered)
-                int amountWithInstrument = 0;
-                int amountLowered = 0;
-
-                for (int i = 0; i < trackNames.Length; i++)
-                {
-                    amountWithInstrument += PlayerManager.PlayersWithInstrument(trackNames[i]);
-                    amountLowered += audioLowering.GetCount(trackNames[i]);
-                }
-
-                // Skip if no one is playing the instrument
-                if (amountWithInstrument <= 0)
-                {
-                    return;
-                }
-
-                // Lower all volumes to a minimum of 5%
-                float percent = 1f - (float) amountLowered / amountWithInstrument;
-                foreach (var name in stemNames)
-                {
-                    var stem = AudioHelpers.GetStemFromName(name);
-
-                    GameManager.AudioManager.SetStemVolume(stem, percent * 0.95f + 0.05f);
-                }
+                foreach (var node in currAudioArrays)
+                    UpdateMuteOnMiss(node);
             }
 
             // Reverb audio with starpower
 
             if (GameManager.AudioManager.Options.UseStarpowerFx)
             {
-                GameManager.AudioManager.ApplyReverb(SongStem.Song, stemsReverbed > 0);
+                GameManager.AudioManager.ApplyReverb(SongStem.Song, audioReverb.Count > 0);
 
-                foreach (var name in stemNames)
+                foreach (var node in currAudioArrays)
                 {
-                    var stem = AudioHelpers.GetStemFromName(name);
-
-                    bool applyReverb = audioReverb.GetCount(name) > 0;
-
-                    // Drums have multiple stems so need to reverb them all if it is drums
-                    switch (stem)
-                    {
-                        case SongStem.Drums:
-                            GameManager.AudioManager.ApplyReverb(SongStem.Drums, applyReverb);
-                            GameManager.AudioManager.ApplyReverb(SongStem.Drums1, applyReverb);
-                            GameManager.AudioManager.ApplyReverb(SongStem.Drums2, applyReverb);
-                            GameManager.AudioManager.ApplyReverb(SongStem.Drums3, applyReverb);
-                            GameManager.AudioManager.ApplyReverb(SongStem.Drums4, applyReverb);
-                            break;
-                        default:
-                            GameManager.AudioManager.ApplyReverb(stem, applyReverb);
-                            break;
-                    }
+                    bool applyReverb = audioReverb.Contains(node.baseInstrument) || audioReverb.Contains(node.realInstrument);
+                    foreach(var stem in node.stems)
+                        GameManager.AudioManager.ApplyReverb(stem, applyReverb);
                 }
             }
+        }
+
+        private void UpdateMuteOnMiss(AudioTrackNode audioNode)
+        {
+            // Get total amount of players with the instrument (and the amount lowered)
+            int amountWithInstrument = PlayerManager.PlayersWithInstrument(audioNode.baseInstrument);
+            int amountLowered = audioLowering.GetCount(audioNode.baseInstrument);
+
+            if (audioNode.realInstrument != Instrument.INVALID)
+            {
+                amountWithInstrument += PlayerManager.PlayersWithInstrument(audioNode.realInstrument);
+                amountLowered += audioLowering.GetCount(audioNode.realInstrument);
+            }
+
+            // Skip if no one is playing the instrument
+            if (amountWithInstrument == 0)
+            {
+                return;
+            }
+
+            // Lower all volumes to a minimum of 5%
+            float percent = 1f - (float) amountLowered / amountWithInstrument;
+            foreach (var stem in audioNode.stems)
+                GameManager.AudioManager.SetStemVolume(stem, percent * 0.95f + 0.05f);
         }
 
         public IEnumerator EndSong(bool showResultScreen)
@@ -590,38 +528,36 @@ namespace YARG.PlayMode
             scoreDisplay.SetActive(false);
         }
 
-        public void LowerAudio(string name)
+        public void LowerAudio(Instrument ins)
         {
-            audioLowering.Add(name);
+            audioLowering.Add(ins);
         }
 
-        public void RaiseAudio(string name)
+        public void RaiseAudio(Instrument ins)
         {
-            audioLowering.Remove(name);
+            audioLowering.Remove(ins);
         }
 
-        public void ReverbAudio(string name, bool apply)
+        public void ReverbAudio(Instrument ins, bool apply)
         {
             if (apply)
             {
-                stemsReverbed++;
-                audioReverb.Add(name);
+                audioReverb.Add(ins);
             }
             else
             {
-                stemsReverbed--;
-                audioReverb.Remove(name);
+                audioReverb.Remove(ins);
             }
         }
 
-        public void TrackWhammyPitch(string name, float delta, bool enable)
+        public void TrackWhammyPitch(Instrument instrument, float delta, bool enable)
         {
-            var stem = name switch
+            var stem = instrument switch
             {
-                "guitar" or "realGuitar" => SongStem.Guitar,
-                "bass" or "realBass" => SongStem.Bass,
-                "rhythm" => SongStem.Rhythm,
-                _ => SongStem.Song
+                Instrument.GUITAR or Instrument.REAL_GUITAR => SongStem.Guitar,
+                Instrument.BASS or Instrument.REAL_BASS     => SongStem.Bass,
+                Instrument.RHYTHM                           => SongStem.Rhythm,
+                _                                           => SongStem.Song
             };
             if (!audioPitchBend.TryGetValue(stem, out var current))
                 return;

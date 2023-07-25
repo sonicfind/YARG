@@ -1,9 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using YARG.Data;
 using YARG.PlayMode;
 using YARG.Settings;
+using static YARG.PlayerManager;
 
 namespace YARG.UI
 {
@@ -45,18 +47,7 @@ namespace YARG.UI
                     break;
             }
 
-            // Temporary
-            bool playingVocals = false;
-            foreach (var player in PlayerManager.players)
-            {
-                if (player.chosenInstrument is "vocals" or "harmVocals")
-                {
-                    playingVocals = true;
-                }
-            }
-
-            // Disable if there are no lyrics or someone is singing
-            if (LyricInfos.Count <= 0 || playingVocals)
+            if (LyricInfos.Count <= 0 || players.Any(player => player.chosenInstrument is Instrument.VOCALS or Instrument.HARMONY))
             {
                 gameObject.SetActive(false);
             }

@@ -20,6 +20,7 @@ using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
+using YARG.Song.Chart;
 
 namespace YARG.Song.Entries
 {
@@ -1254,31 +1255,31 @@ namespace YARG.Song.Entries
             return values;
         }
 
-        //public override YARGSong? LoadChart()
-        //{
-        //    YARGConSong song = new(this);
-        //    FrameworkFile? file;
-        //    if (UpdateMidi != null)
-        //    {
-        //        file = LoadMidiUpdateFile();
-        //        if (file == null)
-        //            return null;
-        //        song.Prepare_Midi(file);
-        //    }
+        public override YARGSong? LoadChart()
+        {
+            YARGConSong song = new(this);
+            if (UpdateMidi != null)
+            {
+                using var update = LoadMidiUpdateFile();
+                if (update == null)
+                    return null;
+                song.Prepare_Midi(update);
+            }
 
-        //    if (Upgrade != null)
-        //    {
-        //        file = Upgrade.LoadUpgradeMidi();
-        //        if (file == null)
-        //            return null;
-        //        song.Prepare_Midi(file);
-        //    }
+            if (Upgrade != null)
+            {
+                using var upgrade = Upgrade.LoadUpgradeMidi();
+                if (upgrade == null)
+                    return null;
+                song.Prepare_Midi(upgrade);
+            }
 
-        //    file = LoadMidiFile();
-        //    if (file == null)
-        //        return null;
-        //    song.Load_Midi(file);
-        //    return song;
-        //}
+            using var file = LoadMidiFile();
+            if (file == null)
+                return null;
+            song.Load_Midi(file);
+            file.Dispose();
+            return song;
+        }
     }
 }

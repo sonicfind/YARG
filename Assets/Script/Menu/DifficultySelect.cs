@@ -20,15 +20,6 @@ namespace YARG.UI
             DIFFICULTY,
         }
 
-        private static List<string> _expertPlusAllowedList = new()
-        {
-            "drums",
-            "realDrums",
-            "ghDrums",
-            "vocals",
-            "harmVocals",
-        };
-
         [SerializeField]
         private GenericOption[] options;
 
@@ -43,7 +34,7 @@ namespace YARG.UI
 
         private List<PlayerManager.Player> playersToConfigure = new(); // Used to more cleanly handle vocals players
         private int playerIndex;                                       // The current player index (not used for vocals)
-        private string[] instruments;
+        private Instrument[] instruments;
         private Difficulty[] difficulties;
         private State state;
 
@@ -172,35 +163,20 @@ namespace YARG.UI
                 {
                     foreach (var player in playersToConfigure)
                     {
-                        player.chosenInstrument = null;
+                        player.chosenInstrument = Instrument.INVALID;
                     }
 
                     IncreasePlayerIndex();
                 }
                 else
                 {
-                    string instrument = instruments[selected];
+                    var instrument = instruments[selected];
                     foreach (var player in playersToConfigure)
                     {
                         player.chosenInstrument = instrument;
                     }
 
-                    Instrument ins = InstrumentHelper.FromStringName(instrument);
-
-                    bool showExpertPlus = false;
-                    switch (ins)
-                    {
-                        case Instrument.VOCALS:
-                        case Instrument.HARMONY:
-                            showExpertPlus = true;
-                            break;
-                        case Instrument.DRUMS:
-                        case Instrument.REAL_DRUMS:
-                        case Instrument.GH_DRUMS:
-                            showExpertPlus = GameManager.Instance.SelectedSong.HasPart(ins, 4);
-                            break;
-                    }
-                    UpdateDifficulty(instrument, showExpertPlus);
+                    UpdateDifficulty(instrument);
                 }
             }
             else if (state == State.DIFFICULTY)
@@ -270,12 +246,7 @@ namespace YARG.UI
             // Header
             header.text = headerText;
 
-            // Get allowed instruments
-            var allInstruments = (Instrument[]) Enum.GetValues(typeof(Instrument));
-
-            // Get available instruments
-            var availableInstruments = allInstruments
-                .Where(instrument => GameManager.Instance.SelectedSong.HasInstrument(instrument)).ToList();
+            var availableInstruments = GameManager.Instance.SelectedSong.GetInstruments();
 
             // Force add pro drums and five lane
             if (availableInstruments.Contains(Instrument.DRUMS))
@@ -295,11 +266,10 @@ namespace YARG.UI
 
             // Add to options
             var ops = new string[availableInstruments.Count + 1];
-            instruments = new string[availableInstruments.Count];
+            instruments = availableInstruments.ToArray();
             for (int i = 0; i < instruments.Length; i++)
             {
-                instruments[i] = availableInstruments[i].ToStringName();
-                ops[i] = availableInstruments[i].ToLocalizedName();
+                ops[i] = instruments[i].ToLocalizedName();
             }
 
             ops[^1] = "Sit Out";
@@ -307,20 +277,21 @@ namespace YARG.UI
             // Set text and sprites
             for (int i = 0; i < options.Length; i++)
             {
-                options[i].SetText("");
                 options[i].SetSelected(false);
 
                 if (i < ops.Length)
                 {
                     options[i].SetText(ops[i]);
-                }
 
-                if (i < instruments.Length)
-                {
-                    var sprite = Addressables.LoadAssetAsync<Sprite>($"FontSprites[{instruments[i]}]")
-                        .WaitForCompletion();
-                    options[i].SetImage(sprite);
+                    if (i < instruments.Length)
+                    {
+                        var sprite = Addressables.LoadAssetAsync<Sprite>($"FontSprites[{instruments[i].ToStringName()}]")
+                            .WaitForCompletion();
+                        options[i].SetImage(sprite);
+                    }
                 }
+                else
+                    options[i].SetText("");
             }
 
             // Select
@@ -328,33 +299,32 @@ namespace YARG.UI
             options[0].SetSelected(true);
         }
 
-        private void UpdateDifficulty(string chosenInstrument, bool showExpertPlus)
+        private void UpdateDifficulty(Instrument ins)
         {
             state = State.DIFFICULTY;
 
             // Get the correct instrument
-            var instrument = InstrumentHelper.FromStringName(chosenInstrument);
-            if (instrument == Instrument.REAL_DRUMS || instrument == Instrument.GH_DRUMS)
+            if (ins == Instrument.REAL_DRUMS || ins == Instrument.GH_DRUMS)
             {
-                instrument = Instrument.DRUMS;
+                ins = Instrument.DRUMS;
             }
 
             // Get the available difficulties
-            var availableDifficulties = new List<Difficulty>();
-            for (int i = 0; i < (int) Difficulty.EXPERT_PLUS; i++)
+            List<Difficulty> availableDifficulties;
+            if (ins == Instrument.VOCALS || ins == Instrument.HARMONY)
+                availableDifficulties = new((Difficulty[])Enum.GetValues(typeof(Difficulty)));
+            else
             {
-                if (GameManager.Instance.SelectedSong.HasPart(instrument, i))
-                    availableDifficulties.Add((Difficulty) i);
-            }
-
-            if (showExpertPlus)
-            {
-                availableDifficulties.Add(Difficulty.EXPERT_PLUS);
+                availableDifficulties = new List<Difficulty>();
+                for (int i = 0; i < (int) Difficulty.EXPERT_PLUS; i++)
+                {
+                    if (GameManager.Instance.SelectedSong.HasPart(ins, i))
+                        availableDifficulties.Add((Difficulty) i);
+                }
             }
 
             optionCount = availableDifficulties.Count;
-
-            difficulties = new Difficulty[optionCount];
+            difficulties = availableDifficulties.ToArray();
             var ops = new string[optionCount];
 
             for (int i = 0; i < optionCount; i++)
@@ -368,7 +338,6 @@ namespace YARG.UI
                     Difficulty.EXPERT_PLUS => "Expert+",
                     _                      => "Unknown"
                 };
-                difficulties[i] = availableDifficulties[i];
             }
 
             for (int i = 0; i < 6; i++)

@@ -18,6 +18,7 @@ using YARG.Data;
 using UnityEngine;
 using System.Text.RegularExpressions;
 using Cysharp.Threading.Tasks;
+using YARG.Song.Chart;
 
 namespace YARG.Song.Entries
 {
@@ -166,6 +167,11 @@ namespace YARG.Song.Entries
                 NoteTrackType.ProKeys      => m_scans.proKeys,
                 _ => throw new ArgumentException("track value is not of a valid type"),
             };
+        }
+
+        public List<Instrument> GetInstruments()
+        {
+            return ((Instrument[]) Enum.GetValues(typeof(Instrument))).Where(instrument => HasInstrument(instrument)).ToList();
         }
 
         public bool HasPart(Instrument inst, int diff)
@@ -355,7 +361,7 @@ namespace YARG.Song.Entries
 
         public abstract void LoadAudio(IAudioManager manager, float speed, params SongStem[] songStems);
         public abstract UniTask<bool> LoadPreviewAudio(IAudioManager manager, float speed);
-        //public abstract YARGSong? LoadChart();
+        public abstract YARGSong? LoadChart();
         public abstract YargChart LoadChart_Original();
         public abstract bool ValidateChartFile();
     }

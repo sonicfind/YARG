@@ -133,24 +133,13 @@ namespace YARG.Song
             return clone;
         }
 
-        public static string RemoveWhitespace(string str)
-        {
-            int index = 0;
-            while (index < str.Length && str[index] <= 32)
-                ++index;
-
-            if (index == str.Length)
-                return string.Empty;
-            return index > 0 ? str[index..] : str;
-        }
-
         private static List<FilterNode> GetFilters(string[] split)
         {
             List<FilterNode> nodes = new();
             foreach (string arg in split)
             {
                 SongAttribute attribute;
-                string argument = RemoveWhitespace(arg);
+                string argument = arg.Trim();
                 if (argument == string.Empty)
                     continue;
 
@@ -200,7 +189,7 @@ namespace YARG.Song
                     argument = RemoveDiacritics(argument);
                 }
 
-                argument = RemoveWhitespace(argument!);
+                argument = argument!.Trim();
                 nodes.Add(new(attribute, argument));
                 if (attribute == SongAttribute.UNSPECIFIED)
                     break;

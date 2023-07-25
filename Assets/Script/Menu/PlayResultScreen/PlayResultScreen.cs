@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
@@ -121,7 +121,7 @@ namespace YARG.UI.PlayResultScreen
             foreach (var player in PlayerManager.players)
             {
                 // Skip "Sit Out"s
-                if (player.chosenInstrument == null)
+                if (player.chosenInstrument == Instrument.INVALID)
                 {
                     continue;
                 }
@@ -187,7 +187,7 @@ namespace YARG.UI.PlayResultScreen
             foreach (var player in PlayerManager.players)
             {
                 // skip players sitting out
-                if (player.chosenInstrument == null) continue;
+                if (player.chosenInstrument == Instrument.INVALID) continue;
 
                 var pc = Instantiate(playerCardPrefab, playerCardsContainer.transform).GetComponent<PlayerCard>();
 

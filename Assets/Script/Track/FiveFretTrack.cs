@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using YARG.Data;
@@ -222,17 +222,11 @@ namespace YARG.PlayMode
         {
             switch (player.chosenInstrument)
             {
-                case "guitar":
-                    Play.Instance.ReverbAudio("guitar", on);
-                    break;
-                case "rhythm":
-                    Play.Instance.ReverbAudio("rhythm", on);
-                    break;
-                case "bass":
-                    Play.Instance.ReverbAudio("bass", on);
-                    break;
-                case "keys":
-                    Play.Instance.ReverbAudio("keys", on);
+                case Instrument.GUITAR:
+                case Instrument.BASS:
+                case Instrument.RHYTHM:
+                case Instrument.KEYS:
+                    Play.Instance.ReverbAudio(player.chosenInstrument, on);
                     break;
             }
         }

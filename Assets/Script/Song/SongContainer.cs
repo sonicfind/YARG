@@ -56,7 +56,7 @@ namespace YARG.Song
             SongLengths = new();
         }
 
-        public static async UniTask Scan(bool quick, Action<SongCache> updateUi = null, bool multithreaded = true)
+        public static async UniTask Scan(bool quick, Action<SongCache> updateUi = null, bool multithreaded = false)
         {
             using SongCache cache = multithreaded ? new SongCache_Parallel() : new SongCache_Serial();
             var scanTask = Task.Run(() =>

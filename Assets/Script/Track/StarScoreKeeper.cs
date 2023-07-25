@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -113,7 +113,7 @@ namespace YARG.PlayMode
             }
         }
 
-        public StarScoreKeeper(List<NoteInfo> chart, ScoreKeeper scoreKeeper, string instrument, int ptPerNote = 25,
+        public StarScoreKeeper(List<NoteInfo> chart, ScoreKeeper scoreKeeper, Instrument instrument, int ptPerNote = 25,
             double ptSusPerBeat = 0)
         {
             instances.Add(this);
@@ -154,7 +154,7 @@ namespace YARG.PlayMode
             SetupScoreThreshold(instrument);
         }
 
-        public StarScoreKeeper(ScoreKeeper scoreKeeper, string instrument, int noteCount, int ptPerNote,
+        public StarScoreKeeper(ScoreKeeper scoreKeeper, Instrument instrument, int noteCount, int ptPerNote,
             int soloNotes = 0)
         {
             instances.Add(this);
@@ -167,18 +167,22 @@ namespace YARG.PlayMode
         }
 
         // populate scoreThreshold
-        private void SetupScoreThreshold(string instrument)
+        private void SetupScoreThreshold(Instrument instrument)
         {
             float[] curThresholds;
             switch (instrument)
             {
-                case var i when i.ToLower().Contains("bass"):
+                case Instrument.BASS:
+                case Instrument.REAL_BASS:
                     curThresholds = starThresholdsBass;
                     break;
-                case var i when i.ToLower().Contains("drum"):
+                case Instrument.DRUMS:
+                case Instrument.GH_DRUMS:
+                case Instrument.REAL_DRUMS:
                     curThresholds = starThresholdsDrums;
                     break;
-                case var i when i.ToLower().Contains("vocal"):
+                case Instrument.VOCALS:
+                case Instrument.HARMONY:
                     curThresholds = starThresholdsVocals;
                     break;
                 default:

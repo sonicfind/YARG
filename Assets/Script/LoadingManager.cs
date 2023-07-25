@@ -138,7 +138,7 @@ namespace YARG
             {
                 AddTestPlayPlayer(new PlayerManager.Player
                 {
-                    chosenInstrument = "guitar",
+                    chosenInstrument = Instrument.GUITAR,
                     chosenDifficulty = Difficulty.EXPERT,
                     inputStrategy = new FiveFretInputStrategy
                     {
@@ -148,7 +148,7 @@ namespace YARG
 
                 AddTestPlayPlayer(new PlayerManager.Player
                 {
-                    chosenInstrument = "realDrums",
+                    chosenInstrument = Instrument.REAL_DRUMS,
                     chosenDifficulty = Difficulty.EXPERT_PLUS,
                     inputStrategy = new DrumsInputStrategy
                     {
@@ -158,7 +158,7 @@ namespace YARG
 
                 AddTestPlayPlayer(new PlayerManager.Player
                 {
-                    chosenInstrument = "vocals",
+                    chosenInstrument = Instrument.VOCALS,
                     chosenDifficulty = Difficulty.EXPERT,
                     inputStrategy = new MicInputStrategy
                     {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -50,9 +50,9 @@ namespace YARG.PlayMode
         public EventInfo CurrentVisualFill =>
             fillVisualIndex < fillSections.Count ? fillSections[fillVisualIndex] : null;
 
-        private readonly string[] proInst =
+        private readonly Instrument[] proInst =
         {
-            "realDrums", "ghDrums"
+            Instrument.REAL_DRUMS, Instrument.GH_DRUMS
         };
 
         private int ptsPerNote;
@@ -259,11 +259,7 @@ namespace YARG.PlayMode
 
         public override void SetReverb(bool on)
         {
-            Play.Instance.ReverbAudio("drums", on);
-            Play.Instance.ReverbAudio("drums_1", on);
-            Play.Instance.ReverbAudio("drums_2", on);
-            Play.Instance.ReverbAudio("drums_3", on);
-            Play.Instance.ReverbAudio("drums_4", on);
+            Play.Instance.ReverbAudio(Instrument.DRUMS, on);
         }
 
         private void UpdateInput()
@@ -406,15 +402,8 @@ namespace YARG.PlayMode
             NoteInfo hit = null;
             foreach (var note in notes)
             {
-                // Check if correct cymbal was hit
-                bool cymbalHit = note.hopo == cymbal;
-                if (player.chosenInstrument == "drums")
-                {
-                    cymbalHit = true;
-                }
-
                 // Check if correct drum was hit
-                if (note.fret == drum && cymbalHit)
+                if (note.fret == drum && (note.hopo == cymbal || player.chosenInstrument == Instrument.DRUMS))
                 {
                     hit = note;
                     if (note.isActivator)
@@ -501,8 +490,7 @@ namespace YARG.PlayMode
                 // Kick
                 model = NoteComponent.ModelType.FULL;
             }
-            else if (player.chosenInstrument == "ghDrums" &&
-                SettingsManager.Settings.UseCymbalModelsInFiveLane.Data)
+            else if (player.chosenInstrument == Instrument.GH_DRUMS && SettingsManager.Settings.UseCymbalModelsInFiveLane.Data)
             {
                 if (noteInfo.fret == 1 || noteInfo.fret == 3)
                 {
@@ -512,7 +500,7 @@ namespace YARG.PlayMode
             }
             else
             {
-                if (noteInfo.hopo && player.chosenInstrument == "realDrums")
+                if (noteInfo.hopo && player.chosenInstrument == Instrument.REAL_DRUMS)
                 {
                     // Cymbal (only for pro-drums)
                     model = NoteComponent.ModelType.HOPO;

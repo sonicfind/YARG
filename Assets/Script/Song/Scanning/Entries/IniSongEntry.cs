@@ -17,6 +17,7 @@ using Melanchall.DryWetMidi.Core;
 using YARG.Assets.Script.Types;
 using Cysharp.Threading.Tasks;
 using static UnityEditor.FilePathAttribute;
+using YARG.Song.Chart;
 
 namespace YARG.Song.Entries
 {
@@ -464,22 +465,22 @@ namespace YARG.Song.Entries
             return false;
         }
 
-        //public override YARGSong? LoadChart()
-        //{
-        //    try
-        //    {
-        //        YARGIniSong song = new(this);
-        //        if (m_chartType == ChartType.CHART)
-        //            song.Load_Chart(m_chartFile!.FullName, false);
-        //        else
-        //            song.Load_Midi(m_chartFile!.FullName);
-        //        return song;
-        //    }
-        //    catch
-        //    {
-        //        return null;
-        //    }
-        //}
+        public override YARGSong? LoadChart()
+        {
+            try
+            {
+                YARGIniSong song = new(this);
+                if (m_chartType == ChartType.CHART)
+                    song.Load_Chart(m_chartFile!.FullName, false);
+                else
+                    song.Load_Midi(m_chartFile!.FullName);
+                return song;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         public override YargChart LoadChart_Original()
         {

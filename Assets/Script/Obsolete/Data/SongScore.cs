@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -10,13 +10,13 @@ namespace YARG.Data
         public DateTime lastPlayed;
         public int timesPlayed;
 
-        public Dictionary<string, DiffPercent> highestPercent;
+        public Dictionary<Instrument, DiffPercent> highestPercent;
 
-        public Dictionary<string, DiffScore> highestScore;
+        public Dictionary<Instrument, DiffScore> highestScore;
 
-        public KeyValuePair<string, DiffPercent> GetHighestPercent()
+        public KeyValuePair<Instrument, DiffPercent> GetHighestPercent()
         {
-            KeyValuePair<string, DiffPercent> highest = default;
+            KeyValuePair<Instrument, DiffPercent> highest = default;
 
             foreach (var kvp in highestPercent)
             {
@@ -29,9 +29,9 @@ namespace YARG.Data
             return highest;
         }
 
-        public KeyValuePair<string, DiffScore> GetHighestScore()
+        public KeyValuePair<Instrument, DiffScore> GetHighestScore()
         {
-            KeyValuePair<string, DiffScore> highest = default;
+            KeyValuePair<Instrument, DiffScore> highest = default;
 
             foreach (var kvp in highestScore)
             {

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -36,7 +36,7 @@ namespace YARG
 
             public bool brutalMode = false;
 
-            public string chosenInstrument = "guitar";
+            public Instrument chosenInstrument = Instrument.INVALID;
             public Difficulty chosenDifficulty = Difficulty.EXPERT;
 
             public LastScore? lastScore = null;
@@ -101,7 +101,7 @@ namespace YARG
             }
         }
 
-        public static int PlayersWithInstrument(string instrument)
+        public static int PlayersWithInstrument(Instrument instrument)
         {
             return players.Count(i => i.chosenInstrument == instrument);
         }

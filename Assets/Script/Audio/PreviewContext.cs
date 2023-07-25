@@ -94,6 +94,7 @@ namespace YARG.Audio
                     {
                         PreviewStartTime = 10.0;
                     }
+					
                     PreviewEndTime = song.PreviewEndTimeSpan.TotalSeconds;
                     if (PreviewEndTime <= 0.0)
                     {

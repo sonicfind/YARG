@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
 using YARG.Audio;
 using YARG.Chart;
+using YARG.Types;
 
 namespace YARG.PlayMode
 {
@@ -43,12 +44,12 @@ namespace YARG.PlayMode
 
         private void Start()
         {
-            var beats = Play.Instance.chart.beats;
-            foreach (var ev in beats)
+            var beats = Play.Instance.chartNew.m_beatMap;
+            foreach (FlatMapNode<ulong, BeatStyle> ev in beats)
             {
-                if (ev.Style == BeatStyle.MEASURE)
+                if (ev.obj == BeatStyle.MEASURE)
                 {
-                    bars.Add(ev.Time);
+                    bars.Add(ev.key);
                 }
             }
 

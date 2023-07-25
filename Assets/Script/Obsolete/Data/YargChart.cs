@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using MoonscraperChartEditor.Song;
 using YARG.Chart;
+using YARG.Song.Chart;
 
 namespace YARG.Data
 {
@@ -202,21 +203,26 @@ namespace YARG.Data
             }
         }
 
-        public List<NoteInfo>[] GetChartByName(string name)
+        //public YargChart(YARGSong song)
+        //{
+
+        //}
+
+        public List<NoteInfo>[] GetChart(Instrument instrument)
         {
-            return name switch
+            return instrument switch
             {
-                "guitar"     => Guitar,
-                "guitarCoop" => GuitarCoop,
-                "rhythm"     => Rhythm,
-                "bass"       => Bass,
-                "keys"       => Keys,
-                "realGuitar" => RealGuitar,
-                "realBass"   => RealBass,
-                "drums"      => Drums,
-                "realDrums"  => RealDrums,
-                "ghDrums"    => GhDrums,
-                _            => throw new InvalidOperationException($"Unsupported chart type `{name}`.")
+                Instrument.GUITAR      => Guitar,
+                Instrument.GUITAR_COOP => GuitarCoop,
+                Instrument.RHYTHM      => Rhythm,
+                Instrument.BASS        => Bass,
+                Instrument.KEYS        => Keys,
+                Instrument.REAL_GUITAR => RealGuitar,
+                Instrument.REAL_BASS   => RealBass,
+                Instrument.DRUMS       => Drums,
+                Instrument.REAL_DRUMS  => RealDrums,
+                Instrument.GH_DRUMS    => GhDrums,
+                _                      => throw new InvalidOperationException($"Unsupported chart type `{instrument.ToStringName()}`.")
             };
         }
 

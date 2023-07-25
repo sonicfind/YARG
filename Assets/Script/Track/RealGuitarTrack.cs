@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using YARG.Data;
@@ -35,8 +35,6 @@ namespace YARG.PlayMode
         private const int PTS_PER_NOTE = 120;
         private const int SUSTAIN_PTS_PER_BEAT = 60;
 
-        private string stemName;
-
         private float whammyAmount;
         private bool whammyLastNote;
         private float whammyAnimationAmount;
@@ -45,14 +43,6 @@ namespace YARG.PlayMode
         {
             notePool.player = player;
             genericPool.player = player;
-
-            // Stem name
-            stemName = player.chosenInstrument switch
-            {
-                "realGuitar" => "guitar",
-                "realBass" => "bass",
-                _ => ""
-            };
 
             // Lefty flip (TODO)
 
@@ -190,7 +180,7 @@ namespace YARG.PlayMode
 
         public override void SetReverb(bool on)
         {
-            Play.Instance.ReverbAudio(stemName, on);
+            Play.Instance.ReverbAudio(player.chosenInstrument, on);
         }
 
         private void UpdateInput()
@@ -366,7 +356,7 @@ namespace YARG.PlayMode
             whammyAmount += Mathf.Abs(delta) * 0.25f;
             whammyAmount = Mathf.Clamp(whammyAmount, 0f, 1f / 3f);
 
-            Play.Instance.TrackWhammyPitch(stemName, delta, heldNotes.Count > 0);
+            Play.Instance.TrackWhammyPitch(player.chosenInstrument, delta, heldNotes.Count > 0);
         }
 
         private void SpawnNote(NoteInfo noteInfo, float time)

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using YARG.Data;
@@ -25,7 +25,7 @@ namespace YARG.UI
 
         public void SetScore(PlayerManager.Player player, ScoreType type)
         {
-            if (player.chosenInstrument == null)
+            if (player.chosenInstrument == Instrument.INVALID)
             {
                 playerName.text = player.DisplayName;
                 text[0].text = "<color=red>Sat Out</color>";

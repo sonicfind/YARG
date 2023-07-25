@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -146,7 +146,7 @@ namespace YARG.PlayMode
         {
             get
             {
-                if (_micInputs[0].Player.chosenInstrument == "harmVocals")
+                if (_micInputs[0].Player.chosenInstrument == Instrument.HARMONY)
                 {
                     return "harmVocal_endPhrase";
                 }
@@ -221,7 +221,7 @@ namespace YARG.PlayMode
             foreach (var player in PlayerManager.players)
             {
                 // Skip people who are sitting out
-                if (player.chosenInstrument != "vocals" && player.chosenInstrument != "harmVocals")
+                if (player.chosenInstrument != Instrument.VOCALS && player.chosenInstrument != Instrument.HARMONY)
                 {
                     continue;
                 }
@@ -394,10 +394,13 @@ namespace YARG.PlayMode
 
         private void OnSongStart()
         {
+            int harmonyCount = 1;
             // Get chart(s)
-            if (_micInputs[0].Player.chosenInstrument == "harmVocals")
+            if (_micInputs[0].Player.chosenInstrument == Instrument.HARMONY)
             {
                 _charts = Play.Instance.chart.harmLyrics.ToList();
+                trackRenderer.material.SetTexture("_BaseMap", harmonyTexture);
+                harmonyCount = Play.Instance.chart.harmLyrics.Length;
             }
             else
             {
@@ -405,19 +408,6 @@ namespace YARG.PlayMode
                 {
                     Play.Instance.chart.realLyrics
                 };
-            }
-
-            // Set up harmony vocal track
-            if (_micInputs[0].Player.chosenInstrument == "harmVocals")
-            {
-                trackRenderer.material.SetTexture("_BaseMap", harmonyTexture);
-            }
-
-            // Get count of harmony parts
-            int harmonyCount = 1;
-            if (_micInputs[0].Player.chosenInstrument == "harmVocals")
-            {
-                harmonyCount = Play.Instance.chart.harmLyrics.Length;
             }
 
             // Set up chart indices
@@ -1069,7 +1059,7 @@ namespace YARG.PlayMode
                 (note / 12f * 0.42f) +
                 (octave - 3) * 0.42f;
 
-            if (Instance._micInputs[0].Player.chosenInstrument == "harmVocals")
+            if (Instance._micInputs[0].Player.chosenInstrument == Instrument.HARMONY)
             {
                 z = Mathf.Clamp(z, -0.61f, 0.61f);
             }

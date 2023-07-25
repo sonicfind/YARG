@@ -1,6 +1,7 @@
 ﻿using System;
 using Discord;
 using UnityEngine;
+using YARG.Data;
 using YARG.PlayMode;
 using YARG.Song;
 using YARG.Song.Entries;
@@ -214,26 +215,26 @@ namespace YARG.ThirdParty
         private void OnInstrumentSelection(PlayerManager.Player playerInfo)
         {
             // ToLowerInvariant() because the DISCORD API DOESN'T HAVE UPPERCASE ARTWORK NAMES (WHY)
-            _currentSmallImage = playerInfo.chosenInstrument.ToLowerInvariant();
+            _currentSmallImage = playerInfo.chosenInstrument.ToStringName().ToLowerInvariant();
 
 #pragma warning disable format
 
             _currentSmallText = playerInfo.chosenInstrument switch
             {
-                "vocals"     => "Belting one out",
-                "harmVocals" => "Belting one out, with friends!",
-                "drums"      => "Working the skins",
-                "realDrums"  => "Really working the skins",
-                "ghDrums"    => "Working the skins +1",
-                "guitar"     => "Making it talk",
-                "guitarCoop" => "GTR_COOP_PLACEHOLDER",
-                "rhythm"     => "RHYTHM_PLACEHOLDER",
-                "realGuitar" => "Really making it talk",
-                "bass"       => "In the groove",
-                "realBass"   => "Really in the groove",
-                "keys"       => "Tickling the ivory",
-                "realKeys"   => "Really tickling the ivory",
-                _            => ""
+                Instrument.VOCALS      => "Belting one out",
+                Instrument.HARMONY     => "Belting one out, with friends!",
+                Instrument.DRUMS       => "Working the skins",
+                Instrument.REAL_DRUMS  => "Really working the skins",
+                Instrument.GH_DRUMS    => "Working the skins +1",
+                Instrument.GUITAR      => "Making it talk",
+                Instrument.GUITAR_COOP => "GTR_COOP_PLACEHOLDER",
+                Instrument.RHYTHM      => "RHYTHM_PLACEHOLDER",
+                Instrument.REAL_GUITAR => "Really making it talk",
+                Instrument.BASS        => "In the groove",
+                Instrument.REAL_BASS   => "Really in the groove",
+                Instrument.KEYS        => "Tickling the ivory",
+                Instrument.REAL_KEYS   => "Really tickling the ivory",
+                _                      => ""
             };
 
 #pragma warning restore format
