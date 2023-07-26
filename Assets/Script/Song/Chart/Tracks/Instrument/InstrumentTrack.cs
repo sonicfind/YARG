@@ -45,12 +45,12 @@ namespace YARG.Song.Chart
             return endTime;
         }
 
-        public Player_Instrument[] SetupPlayers(Dictionary<int, InputHandler[]> playerMapping)
+        public Player[] SetupPlayers(Dictionary<int, InputHandler[]> playerMapping, SyncTrack sync)
         {
-            var result = new List<Player_Instrument>();
+            var result = new List<Player>();
             var phrases = !specialPhrases.IsEmpty() ? specialPhrases : null;
             foreach ((int diffIndex, var handlers) in playerMapping)
-                result.AddRange(difficulties[diffIndex].SetupPlayers(handlers, phrases));
+                result.AddRange(difficulties[diffIndex].SetupPlayers(handlers, sync, phrases));
             return result.ToArray();
         }
     }

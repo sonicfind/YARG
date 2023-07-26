@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using YARG.Chart;
 using YARG.Data;
+using YARG.Song.Chart;
+using YARG.Types;
 
 namespace YARG.PlayMode
 {
@@ -11,10 +13,10 @@ namespace YARG.PlayMode
     /// </summary>
     public class SustainTracker
     {
-        private List<Beat> _beats;
+        private FlatMap<BeatPosition, BeatStyle> _beats;
         private Dictionary<AbstractInfo, double> noteProgress = new();
 
-        public SustainTracker(List<Beat> beats)
+        public SustainTracker(FlatMap<BeatPosition, BeatStyle> beats)
         {
             _beats = beats;
         }

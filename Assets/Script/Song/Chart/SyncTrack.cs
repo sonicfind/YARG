@@ -10,9 +10,16 @@ namespace YARG.Song.Chart
 {
     public class SyncTrack
     {
-        public readonly TimedNativeFlatMap<Tempo> tempoMarkers = new();
-        public readonly TimedNativeFlatMap<TimeSig> timeSigs = new();
-        public SyncTrack() {}
+        private uint tickrate;
+        public readonly TimedFlatMap<Tempo> tempoMarkers = new();
+        public readonly TimedFlatMap<TimeSig> timeSigs = new();
+        public SyncTrack() { }
+
+        public uint Tickrate
+        {
+            get { return tickrate; }
+            set { tickrate = value; }
+        }
 
         public void AddFromMidi(MidiFileReader reader)
         {
@@ -52,7 +59,7 @@ namespace YARG.Song.Chart
             }
         }
 
-        public void CheckStartOfTempoMap()
+        public void FinalizeTempoMap()
         {
             if (tempoMarkers.IsEmpty() || tempoMarkers.At_index(0).key != 0)
                 tempoMarkers.Insert(0, 0, new(Tempo.MICROS_AT_120BPM));
@@ -65,6 +72,30 @@ namespace YARG.Song.Chart
                 if (timeSig.Denominator == 255)
                     timeSig.Denominator = 2;
             }
+
+            var prevNode = tempoMarkers.At_index(0);
+            for (int i = 1; i < tempoMarkers.Count; i++)
+            {
+                ref var marker = ref tempoMarkers.At_index(i);
+                if (marker.obj.Anchor == 0)
+                    marker.obj.Anchor = (ulong)(((marker.key - prevNode.key) / (float)tickrate) * prevNode.obj.Micros) + prevNode.obj.Anchor;
+                prevNode = marker;
+            }
+        }
+
+        internal const int MICROS_PER_SECOND = 1000000;
+
+        public float ConvertToSeconds(ulong ticks)
+        {
+            for (int i = 0; i < tempoMarkers.Count; i++)
+            {
+                ref var marker = ref tempoMarkers.At_index(i);
+                if (i + 1 == tempoMarkers.Count || ticks < tempoMarkers.At_index(i + 1).key)
+                {
+                    return ((marker.obj.Micros / (float)(tickrate)) * (ticks - marker.key) + marker.obj.Anchor) / MICROS_PER_SECOND;
+                }
+            }
+            throw new Exception("dafuq");
         }
     };
 }

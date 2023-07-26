@@ -117,9 +117,7 @@ namespace YARG.Serialization
             this.disposeReader = disposeReader;
         }
 
-        public ChartFileReader(byte* ptr, int length) : this(new TxtFileReader(ptr, length), true) { }
-
-        public ChartFileReader(FrameworkFile file) : this(new TxtFileReader(file), true) { }
+        public ChartFileReader(FrameworkFile file) : this(new TxtFileReader(file.Ptr, file.Length), true) { }
 
         public ChartFileReader(byte[] data) : this(new TxtFileReader(data), true) { }
 

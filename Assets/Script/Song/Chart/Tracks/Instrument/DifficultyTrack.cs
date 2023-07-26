@@ -7,13 +7,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using YARG.Types;
+using YARG.Assets.Script.Types;
 
 #nullable enable
 namespace YARG.Song.Chart
 {
     public interface IDifficultyTrack
     {
-        public Player_Instrument[] SetupPlayers(InputHandler[] handlers, TimedFlatMap<List<SpecialPhrase>>? phrases = null);
+        public Player[] SetupPlayers(InputHandler[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null);
     }
 
     public class DifficultyTrack<T> : Track, IDifficultyTrack
@@ -37,66 +38,47 @@ namespace YARG.Song.Chart
             return note.key + note.obj.GetLongestSustain();
         }
 
-        public unsafe Player_Instrument[] SetupPlayers(InputHandler[] handlers, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
+        public unsafe Player[] SetupPlayers(InputHandler[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
         {
-            var players = new Player_Instrument[handlers.Length];
-            var separateTracks = new (ulong, IPlayableNote)[handlers.Length][];
-            for (int i = 0; i < separateTracks.Length; i++)
-            {
-                separateTracks[i] = new (ulong, IPlayableNote)[notes.Count];
-                players[i] = new(separateTracks[i], handlers[i]);
-            }
-
-            var playableNotes = separateTracks[0];
-            ulong prevPos = 0;
-            T* prevNote = null;
-            (ulong, IPlayableNote) playableNode;
-
+            var players = new Player_Instrument_S<T>[handlers.Length];
+            float[] notePositions = new float[notes.Count];
             for (int i = 0; i < notes.Count; ++i)
+                notePositions[i] = sync.ConvertToSeconds(notes.At_index(i).key);
+
+            for (int i = 0; i < handlers.Length; i++)
             {
-                ref var node = ref notes.Data[i];
-                playableNode.Item1 = node.key;
-                playableNode.Item2 = node.obj.ConvertToPlayable(node.key, prevPos, prevNote);
-                for (int j = 0; j < separateTracks.Length; ++j)
-                    separateTracks[j][i] = playableNode;
-                prevPos = node.key;
-                prevNote = &notes.Data[i].obj;
+                players[i] = new(handlers[i], notes, notePositions, sync);
             }
-            
+
             int noteIndex = 0;
             foreach (FlatMapNode<ulong, List<SpecialPhrase>> node in phrases ?? specialPhrases)
             {
-                while (noteIndex < playableNotes.Length && playableNotes[noteIndex].Item1 < node.key)
+                while (noteIndex < notes.Count && notes.At_index(noteIndex).key < node.key)
                     ++noteIndex;
 
                 foreach (var phrase in node.obj)
                 {
                     ulong endTick = node.key + phrase.Duration;
                     int endIndex = noteIndex;
-                    while (endIndex < playableNotes.Length && playableNotes[endIndex].Item1 < endTick)
+                    while (endIndex < notes.Count && notes.At_index(endIndex).key < endTick)
                         ++endIndex;
 
+                    float position = sync.ConvertToSeconds(node.key);
+                    float endPosition = sync.ConvertToSeconds(endTick);
                     for (int p = 0; p < players.Length; ++p)
                     {
                         var player = players[p];
-                        var track = separateTracks[p];
                         switch (phrase.Type)
                         {
                             case SpecialPhraseType.StarPower:
                             case SpecialPhraseType.StarPower_Diff:
                                 {
-                                    var overdrive = new OverdrivePhrase(player, endIndex - noteIndex);
-                                    for (int i = noteIndex; i < endIndex; ++i)
-                                        track[i].Item2.AttachPhrase(overdrive);
-                                    player.AttachPhrase(node.key, endTick, overdrive);
+                                    player.AttachPhrase(position, endPosition, new OverdrivePhrase(player, endIndex - noteIndex));
                                     break;
                                 }
                             case SpecialPhraseType.Solo:
                                 {
-                                    var solo = new SoloPhrase(player, endIndex - noteIndex);
-                                    for (int i = noteIndex; i < endIndex; ++i)
-                                        track[i].Item2.AttachPhrase(solo);
-                                    player.AttachPhrase(node.key, endTick, solo);
+                                    player.AttachPhrase(position, endPosition, new SoloPhrase<T>(player, endIndex - noteIndex));
                                     break;
                                 }
 

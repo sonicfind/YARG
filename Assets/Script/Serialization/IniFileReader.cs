@@ -27,7 +27,7 @@ namespace YARG.Serialization
             length = reader.Length;
         }
 
-        public IniFileReader(FrameworkFile file) : this(new TxtFileReader(file)) { disposeReader = true; }
+        public IniFileReader(FrameworkFile file) : this(new TxtFileReader(file.Ptr, file.Length)) { disposeReader = true; }
 
         public IniFileReader(byte[] data) : this(new TxtFileReader(data)) { disposeReader = true; }
 

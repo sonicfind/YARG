@@ -11,7 +11,7 @@ namespace YARG.Song.Chart.Notes
         public SixFret() : base(7) { }
 
 #nullable enable
-        public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
+        public override IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote)
         {
             var type = GetGuitarType(position, prevPosition, prevNote as FiveFret);
             string mesh = type switch
@@ -21,7 +21,7 @@ namespace YARG.Song.Chart.Notes
                 PlayableGuitarType.TAP => "SixFretTap",
                 _ => throw new Exception("stoopid")
             };
-            return new PlayableNote_Guitar(mesh, type, lanes);
+            return new PlayableNote_Guitar<SixFret>(mesh, type, lanes);
         }
 
         internal static readonly uint[] SIXFRETLANES = new uint[5] { 4, 5, 6, 1, 2 };
@@ -127,7 +127,7 @@ namespace YARG.Song.Chart.Notes
             return true;
         }
 
-        public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
+        public IPlayableNote ConvertToPlayable<T>(in ulong position, in SyncTrack sync, in ulong prevPosition, in T* prevNote)
             where T : unmanaged, INote_S
         {
             var type = IGuitarNote.GetGuitarType(position, prevPosition, ref this, (SixFret_S*)prevNote);
@@ -140,7 +140,7 @@ namespace YARG.Song.Chart.Notes
             };
 
             fixed (TruncatableSustain* lanes = &open)
-                return new PlayableNote_Guitar_S(mesh, type, lanes, 6);
+                return new PlayableNote_Guitar_S<SixFret_S>(mesh, type, lanes, 6);
         }
 
         public ulong GetLongestSustain()

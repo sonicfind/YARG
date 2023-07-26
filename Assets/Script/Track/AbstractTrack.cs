@@ -221,7 +221,7 @@ namespace YARG.PlayMode
             commonTrack.TrackCamera.targetTexture = renderTexture;
 
             // AMONG US
-            susTracker = new(Play.Instance.chart.beats);
+            susTracker = new(Play.Instance.chartNew.m_beatMap);
         }
 
         private void Start()
@@ -411,17 +411,19 @@ namespace YARG.PlayMode
 
         private void UpdateBeats()
         {
-            var beats = Play.Instance.chart.beats;
-            while (beats.Count > currentBeatIndex && beats[currentBeatIndex].Time <= TrackStartTime)
+            var beats = Play.Instance.chartNew.m_beatMap;
+            while (beats.Count > currentBeatIndex)
             {
-                var beatInfo = beats[currentBeatIndex];
+                ref var beatInfo = ref beats.At_index(currentBeatIndex);
+                if (beatInfo.key.seconds > TrackStartTime)
+                    break;
 
-                float z = TRACK_SPAWN_OFFSET - CalcLagCompensation(TrackStartTime, beatInfo.Time);
-                if (beatInfo.Style is BeatStyle.STRONG or BeatStyle.WEAK)
+                float z = TRACK_SPAWN_OFFSET - CalcLagCompensation(TrackStartTime, beatInfo.key.seconds);
+                if (beatInfo.obj is BeatStyle.STRONG or BeatStyle.WEAK)
                 {
                     genericPool.Add("beatLine_minor", new(0f, 0.01f, z));
                 }
-                else if (beatInfo.Style == BeatStyle.MEASURE)
+                else if (beatInfo.obj == BeatStyle.MEASURE)
                 {
                     genericPool.Add("beatLine_major", new(0f, 0.01f, z));
                 }

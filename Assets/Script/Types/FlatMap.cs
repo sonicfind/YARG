@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using TagLib.Riff;
 using UnityEngine.InputSystem;
 
 namespace YARG.Types
@@ -26,11 +27,10 @@ namespace YARG.Types
     }
 
 #nullable enable
-    public abstract unsafe class FlatMap_Base<Key, T> : IDisposable, IEnumerable
-       where T : new()
+    public abstract unsafe class FlatMap_Base<Key, T> : IDisposable, IEnumerable<FlatMapNode<Key, T>>
        where Key : IComparable<Key>, IEquatable<Key>
     {
-        internal static readonly int DEFAULTCAPACITY = 16;
+        internal const int DEFAULTCAPACITY = 16;
 
         protected int _count;
         protected int _capacity;
@@ -187,7 +187,9 @@ namespace YARG.Types
             return _count > 0 && At_index(_count - 1).key.Equals(key);
         }
 
-        public bool Contains(Key key) { return Find(0, key) >= 0; }
+        public bool Contains(Key key) { return Contains(0, key); }
+
+        public bool Contains(int searchIndex, Key key) { return Find(searchIndex, key) >= 0; }
 
         public int Find(int searchIndex, Key key)
         {
@@ -211,6 +213,11 @@ namespace YARG.Types
         public abstract FlatMapNode<Key, T>[] ToArray();
 
         public IEnumerator GetEnumerator() { return new Enumerator(this); }
+
+        IEnumerator<FlatMapNode<Key, T>> IEnumerable<FlatMapNode<Key, T>>.GetEnumerator()
+        {
+            return ((IEnumerable<FlatMapNode<Key, T>>)this).GetEnumerator();
+        }
 
         public struct Enumerator : IEnumerator<FlatMapNode<Key, T>>, IEnumerator
         {
@@ -237,8 +244,7 @@ namespace YARG.Types
 
                 if (_version == localMap._version && ((uint) _index < (uint) localMap._count))
                 {
-                    _current = localMap.At_index(_index);
-                    _index++;
+                    _current = localMap.At_index(_index++);
                     return true;
                 }
                 return MoveNextRare();

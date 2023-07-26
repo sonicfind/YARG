@@ -247,7 +247,7 @@ namespace YARG.Song.Entries
             m_icon           = reader.ReadLEBString();
             m_hopo_frequency = reader.ReadUInt64();
             IsMaster         = reader.ReadBoolean();
-            m_delay          = reader.ReadInt32();
+            m_delay          = reader.ReadFloat();
             m_loadingPhrase  = reader.ReadLEBString();
         }
 

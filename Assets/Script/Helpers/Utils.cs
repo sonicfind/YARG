@@ -1,6 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using YARG.Chart;
+using YARG.Song.Chart;
+using YARG.Types;
 
 namespace YARG.Util
 {
@@ -11,38 +13,53 @@ namespace YARG.Util
         /// </summary>
         /// <param name="beatTimes">List of beat times associated with the Info object.</param>
         /// <returns>Length of the Info object in beats.</returns>
-        public static float InfoLengthInBeats(Data.AbstractInfo info, List<Beat> beatTimes)
+        public static float InfoLengthInBeats(Data.AbstractInfo info, FlatMap<BeatPosition, BeatStyle> beatTimes)
         {
+            if (beatTimes.Count == 1)
+                return 0;
+
+            float prevBeat = beatTimes.At_index(0).key.seconds;
+            float currBeat = beatTimes.At_index(1).key.seconds;
+
             int beatIndex = 1;
-            // set beatIndex to first relevant beat
-            while (beatIndex < beatTimes.Count && beatTimes[beatIndex].Time <= info.time)
+
+            bool Increment()
             {
                 ++beatIndex;
+                prevBeat = currBeat;
+
+                if (beatIndex == beatTimes.Count)
+                {
+                    currBeat = default;
+                    return false;
+                }
+                currBeat = beatTimes.At_index(beatIndex).key.seconds;
+                return true;
             }
+
+            // set beatIndex to first relevant beat
+            while (currBeat <= info.time && Increment());
 
             float beats = 0;
             // add segments of the length wrt tempo
-            for (; beatIndex < beatTimes.Count && beatTimes[beatIndex].Time <= info.EndTime; ++beatIndex)
+            if (beatIndex < beatTimes.Count)
             {
-                var curBPS = 1 / (beatTimes[beatIndex].Time - beatTimes[beatIndex - 1].Time);
-                // Unit math: s * b/s = pt
-                beats += (beatTimes[beatIndex].Time - Mathf.Max(beatTimes[beatIndex - 1].Time, info.time)) * curBPS;
+                while (currBeat <= info.EndTime)
+                {
+                    var curBPS = 1 / (currBeat - prevBeat);
+                    beats += (currBeat - Mathf.Max(prevBeat, info.time)) * curBPS;
+
+                    if (!Increment())
+                        break;
+                }
             }
 
-            // segment where EndTime is between two beats (beatIndex-1 and beatIndex)
-            if (beatIndex < beatTimes.Count && beatTimes[beatIndex - 1].Time < info.EndTime &&
-                info.EndTime < beatTimes[beatIndex].Time)
+            if (beatIndex < beatTimes.Count && prevBeat < info.EndTime && info.EndTime < currBeat)
             {
-                var bps = 1 / (beatTimes[beatIndex].Time - beatTimes[beatIndex - 1].Time);
-                beats += (info.EndTime - beatTimes[beatIndex - 1].Time) * bps;
+                var bps = 1 / (currBeat - prevBeat);
+                beats += (info.EndTime - prevBeat) * bps;
             }
-            // segment where EndTime is BEYOND the final beat
-            else if (info.EndTime > beatTimes[^1].Time)
-            {
-                var bps = 1 / (beatTimes[^1].Time - beatTimes[^2].Time);
-                var toAdd = (info.EndTime - beatTimes[^1].Time) * bps;
-                beats += toAdd;
-            }
+           
 
             return beats;
         }

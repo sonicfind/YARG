@@ -325,24 +325,24 @@ namespace YARG.Serialization.Parser
 
             // Add beats to chart
 
-            chart.beats = new();
-            foreach (var ev in chart.events)
-            {
-                if (ev.name is "beatLine_minor")
-                {
-                    chart.beats.Add(new Beat
-                    {
-                        Time = ev.time, Style = BeatStyle.STRONG,
-                    });
-                }
-                else if (ev.name is "beatLine_major")
-                {
-                    chart.beats.Add(new Beat
-                    {
-                        Time = ev.time, Style = BeatStyle.MEASURE,
-                    });
-                }
-            }
+            //chart.beats = new();
+            //foreach (var ev in chart.events)
+            //{
+            //    if (ev.name is "beatLine_minor")
+            //    {
+            //        chart.beats.Add(new Beat
+            //        {
+            //            Time = ev.time, Style = BeatStyle.STRONG,
+            //        });
+            //    }
+            //    else if (ev.name is "beatLine_major")
+            //    {
+            //        chart.beats.Add(new Beat
+            //        {
+            //            Time = ev.time, Style = BeatStyle.MEASURE,
+            //        });
+            //    }
+            //}
 
             // Look for bonus star power
 

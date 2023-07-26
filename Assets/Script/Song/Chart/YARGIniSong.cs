@@ -76,12 +76,13 @@ namespace YARG.Song.Chart
             m_hopofreq_old = entry.Hopofreq_Old;
             m_eighthnote_hopo = entry.EightNoteHopo;
             m_multiplier_note = entry.MultiplierNote;
+            m_sync.Tickrate = 192;
         }
 
         public void Load_Midi(string filepath)
         {
             using MidiFileReader reader = new(filepath, m_multiplier_note);
-            Tickrate = reader.GetTickRate();
+            m_sync.Tickrate = reader.GetTickRate();
             SetSustainThreshold();
             Parse(reader, Encoding.UTF8);
             FinalizeData();
@@ -241,7 +242,7 @@ namespace YARG.Song.Chart
             var modifiers = reader.ExtractModifiers(list);
             if (modifiers.Remove("Resolution", out var tickrate))
             {
-                Tickrate = tickrate[0].UINT16;
+                m_sync.Tickrate = tickrate[0].UINT16;
                 if (modifiers.Count == 0)
                     return;
             }
@@ -331,7 +332,7 @@ namespace YARG.Song.Chart
 
         private void SetSustainThreshold()
         {
-	        TruncatableSustain.MinDuration = m_sustain_cutoff_threshold > 0 ? m_sustain_cutoff_threshold : (ulong)(Tickrate / 3);
+	        TruncatableSustain.MinDuration = m_sustain_cutoff_threshold > 0 ? m_sustain_cutoff_threshold : (m_sync.Tickrate / 3);
         }
 
         private ulong GetHopoThreshold()
@@ -339,27 +340,27 @@ namespace YARG.Song.Chart
 	        if (m_hopo_frequency > 0)
 		        return m_hopo_frequency;
 	        else if (m_eighthnote_hopo)
-		        return (ulong)(Tickrate / 2);
+		        return (m_sync.Tickrate / 2);
 	        else if (m_hopofreq_old != ushort.MaxValue)
 	        {
 		        switch (m_hopofreq_old)
 		        {
 		        case 0:
-			        return (ulong)(Tickrate / 24);
+			        return (m_sync.Tickrate / 24);
 		        case 1:
-			        return (ulong)(Tickrate / 16);
+			        return (m_sync.Tickrate / 16);
 		        case 2:
-			        return (ulong)(Tickrate / 12);
+			        return (m_sync.Tickrate / 12);
 		        case 3:
-			        return (ulong)(Tickrate / 8);
+			        return (m_sync.Tickrate / 8);
 		        case 4:
-			        return (ulong)(Tickrate / 6);
+			        return (m_sync.Tickrate / 6);
 		        default:
-			        return (ulong)(Tickrate / 4);
+			        return (m_sync.Tickrate / 4);
 		        }
 	        }
 	        else
-		        return (ulong)(Tickrate / 3);
+		        return (m_sync.Tickrate / 3);
         }
     }
 }

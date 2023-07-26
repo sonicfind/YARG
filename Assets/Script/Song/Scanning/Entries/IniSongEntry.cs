@@ -35,6 +35,7 @@ namespace YARG.Song.Entries
             { "PreviewEnd",   new("preview_end_time", ModifierNodeType.FLOAT ) },
             { "PreviewStart", new("preview_start_time", ModifierNodeType.FLOAT ) },
             { "Year",         new("year", ModifierNodeType.STRING_CHART ) },
+            { "Offset",       new("offset", ModifierNodeType.FLOAT ) },
         };
 
         static IniSongEntry() { }
@@ -101,7 +102,7 @@ namespace YARG.Song.Entries
             m_chartType = type;
             m_chartFile = new(chartFile);
             Directory = Path.GetDirectoryName(chartFile);
-            m_directory_playlist.Str = Path.GetDirectoryName(Directory)!;
+            m_directory_playlist.Str = Path.GetFileName(Path.GetDirectoryName(Directory));
             m_hash = file.CalcHash128();
         }
 
@@ -318,7 +319,9 @@ namespace YARG.Song.Entries
                 m_video_start_time = video_start_time[0].FLOAT;
 
             if (m_modifiers.TryGetValue("delay", out var delay))
-                m_delay = delay[0].FLOAT;
+                m_delay = delay[0].FLOAT / 1000;
+            else if (m_modifiers.TryGetValue("offset", out var offset))
+                m_delay = offset[0].FLOAT;
 
             {
                 if (m_modifiers.TryGetValue("diff_band", out var intensities))
@@ -486,12 +489,12 @@ namespace YARG.Song.Entries
             {
                 Debug.Log("Reading .chart file");
                 var moonSong = ChartReader.ReadChart(m_chartFile!.FullName);
-                var handler = new BeatHandler(moonSong);
-                handler.GenerateBeats();
+                //var handler = new BeatHandler(moonSong);
+                //handler.GenerateBeats();
 
                 return new(moonSong)
                 {
-                    beats = handler.Beats
+                    //beats = handler.Beats
                 };
             }
             else

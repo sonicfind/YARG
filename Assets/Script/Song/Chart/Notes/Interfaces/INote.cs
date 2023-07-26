@@ -1,13 +1,15 @@
 ﻿using MoonscraperChartEditor.Song;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine;
+using UnityEngine.UIElements;
+using YARG.Assets.Script.Types;
 using YARG.Types;
-using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
 namespace YARG.Song.Chart.Notes
 {
@@ -16,17 +18,16 @@ namespace YARG.Song.Chart.Notes
         public bool HasActiveNotes();
         public ulong GetLongestSustain();
     }
-
     public interface INote : INote_Base
     {
 #nullable enable
-        public IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote);
+        public IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote);
     }
 
     public unsafe interface INote_S : INote_Base
     {
         public uint NumLanes { get; }
-        public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
+        public IPlayableNote ConvertToPlayable<T>(in ulong position, in SyncTrack sync, in ulong prevPosition, in T* prevNote)
             where T : unmanaged, INote_S;
     }
 
@@ -34,7 +35,7 @@ namespace YARG.Song.Chart.Notes
     {
         public readonly int laneCount;
 
-        private List<(ulong, object)> inputs;
+        private List<(float, object)> inputs;
         private readonly object inputLock;
 
         public InputHandler(int laneCount)
@@ -44,7 +45,7 @@ namespace YARG.Song.Chart.Notes
             this.laneCount = laneCount;
         }
 
-        public List<(ulong, object)> GetInputs()
+        public List<(float, object)> GetInputs()
         {
             var inputs = this.inputs;
             lock (inputLock) this.inputs = new();
@@ -64,20 +65,24 @@ namespace YARG.Song.Chart.Notes
 
     public abstract class Player
     {
-        protected readonly List<(ulong, OverdrivePhrase)> overdrives = new();
+        protected readonly List<(float, OverdrivePhrase)> overdrives = new();
         protected int overdriveIndex = 0;
         protected float overdrive = 0;
         protected float overdriveOffset = 0;
 
-        protected (int, int) visibleNoteRange = new(0, 0);
+        protected readonly TimedSemiQueue<IPlayableNote> notesOnScreen = new();
+        protected (float, float) visibleNoteRange = new(1.5f, .5f);
+        protected int nextViewable = 0;
         protected InputHandler inputHandler;
+        protected SyncTrack sync;
 
-        protected Player(InputHandler inputHandler)
+        protected Player(InputHandler inputHandler, SyncTrack sync)
         {
             this.inputHandler = inputHandler;
+            this.sync = sync;
         }
 
-        public virtual void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
+        public virtual void AttachPhrase(float position, float end, PlaytimePhrase phrase)
         {
             if (phrase is OverdrivePhrase overdrive)
                 overdrives.Add(new(position, overdrive));
@@ -98,336 +103,41 @@ namespace YARG.Song.Chart.Notes
             overdriveIndex++;
         }
 
-        public abstract void Update(ulong position);
+        public abstract void Update(float position);
 
-        protected abstract bool HandleStatus(HitStatus status);
+        protected abstract bool HandleStatus(HitStatus status, ref (float, IPlayableNote) hittable);
     }
 
     public abstract class Player_Instrument_Base<T> : Player
-        where T : INote_Base, new()
-    {
-        private List<(ulong, ulong, SoloPhrase)> soloes = new();
-        private int soloIndex = 0;
-        private float soloPercentage = 0;
-        private bool soloActive = false;
-        private bool soloBoxUpdated = false;
-
-        private readonly FlatMap_Base<ulong, T> note_buffer;
-
-        private readonly Queue<(ulong, IPlayableNote)> hittableQueue;
-        private readonly (ulong, ulong) hitWindow = new(55, 55);
-        private (int, int) hittableNotes = new(0, 0);
-
-        private readonly IPlayableNote[] sustainedNotes;
-        private readonly List<(ulong, object)> inputSnapshots = new(2);
-        private int comboCount = 0;
-
-        public Player_Instrument_Base(InputHandler inputHandler, FlatMap_Base<ulong, T> notes) : base(inputHandler)
-        {
-            note_buffer = notes;
-            sustainedNotes = new IPlayableNote[inputHandler.laneCount];
-        }
-
-        public override void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
-        {
-            if (phrase is SoloPhrase solo)
-                soloes.Add(new(position, end, solo));
-            else
-                base.AttachPhrase(position, end, phrase);
-        }
-
-        public void UpdateSolo(float percentage)
-        {
-            soloBoxUpdated = true;
-            soloPercentage = percentage;
-        }
-
-        public override void Update(ulong position)
-        {
-            ulong startOfWindow = position + hitWindow.Item1;
-            while (hittableNotes.Item2 < notes.Count && notes.At_index(hittableNotes.Item2).key < startOfWindow)
-                ++hittableNotes.Item2;
-
-            var inputs = inputHandler.GetInputs();
-            int inputIndex = 0;
-            while (inputIndex < inputs.Count && hittableNotes.Item1 < hittableNotes.Item2)
-            {
-                var input = inputs[inputIndex];
-
-                if (comboCount > 0)
-                {
-                    int noteIndex = hittableNotes.Item1;
-                    ulong lateHitLimit = notes.At_index(noteIndex).key + hitWindow.Item2;
-                    if (noteIndex + 1 < notes.Count)
-                    {
-                        ulong nextNote = notes.At_index(noteIndex + 1).key;
-                        if (nextNote < lateHitLimit)
-                            lateHitLimit = nextNote;
-                    }
-
-                    var result = HitStatus.Missed;
-                    if (input.Item1 <= lateHitLimit)
-                        result = notes[noteIndex].Item2.TryHit_InCombo(input.Item2, inputSnapshots);
-                    HandleStatus(result);
-                }
-                else
-                {
-                    while (hittableNotes.Item1 < hittableNotes.Item2 && input.Item1 <= notes[hittableNotes.Item1].Item1 + hitWindow.Item2)
-                        ++hittableNotes.Item1;
-
-                    int noteIndex = hittableNotes.Item1;
-                    while (noteIndex < hittableNotes.Item2)
-                    {
-                        var result = notes[noteIndex].Item2.TryHit(input.Item2, inputSnapshots);
-                        if (HandleStatus(result))
-                        {
-
-                            hittableNotes.Item2 = noteIndex + 1;
-                            break;
-                        }
-                        else if (result == HitStatus.Idle)
-                            break;
-                        ++noteIndex;
-                    }
-                }
-
-            }
-
-            if (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
-            {
-                if (!soloActive)
-                    soloActive = true;
-                else if (soloes[soloIndex].Item2 <= position)
-                {
-                    soloActive = false;
-                    while (true)
-                    {
-                        // TODO - Add solo score
-                        soloIndex++;
-                        if (soloIndex >= soloes.Count || position < soloes[soloIndex].Item1)
-                        {
-                            // Run "End of solo" action w/ result
-                            int solo = soloIndex - 1;
-                            break;
-                        }
-
-                        if (position < soloes[soloIndex].Item2)
-                        {
-                            soloActive = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (overdriveIndex < overdrives.Count && position >= overdrives[overdriveIndex].Item1)
-
-
-                overdrive += overdriveOffset;
-            Math.Clamp(overdrive, 0, 1);
-        }
-
-        protected override bool HandleStatus(HitStatus status)
-        {
-            switch (status)
-            {
-                case HitStatus.Sustained:
-                case HitStatus.Hit:
-                    {
-                        hittableNotes.Item1++;
-                        return true;
-                    }
-                case HitStatus.Missed:
-                    {
-                        comboCount = 0;
-                        break;
-                    }
-            }
-            return false;
-        }
-    }
-
-    public unsafe class Player_Instrument<T> : Player
         where T : INote_Base
     {
-        private readonly FlatMapNode<ulong, T>;
-        private readonly * notes;
-        private readonly int numNotes;
-
-
-        private readonly (ulong, ulong) hitWindow = new(55, 55);
-        private (int, int) hittableNotes = new(0, 0);
-
-        private readonly IPlayableNote[] sustainedNotes;
-        private readonly List<(ulong, object)> inputSnapshots = new(2);
-        private int comboCount = 0;
-
-        public Player_Instrument(FlatMapNode<ulong, T>[] notes, InputHandler inputHandler) : base(inputHandler)
-        {
-            handle = GCHandle.Alloc(notes, GCHandleType.Pinned);
-            this.notes = (FlatMapNode<ulong, T>*) handle.AddrOfPinnedObject();
-            numNotes = notes.Length;
-
-            this.inputHandler = inputHandler;
-            sustainedNotes = new IPlayableNote[inputHandler.laneCount];
-        }
-
-        public Player_Instrument(FlatMapNode<ulong, T>* notes, int length, InputHandler inputHandler) : base(inputHandler)
-        {
-            this.notes = notes;
-            this.inputHandler = inputHandler;
-            sustainedNotes = new IPlayableNote[inputHandler.laneCount];
-        }
-
-        public override void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
-        {
-            if (phrase is SoloPhrase solo)
-                soloes.Add(new(position, end, solo));
-            else
-                base.AttachPhrase(position, end, phrase);
-        }
-
-        public void UpdateSolo(float percentage)
-        {
-            soloBoxUpdated = true;
-            soloPercentage = percentage;
-        }
-
-        public override void Update(ulong position)
-        {
-            ulong startOfWindow = position + hitWindow.Item1;
-            while (hittableNotes.Item2 < notes.Length && notes[hittableNotes.Item2].Item1 < startOfWindow)
-                ++hittableNotes.Item2;
-
-            var inputs = inputHandler.GetInputs();
-            int inputIndex = 0;
-            while (inputIndex < inputs.Count && hittableNotes.Item1 < hittableNotes.Item2)
-            {
-                var input = inputs[inputIndex];
-
-                if (comboCount > 0)
-                {
-                    int noteIndex = hittableNotes.Item1;
-                    ulong lateHitLimit = notes[noteIndex].Item1 + hitWindow.Item2;
-                    if (noteIndex + 1 < notes.Length)
-                    {
-                        ulong nextNote = notes[noteIndex + 1].Item1;
-                        if (nextNote < lateHitLimit)
-                            lateHitLimit = nextNote;
-                    }
-
-                    var result = HitStatus.Missed;
-                    if (input.Item1 <= lateHitLimit)
-                        result = notes[noteIndex].Item2.TryHit_InCombo(input.Item2, inputSnapshots);
-                    HandleStatus(result);
-                }
-                else
-                {
-                    while (hittableNotes.Item1 < hittableNotes.Item2 && input.Item1 <= notes[hittableNotes.Item1].Item1 + hitWindow.Item2)
-                        ++hittableNotes.Item1;
-
-                    int noteIndex = hittableNotes.Item1;
-                    while (noteIndex < hittableNotes.Item2)
-                    {
-                        var result = notes[noteIndex].Item2.TryHit(input.Item2, inputSnapshots);
-                        if (HandleStatus(result))
-                        {
-
-                            hittableNotes.Item2 = noteIndex + 1;
-                            break;
-                        }
-                        else if (result == HitStatus.Idle)
-                            break;
-                        ++noteIndex;
-                    }
-                }
-
-            }
-
-            if (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
-            {
-                if (!soloActive)
-                    soloActive = true;
-                else if (soloes[soloIndex].Item2 <= position)
-                {
-                    soloActive = false;
-                    while (true)
-                    {
-                        // TODO - Add solo score
-                        soloIndex++;
-                        if (soloIndex >= soloes.Count || position < soloes[soloIndex].Item1)
-                        {
-                            // Run "End of solo" action w/ result
-                            int solo = soloIndex - 1;
-                            break;
-                        }
-
-                        if (position < soloes[soloIndex].Item2)
-                        {
-                            soloActive = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (overdriveIndex < overdrives.Count && position >= overdrives[overdriveIndex].Item1)
-
-
-                overdrive += overdriveOffset;
-            Math.Clamp(overdrive, 0, 1);
-        }
-
-        protected override bool HandleStatus(HitStatus status)
-        {
-            switch (status)
-            {
-                case HitStatus.Sustained:
-                case HitStatus.Hit:
-                    {
-                        hittableNotes.Item1++;
-                        return true;
-                    }
-                case HitStatus.Missed:
-                    {
-                        comboCount = 0;
-                        break;
-                    }
-            }
-            return false;
-        }
-    }
-
-    public unsafe class Player_Instrument_S<T> : Player
-        where T : unmanaged, INote_S
-    {
-        private List<(ulong, ulong, SoloPhrase)> soloes = new();
+        private List<(float, float, SoloPhrase<T>)> soloes = new();
         private int soloIndex = 0;
         private float soloPercentage = 0;
         private bool soloActive = false;
         private bool soloBoxUpdated = false;
 
-        private readonly FlatMapNode<ulong, T>* notes;
-        protected readonly int numNotes;
-
-
-        private readonly (ulong, ulong) hitWindow = new(55, 55);
-        private (int, int) hittableNotes = new(0, 0);
+        protected readonly FlatMap_Base<ulong, T> notes;
+        protected readonly float[] notePositions;
+        private readonly TimedSemiQueue<IPlayableNote> hittableQueue = new();
+        private readonly (float, float) hitWindow = new(.065f, .065f);
+        private int nextHittable = 0;
+        private float priorHit = 0;
 
         private readonly IPlayableNote[] sustainedNotes;
-        private readonly List<(ulong, object)> inputSnapshots = new(2);
+        private readonly List<(float, object)> inputSnapshots = new(2);
         private int comboCount = 0;
 
-        public Player_Instrument_S(FlatMapNode<ulong, T>* notes, int length, InputHandler inputHandler) : base(inputHandler)
+        protected Player_Instrument_Base(InputHandler inputHandler, FlatMap_Base<ulong, T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, sync)
         {
             this.notes = notes;
-            this.inputHandler = inputHandler;
+            this.notePositions = notePositions;
             sustainedNotes = new IPlayableNote[inputHandler.laneCount];
         }
 
-        public override void AttachPhrase(ulong position, ulong end, PlaytimePhrase phrase)
+        public override void AttachPhrase(float position, float end, PlaytimePhrase phrase)
         {
-            if (phrase is SoloPhrase solo)
+            if (phrase is SoloPhrase<T> solo)
                 soloes.Add(new(position, end, solo));
             else
                 base.AttachPhrase(position, end, phrase);
@@ -439,82 +149,51 @@ namespace YARG.Song.Chart.Notes
             soloPercentage = percentage;
         }
 
-        public override void Update(ulong position)
+        public override void Update(float position)
         {
-            ulong startOfWindow = position + hitWindow.Item1;
-            while (hittableNotes.Item2 < notes.Length && notes[hittableNotes.Item2].Item1 < startOfWindow)
-                ++hittableNotes.Item2;
+            EnqueueHittables(position);
 
             var inputs = inputHandler.GetInputs();
-            int inputIndex = 0;
-            while (inputIndex < inputs.Count && hittableNotes.Item1 < hittableNotes.Item2)
+            foreach (var input in inputs)
             {
-                var input = inputs[inputIndex];
-
-                if (comboCount > 0)
+                TestForPendingDrops(input);
+                if (hittableQueue.Count > 0)
                 {
-                    int noteIndex = hittableNotes.Item1;
-                    ulong lateHitLimit = notes[noteIndex].Item1 + hitWindow.Item2;
-                    if (noteIndex + 1 < notes.Length)
-                    {
-                        ulong nextNote = notes[noteIndex + 1].Item1;
-                        if (nextNote < lateHitLimit)
-                            lateHitLimit = nextNote;
-                    }
-
-                    var result = HitStatus.Missed;
-                    if (input.Item1 <= lateHitLimit)
-                        result = notes[noteIndex].Item2.TryHit_InCombo(input.Item2, inputSnapshots);
-                    HandleStatus(result);
+                    if (comboCount > 0)
+                        ProcessInput_InCombo(input);
+                    else
+                        ProcessInput(input);
                 }
-                else
-                {
-                    while (hittableNotes.Item1 < hittableNotes.Item2 && input.Item1 <= notes[hittableNotes.Item1].Item1 + hitWindow.Item2)
-                        ++hittableNotes.Item1;
-
-                    int noteIndex = hittableNotes.Item1;
-                    while (noteIndex < hittableNotes.Item2)
-                    {
-                        var result = notes[noteIndex].Item2.TryHit(input.Item2, inputSnapshots);
-                        if (HandleStatus(result))
-                        {
-
-                            hittableNotes.Item2 = noteIndex + 1;
-                            break;
-                        }
-                        else if (result == HitStatus.Idle)
-                            break;
-                        ++noteIndex;
-                    }
-                }
-
+                ApplyPendingDrops(input);
             }
 
-            if (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
+            float endOfWindow = position - hitWindow.Item2;
+            while (hittableQueue.Count > 0 && hittableQueue.Peek().Item1 < endOfWindow)
+            {
+                if (comboCount > 0)
+                {
+                    // TODO process dropped combo
+                }
+                Debug.Log($"Position: {hittableQueue.Peek().Item1} - Note removed from queue");
+                hittableQueue.Dequeue();
+            }
+
+
+            while (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
             {
                 if (!soloActive)
-                    soloActive = true;
-                else if (soloes[soloIndex].Item2 <= position)
                 {
-                    soloActive = false;
-                    while (true)
-                    {
-                        // TODO - Add solo score
-                        soloIndex++;
-                        if (soloIndex >= soloes.Count || position < soloes[soloIndex].Item1)
-                        {
-                            // Run "End of solo" action w/ result
-                            int solo = soloIndex - 1;
-                            break;
-                        }
-
-                        if (position < soloes[soloIndex].Item2)
-                        {
-                            soloActive = true;
-                            break;
-                        }
-                    }
+                    soloActive = true;
+                    soloPercentage = 0;
                 }
+
+                if (position < soloes[soloIndex].Item2)
+                    break;
+
+                // TODO - Add solo score
+                // Run "End of solo" action w/ result
+                soloActive = false;
+                soloIndex++;
             }
 
             if (overdriveIndex < overdrives.Count && position >= overdrives[overdriveIndex].Item1)
@@ -524,23 +203,173 @@ namespace YARG.Song.Chart.Notes
             Math.Clamp(overdrive, 0, 1);
         }
 
-        protected override bool HandleStatus(HitStatus status)
+        private void TestForPendingDrops((float, object) input)
+        {
+
+        }
+
+        private void ApplyPendingDrops((float, object) input)
+        {
+
+        }
+
+        private void EnqueueHittables(float position)
+        {
+            float startOfWindow = position + hitWindow.Item1;
+            while (nextHittable < notes.Count)
+            {
+                float notePosition = notePositions[nextHittable];
+                if (notePosition >= startOfWindow)
+                    break;
+
+                ref var node = ref notes.At_index(nextHittable);
+                int index = notesOnScreen.Find(notePosition);
+                if (index >= 0)
+                    hittableQueue.Enqueue(notesOnScreen.At(index));
+                else
+                    AddToQueue(hittableQueue, notePosition, ref node);
+                ++nextHittable;
+            }
+        }
+
+        private void EnqueueViewables(ulong position)
+        {
+            float startOfWindow = position + visibleNoteRange.Item1;
+            while (nextViewable < notes.Count)
+            {
+                float notePosition = notePositions[nextViewable];
+                if (notePosition >= startOfWindow)
+                    break;
+
+                ref var node = ref notes.At_index(nextViewable);
+                int index = hittableQueue.Find(notePosition);
+                if (index >= 0)
+                    notesOnScreen.Enqueue(hittableQueue.At(index));
+                else
+                    AddToQueue(notesOnScreen, notePosition, ref node);
+                ++nextViewable;
+            }
+        }
+
+        private void ProcessInput((float, object) input)
+        {
+            float endOfWindow = input.Item1 - hitWindow.Item2;
+            while (hittableQueue.Count > 0 && hittableQueue.Peek().Item1 < endOfWindow)
+                hittableQueue.Dequeue();
+
+            int noteIndex = 0;
+            while (noteIndex < hittableQueue.Count)
+            {
+                ref var hittable = ref hittableQueue.At(noteIndex);
+                var result = hittable.Item2.TryHit(input.Item2, inputSnapshots);
+                if (HandleStatus(result, ref hittable))
+                {
+                    while (noteIndex >= 0)
+                    {
+                        hittableQueue.Dequeue();
+                        --noteIndex;
+                    }
+                    break;
+                }
+                else if (result == HitStatus.Idle)
+                    break;
+                ++noteIndex;
+            }
+        }
+
+        private void ProcessInput_InCombo((float, object) input)
+        {
+            ref var hittable = ref hittableQueue.Peek();
+            float lateHitLimit = hittable.Item1 + hitWindow.Item2;
+
+            int nextIndex = nextHittable - hittableQueue.Count + 1;
+            if (nextIndex < notes.Count)
+            {
+                ulong nextNote = notes.At_index(nextIndex).key;
+                if (nextNote < lateHitLimit)
+                    lateHitLimit = nextNote;
+            }
+
+            if (input.Item1 <= lateHitLimit)
+            {
+                var result = hittable.Item2.TryHit_InCombo(input.Item2, inputSnapshots);
+                if (HandleStatus(result, ref hittable))
+                {
+                    hittableQueue.Dequeue();
+                }
+            }
+            else
+            {
+                hittableQueue.Dequeue();
+                ApplyMiss();
+            }
+        }
+
+        protected override bool HandleStatus(HitStatus status, ref (float, IPlayableNote) hittable)
         {
             switch (status)
             {
                 case HitStatus.Sustained:
                 case HitStatus.Hit:
                     {
-                        hittableNotes.Item1++;
+                        priorHit = hittable.Item1;
+                        int index = notesOnScreen.Find(hittable.Item1);
+                        if (index == 0)
+                            notesOnScreen.Dequeue();
+                        else if (index > 0)
+                            notesOnScreen.RemoveAt(index);
                         return true;
                     }
                 case HitStatus.Missed:
                     {
-                        comboCount = 0;
+                        ApplyMiss();
                         break;
                     }
             }
             return false;
+        }
+
+        private void ApplyMiss()
+        {
+            comboCount = 0;
+        }
+
+        protected abstract void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node);
+    }
+
+    public class Player_Instrument<T> : Player_Instrument_Base<T>
+        where T : class, INote, new()
+    {
+        private ulong positionTracker = 0;
+        private T? noteTracker = null;
+        public Player_Instrument(InputHandler inputHandler, TimedFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, notes, notePositions, sync) { }
+
+        protected override void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node)
+        {
+            queue.Enqueue(new(position, node.obj.ConvertToPlayable(node.key, sync, positionTracker, noteTracker)));
+            positionTracker = node.key;
+            noteTracker = node.obj;
+
+            Debug.Log($"Position: {position} - Note added to queue");
+        }
+    }
+
+    public unsafe class Player_Instrument_S<T> : Player_Instrument_Base<T>
+        where T : unmanaged, INote_S
+    {
+        private ulong positionTracker = 0;
+        private T* noteTracker = null;
+        public Player_Instrument_S(InputHandler inputHandler, TimedNativeFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, notes, notePositions, sync) { }
+
+        protected override void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node)
+        {
+            queue.Enqueue(new(position, node.obj.ConvertToPlayable(node.key, sync, positionTracker, noteTracker)));
+            positionTracker = node.key;
+
+            // The node's array buffer is a fixed location, so this is safe
+            fixed (FlatMapNode<ulong, T>* ptr = &node)
+                noteTracker = &ptr->obj;
+            Debug.Log($"Position: {position} - Note added to queue");
         }
     }
 
@@ -558,7 +387,9 @@ namespace YARG.Song.Chart.Notes
     public interface IPlayableNote
     {
         public void AttachPhrase(PlaytimePhrase phrase);
-        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots);
-        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots);
+        public HitStatus TryHit(object input, in List<(float, object)> inputSnapshots);
+        public HitStatus TryHit_InCombo(object input, in List<(float, object)> inputSnapshots);
+
+        public (HitStatus, int) UpdateSustain(object input, in List<(float, object)> inputSnapshots);
     }
 }

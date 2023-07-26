@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine.UIElements;
 
 namespace YARG.Serialization
 {
@@ -70,9 +71,7 @@ namespace YARG.Serialization
             ProcessHeaderChunk();
         }
 
-        public MidiFileReader(byte* ptr, int length, byte multiplierNote = 116) : this(new BinaryFileReader(ptr, length), true, multiplierNote) { }
-
-        public MidiFileReader(FrameworkFile file, byte multiplierNote = 116) : this(new BinaryFileReader(file), true, multiplierNote) { }
+        public MidiFileReader(FrameworkFile file, byte multiplierNote = 116) : this(new BinaryFileReader(file.Ptr, file.Length), true, multiplierNote) { }
 
         public MidiFileReader(byte[] data, byte multiplierNote = 116) : this(new BinaryFileReader(data), true, multiplierNote) { }
 

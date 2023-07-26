@@ -19,8 +19,8 @@ namespace YARG.Song.Chart
         public void Load_Midi(FrameworkFile file)
         {
             using MidiFileReader reader = new(file);
-            Tickrate = reader.GetTickRate();
-            TruncatableSustain.MinDuration = (ulong) (Tickrate / 3);
+            m_sync.Tickrate = reader.GetTickRate();
+            TruncatableSustain.MinDuration = (m_sync.Tickrate / 3);
             Parse(reader, encoding);
             FinalizeData();
         }

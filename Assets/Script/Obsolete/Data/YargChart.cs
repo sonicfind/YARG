@@ -128,7 +128,7 @@ namespace YARG.Data
         private List<string> _loadedEvents = new();
 
         public List<EventInfo> events = new();
-        public List<Beat> beats = new();
+        //public List<Beat> beats = new();
 
         /// <summary>
         /// Lyrics to be displayed in the lyric view when no one is singing.

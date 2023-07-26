@@ -292,7 +292,7 @@ namespace YARG.Song.Entries
             imgListing =  conFile[genPAth + "_keep.png_xbox"];
 
             if (m_playlist.Str == string.Empty)
-                m_playlist = conFile.filename;
+                m_playlist = Path.GetFileName(conFile.filename);
 
             Directory = Path.Combine(conFile.filename, midiDirectory);
         }
@@ -326,7 +326,7 @@ namespace YARG.Song.Entries
             Image = new(file + "_keep.png_xbox");
 
             if (m_playlist.Str == string.Empty)
-                m_playlist = folder;
+                m_playlist = Path.GetFileName(folder);
 
             Directory = Path.GetDirectoryName(midiPath)!;
         }

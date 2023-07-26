@@ -1,4 +1,4 @@
-using YARG.Util;
+﻿using YARG.Util;
 using YARG.PlayMode;
 
 namespace YARG.Data
@@ -19,7 +19,7 @@ namespace YARG.Data
             {
                 if (_lengthInBeats == null)
                 {
-                    _lengthInBeats = Utils.InfoLengthInBeats(this, Play.Instance.chart.beats);
+                    _lengthInBeats = Utils.InfoLengthInBeats(this, Play.Instance.chartNew.m_beatMap);
                 }
 
                 return (float) _lengthInBeats;

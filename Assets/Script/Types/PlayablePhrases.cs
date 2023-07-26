@@ -44,12 +44,13 @@ namespace YARG.Types
         }
     }
 
-    public class SoloPhrase : PlaytimePhrase
+    public class SoloPhrase<T> : PlaytimePhrase
+        where T : INote_Base
     {
-        private readonly Player_Instrument player;
+        private readonly Player_Instrument_Base<T> player;
         private int numNotesHit;
 
-        public SoloPhrase(Player_Instrument player, int numNotesInPhrase) : base(numNotesInPhrase)
+        public SoloPhrase(Player_Instrument_Base<T> player, int numNotesInPhrase) : base(numNotesInPhrase)
         {
             this.player = player;
             numNotesHit = 0;

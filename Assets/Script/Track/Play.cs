@@ -83,6 +83,7 @@ namespace YARG.PlayMode
 
         public YargChart chart;
         public YARGSong chartNew;
+        public Player[] players = Array.Empty<Player>();
 
         [Space]
         [SerializeField]
@@ -319,12 +320,12 @@ namespace YARG.PlayMode
             chartNew = Song.LoadChart();
 
             InputHandler handler = new(5);
-            var players = chartNew.m_tracks.lead_5.SetupPlayers(new() { { 3, new[] { handler } } });
+            players = chartNew.m_tracks.lead_5.SetupPlayers(new() { { 3, new[] { handler } } }, chartNew.m_sync);
 
             // initialize current tempo
-            if (chart.beats.Count > 2)
+            if (chartNew.m_beatMap.Count > 2)
             {
-                CurrentBeatsPerSecond = chart.beats[1].Time - chart.beats[0].Time;
+                CurrentBeatsPerSecond = chartNew.m_beatMap.At_index(1).key.seconds - chartNew.m_beatMap.At_index(0).key.seconds;
             }
         }
 
@@ -404,11 +405,14 @@ namespace YARG.PlayMode
 
             UpdateAudio();
 
+            foreach (var player in players)
+                player.Update(SongTime);
+
             // Update whammy pitch state
             UpdateWhammyPitch();
 
             // Update beats
-            while (chart.beats.Count > beatIndex && chart.beats[beatIndex].Time <= SongTime)
+            while (chartNew.m_beatMap.Count > beatIndex && chartNew.m_beatMap.At_index(beatIndex).key.seconds <= realSongTime)
             {
                 foreach (var track in _tracks)
                 {
@@ -422,9 +426,9 @@ namespace YARG.PlayMode
                 BeatEvent?.Invoke();
                 beatIndex++;
 
-                if (beatIndex < chart.beats.Count)
+                if (beatIndex < chartNew.m_beatMap.Count)
                 {
-                    CurrentBeatsPerSecond = 1 / (chart.beats[beatIndex].Time - chart.beats[beatIndex - 1].Time);
+                    CurrentBeatsPerSecond = 1 / (chartNew.m_beatMap.At_index(beatIndex).key.seconds - chartNew.m_beatMap.At_index(beatIndex - 1).key.seconds);
                 }
             }
 

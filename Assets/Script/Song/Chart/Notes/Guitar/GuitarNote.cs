@@ -24,14 +24,15 @@ namespace YARG.Song.Chart.Notes
         TAP
     }
 
-    public struct PlayableNote_Guitar : IPlayableNote
+    public struct PlayableNote_Guitar<T> : IPlayableNote
+        where T : GuitarNote
     {
         private readonly string mesh;
         private readonly PlayableGuitarType type;
         private readonly TruncatableSustain[] lanes;
 
         private OverdrivePhrase? overdrive;
-        private SoloPhrase? solo;
+        private SoloPhrase<T>? solo;
 
         public PlayableNote_Guitar(string mesh, PlayableGuitarType type, TruncatableSustain[] lanes)
         {
@@ -47,22 +48,28 @@ namespace YARG.Song.Chart.Notes
             Debug.Assert(phrase != null);
             if (phrase is OverdrivePhrase overdrivePhrase)
                 overdrive = overdrivePhrase;
-            else if (phrase is SoloPhrase soloPhrase)
+            else if (phrase is SoloPhrase<T> soloPhrase)
                 solo = soloPhrase;
         }
 
-        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots)
+        public HitStatus TryHit(object input, in List<(float, object)> inputSnapshots)
         {
             return HitStatus.Hit;
         }
 
-        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots)
+        public HitStatus TryHit_InCombo(object input, in List<(float, object)> inputSnapshots)
         {
             return HitStatus.Hit;
+        }
+
+        public (HitStatus, int) UpdateSustain(object input, in List<(float, object)> inputSnapshots)
+        {
+            return new(HitStatus.Hit, 20);
         }
     }
 
-    public unsafe struct PlayableNote_Guitar_S : IPlayableNote
+    public unsafe struct PlayableNote_Guitar_S<T> : IPlayableNote
+        where T : unmanaged, IGuitarNote
     {
         private readonly string mesh;
         private readonly PlayableGuitarType type;
@@ -70,7 +77,7 @@ namespace YARG.Song.Chart.Notes
         private readonly uint numLanes;
 
         private OverdrivePhrase? overdrive;
-        private SoloPhrase? solo;
+        private SoloPhrase<T>? solo;
 
         public PlayableNote_Guitar_S(string mesh, PlayableGuitarType type, TruncatableSustain* lanes, uint numLanes)
         {
@@ -87,18 +94,23 @@ namespace YARG.Song.Chart.Notes
             Debug.Assert(phrase != null);
             if (phrase is OverdrivePhrase overdrivePhrase)
                 overdrive = overdrivePhrase;
-            else if (phrase is SoloPhrase soloPhrase)
+            else if (phrase is SoloPhrase<T> soloPhrase)
                 solo = soloPhrase;
         }
 
-        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots)
+        public HitStatus TryHit(object input, in List<(float, object)> inputSnapshots)
         {
             return HitStatus.Hit;
         }
 
-        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots)
+        public HitStatus TryHit_InCombo(object input, in List<(float, object)> inputSnapshots)
         {
             return HitStatus.Hit;
+        }
+
+        public (HitStatus, int) UpdateSustain(object input, in List<(float, object)> inputSnapshots)
+        {
+            return new(HitStatus.Hit, 20);
         }
     }
 

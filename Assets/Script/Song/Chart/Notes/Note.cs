@@ -45,6 +45,6 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        public abstract IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote);
+        public abstract IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote);
     }
 }
