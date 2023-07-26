@@ -18,7 +18,7 @@ namespace YARG.Song.Chart.ProKeysTrack
         A1_C3,
     };
 
-    public class ProKeysDifficulty : DifficultyTrack<Keys_Pro>
+    public class ProKeysDifficulty : DifficultyTrack<Keys_Pro_S>
     {
         public readonly TimedNativeFlatMap<ProKey_Ranges> ranges = new();
 

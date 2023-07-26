@@ -15,7 +15,6 @@ using UnityEngine.InputSystem;
 namespace YARG.Types
 {
     public struct FlatMapNode<Key, T>
-        where T : new()
        where Key : IComparable<Key>, IEquatable<Key>
     {
         public Key key;
@@ -403,6 +402,8 @@ namespace YARG.Types
             Array.Copy(_buffer, arr, _count);
             return arr;
         }
+
+        public FlatMapNode<Key, T>[] Data => _buffer;
     }
 
     public unsafe class NativeFlatMap<Key, T> : FlatMap_Base<Key, T>
@@ -554,6 +555,8 @@ namespace YARG.Types
             }
             return arr;
         }
+
+        public FlatMapNode<Key, T>* Data => _buffer;
     }
 
 

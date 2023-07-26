@@ -189,6 +189,11 @@ namespace YARG.Song.Chart.Notes
             NumActive++;
         }
 
+        public override uint GetNumActive()
+        {
+            return NumActive;
+        }
+
         public override bool HasActiveNotes()
         {
             return NumActive > 0;

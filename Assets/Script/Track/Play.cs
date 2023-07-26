@@ -315,7 +315,7 @@ namespace YARG.PlayMode
 
         private void LoadChart()
         {
-            chart = SongContainer.Songs[1].LoadChart_Original();
+            chart = Song.LoadChart_Original();
             chartNew = Song.LoadChart();
 
             InputHandler handler = new(5);

@@ -19,7 +19,7 @@ namespace YARG.Song.Chart
     public class DifficultyTrack<T> : Track, IDifficultyTrack
         where T : unmanaged, INote_S
     {
-        public readonly TimedFlatMap<T> notes = new();
+        public readonly TimedNativeFlatMap<T> notes = new();
 
         public override bool IsOccupied() { return !notes.IsEmpty() || base.IsOccupied(); }
 
@@ -49,15 +49,18 @@ namespace YARG.Song.Chart
 
             var playableNotes = separateTracks[0];
             ulong prevPos = 0;
-            T? prevNote = null;
+            T* prevNote = null;
             (ulong, IPlayableNote) playableNode;
+
             for (int i = 0; i < notes.Count; ++i)
             {
-                var node = notes.At_index(i);
+                ref var node = ref notes.Data[i];
                 playableNode.Item1 = node.key;
                 playableNode.Item2 = node.obj.ConvertToPlayable(node.key, prevPos, prevNote);
                 for (int j = 0; j < separateTracks.Length; ++j)
                     separateTracks[j][i] = playableNode;
+                prevPos = node.key;
+                prevNote = &notes.Data[i].obj;
             }
             
             int noteIndex = 0;

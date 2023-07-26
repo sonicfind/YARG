@@ -96,7 +96,7 @@ namespace YARG.Song.Chart.ProGuitarTrack
                     diffTrack.arpeggios.Get_Or_Add_Back(currEvent.position).strings[lane].Value = note.velocity - 100;
                 else
                 {
-                    Guitar_Pro<FretType> guitar;
+                    Guitar_Pro_S<FretType> guitar;
                     if (!track[diffIndex].notes.ValidateLastKey(currEvent.position))
                     {
                         guitar = track[diffIndex].notes.Add(currEvent.position);

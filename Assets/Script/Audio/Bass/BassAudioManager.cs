@@ -275,8 +275,8 @@ namespace YARG.Audio.BASS
             int moggStreamHandle;
             unsafe
             {
-                int start = BinaryPrimitives.ReadInt32LittleEndian(new(file.ptr + 4, 4));
-                moggStreamHandle = Bass.CreateStream((IntPtr)file.ptr, start, file.Length - start, flags);
+                int start = BinaryPrimitives.ReadInt32LittleEndian(new(file.Ptr + 4, 4));
+                moggStreamHandle = Bass.CreateStream((IntPtr)file.Ptr, start, file.Length - start, flags);
             }
 
             if (moggStreamHandle == 0)

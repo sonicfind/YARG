@@ -13,11 +13,19 @@ namespace YARG.Serialization
     public unsafe class IniFileReader : IDisposable
     {
         private readonly TxtFileReader reader;
+        private readonly byte* ptr;
+        private readonly int length;
         private bool disposeReader = false;
+
         private string sectionName = string.Empty;
         public string Section { get { return sectionName; } }
 
-        public IniFileReader(TxtFileReader reader) { this.reader = reader; }
+        public IniFileReader(TxtFileReader reader)
+        {
+            this.reader = reader;
+            ptr = reader.Ptr;
+            length = reader.Length;
+        }
 
         public IniFileReader(FrameworkFile file) : this(new TxtFileReader(file)) { disposeReader = true; }
 
@@ -71,7 +79,6 @@ namespace YARG.Serialization
         public void SkipSection()
         {
             reader.GotoNextLine();
-            byte* ptr = reader.file.ptr;
             int position = reader.Position;
             while (GetDistanceToTrackCharacter(position, out int next))
             {
@@ -89,14 +96,14 @@ namespace YARG.Serialization
                 position += next + 1;
             }
 
-            reader.Position = reader.file.Length;
+            reader.Position = length;
             reader.SetNextPointer();
         }
 
         private bool GetDistanceToTrackCharacter(int position, out int i)
         {
-            int distanceToEnd = reader.file.Length - position;
-            byte* curr = reader.file.ptr + position;
+            int distanceToEnd = length - position;
+            byte* curr = ptr + position;
             i = 0;
             while (i < distanceToEnd)
             {

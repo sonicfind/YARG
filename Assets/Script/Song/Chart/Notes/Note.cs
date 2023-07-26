@@ -15,6 +15,15 @@ namespace YARG.Song.Chart.Notes
             lanes = new NoteType[numcolors];
         }
 
+        public virtual uint GetNumActive()
+        {
+            uint num = 0;
+            for (int i = 0; i < lanes.Length; ++i)
+                if (lanes[i].IsActive())
+                    ++num;
+            return num;
+        }
+
         public virtual bool HasActiveNotes()
         {
             for (int i = 0; i < lanes.Length; ++i)

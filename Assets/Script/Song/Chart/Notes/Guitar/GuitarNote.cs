@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Chart;
 using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
@@ -27,16 +28,56 @@ namespace YARG.Song.Chart.Notes
     {
         private readonly string mesh;
         private readonly PlayableGuitarType type;
-        private readonly SubNote[] lanes;
+        private readonly TruncatableSustain[] lanes;
 
         private OverdrivePhrase? overdrive;
         private SoloPhrase? solo;
 
-        public PlayableNote_Guitar(string mesh, PlayableGuitarType type, SubNote[] lanes)
+        public PlayableNote_Guitar(string mesh, PlayableGuitarType type, TruncatableSustain[] lanes)
         {
             this.mesh = mesh;
             this.type = type;
             this.lanes = lanes;
+            overdrive = null;
+            solo = null;
+        }
+
+        public void AttachPhrase(PlaytimePhrase phrase)
+        {
+            Debug.Assert(phrase != null);
+            if (phrase is OverdrivePhrase overdrivePhrase)
+                overdrive = overdrivePhrase;
+            else if (phrase is SoloPhrase soloPhrase)
+                solo = soloPhrase;
+        }
+
+        public HitStatus TryHit(object input, in List<(ulong, object)> inputSnapshots)
+        {
+            return HitStatus.Hit;
+        }
+
+        public HitStatus TryHit_InCombo(object input, in List<(ulong, object)> inputSnapshots)
+        {
+            return HitStatus.Hit;
+        }
+    }
+
+    public unsafe struct PlayableNote_Guitar_S : IPlayableNote
+    {
+        private readonly string mesh;
+        private readonly PlayableGuitarType type;
+        private readonly TruncatableSustain* lanes;
+        private readonly uint numLanes;
+
+        private OverdrivePhrase? overdrive;
+        private SoloPhrase? solo;
+
+        public PlayableNote_Guitar_S(string mesh, PlayableGuitarType type, TruncatableSustain* lanes, uint numLanes)
+        {
+            this.mesh = mesh;
+            this.type = type;
+            this.lanes = lanes;
+            this.numLanes = numLanes;
             overdrive = null;
             solo = null;
         }
@@ -96,36 +137,21 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        protected (PlayableGuitarType, SubNote[]) ConstructTypeAndNotes(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
+        protected PlayableGuitarType GetGuitarType(in ulong position, in ulong prevPosition, in GuitarNote? prevNote)
         {
-            var notes = new List<SubNote>();
-            for (int i = 0; i < lanes.Length; ++i)
-                if (lanes[i].IsActive())
-                    notes.Add(new(i, position + lanes[i].Duration));
-
-            PlayableGuitarType type;
             if (IsTap)
-            {
-                type = PlayableGuitarType.TAP;
-            }
-            else
-            {
-                var forcing = Forcing;
-                if (forcing == ForceStatus.STRUM)
-                {
-                    type = PlayableGuitarType.STRUM;
-                }
-                else if (forcing == ForceStatus.HOPO)
-                {
-                    type = PlayableGuitarType.HOPO;
-                }
-                else
-                {
-                    bool isStrum = IsChorded() || prevNote == null || IsContainedIn(prevNote) || position > prevPosition + HopoFrequency;
-                    type = isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
-                }
-            }
-            return new(type, notes.ToArray());
+                return PlayableGuitarType.TAP;
+
+            var forcing = Forcing;
+            if (forcing == ForceStatus.STRUM)
+                return PlayableGuitarType.STRUM;
+
+            if (forcing == ForceStatus.HOPO)
+                return PlayableGuitarType.HOPO;
+
+                
+            bool isStrum = IsChorded() || prevNote == null || IsContainedIn(prevNote) || position > prevPosition + HopoFrequency;
+            return isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
         }
 
         private bool IsChorded()
@@ -141,7 +167,7 @@ namespace YARG.Song.Chart.Notes
         }
 
         // Assumes the current note is NOT a chord
-        private bool IsContainedIn(GuitarNote note)
+        private bool IsContainedIn(in GuitarNote note)
         {
             for (uint i = 0; i < lanes.Length; ++i)
                 if (lanes[i].IsActive())
@@ -162,43 +188,25 @@ namespace YARG.Song.Chart.Notes
         public void Disable(uint lane);
 
 #nullable enable
-        protected static (PlayableGuitarType, SubNote[]) ConstructTypeAndNotes<T>(in ulong position, in ulong prevPosition, in T currNote, in T* prevNote)
+        protected static PlayableGuitarType GetGuitarType<T>(in ulong position, in ulong prevPosition, ref T currNote, in T* prevNote)
             where T : unmanaged, IGuitarNote
         {
-            var notes = new List<SubNote>();
-            for (uint i = 0; i < currNote.NumLanes; ++i)
-            {
-                ulong duration = currNote[i];
-                if (duration > 0)
-                    notes.Add(new((int)i, position + duration));
-            }
-
-            PlayableGuitarType type;
             if (currNote.IsTap)
-            {
-                type = PlayableGuitarType.TAP;
-            }
-            else
-            {
-                var forcing = currNote.Forcing;
-                if (forcing == ForceStatus.STRUM)
-                {
-                    type = PlayableGuitarType.STRUM;
-                }
-                else if (forcing == ForceStatus.HOPO)
-                {
-                    type = PlayableGuitarType.HOPO;
-                }
-                else
-                {
-                    bool isStrum = IsChorded(currNote) || prevNote == null || Contains(currNote, *prevNote) || position > prevPosition + HopoFrequency;
-                    type = isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
-                }
-            }
-            return new(type, notes.ToArray());
+                return PlayableGuitarType.TAP;
+
+            var forcing = currNote.Forcing;
+            if (forcing == ForceStatus.STRUM)
+                return PlayableGuitarType.STRUM;
+
+            if (forcing == ForceStatus.HOPO)
+                return PlayableGuitarType.HOPO;
+
+            bool isStrum = IsChorded(ref currNote) || prevNote == null || ContainedIn(ref currNote, ref *prevNote) || position > prevPosition + HopoFrequency;
+            return isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
         }
 
-        public static bool IsChorded(IGuitarNote note)
+        public static bool IsChorded<T>(ref T note)
+            where T : unmanaged, IGuitarNote
         {
             if (note[0] > 0)
                 return false;
@@ -211,7 +219,8 @@ namespace YARG.Song.Chart.Notes
         }
 
         // Assumes the current note is NOT a chord
-        public static bool Contains(IGuitarNote note, IGuitarNote container)
+        public static bool ContainedIn<T>(ref T note, ref T container)
+            where T : unmanaged, IGuitarNote
         {
             for (uint i = 0; i < container.NumLanes; ++i)
                 if (note[i] > 0)

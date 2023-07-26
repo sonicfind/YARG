@@ -10,7 +10,7 @@ using YARG.Song.Chart.Notes;
 namespace YARG.Song.Chart.DrumTrack
 {
     public abstract class Midi_Drum_Loader_Base<T> : Midi_Instrument_Loader<T>
-        where T : DrumNote, new()
+        where T : unmanaged, IDrumNote
     {
         internal static readonly uint[] LANEVALUES = new uint[] {
             0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,

@@ -100,7 +100,10 @@ namespace YARG.Serialization
         internal const double TEMPO_FACTOR = 60000000000;
 
         private readonly TxtFileReader reader;
+        private readonly byte* ptr;
+        private readonly int length;
         private bool disposeReader = false;
+
         private EventCombo[] eventSet = Array.Empty<EventCombo>();
         private ulong tickPosition = 0;
         public NoteTracks_Chart Instrument { get; private set; }
@@ -109,10 +112,14 @@ namespace YARG.Serialization
         public ChartFileReader(TxtFileReader reader, bool disposeReader = false)
         {
             this.reader = reader;
+            this.ptr = reader.Ptr;
+            this.length = reader.Length;
             this.disposeReader = disposeReader;
         }
 
-        public ChartFileReader(FrameworkFile file, bool disoseFile = false) : this(new TxtFileReader(file, disoseFile), true) { }
+        public ChartFileReader(byte* ptr, int length) : this(new TxtFileReader(ptr, length), true) { }
+
+        public ChartFileReader(FrameworkFile file) : this(new TxtFileReader(file), true) { }
 
         public ChartFileReader(byte[] data) : this(new TxtFileReader(data), true) { }
 
@@ -203,10 +210,11 @@ namespace YARG.Serialization
 
         public bool IsStillCurrentTrack()
         {
-            if (reader.IsEndOfFile())
+            int position = reader.Position;
+            if (position == length)
                 return false;
 
-            if (reader.PeekByte() == '}')
+            if (ptr[position] == '}')
             {
                 reader.GotoNextLine();
                 return false;
@@ -217,6 +225,14 @@ namespace YARG.Serialization
 
         public (ulong, ChartEvent) ParseEvent()
         {
+            static bool EqualSequences(byte* curr, int length, byte[] descriptor)
+            {
+                if (descriptor.Length != length) return false;
+                for (int i = 0; i < length; ++i)
+                    if (descriptor[i] != curr[i]) return false;
+                return true;
+            }
+
             ulong position = reader.ReadUInt64();
             if (position < tickPosition)
                 throw new Exception($".Cht/.Chart position out of order (previous: {tickPosition})");
@@ -225,13 +241,18 @@ namespace YARG.Serialization
 
             byte* ptr = reader.CurrentPtr;
             byte* start = ptr;
-            while (('A' <= *ptr && *ptr <= 'Z') || ('a' <= *ptr && *ptr <= 'z'))
+            while (true)
+            {
+                byte curr = (byte) (*ptr & ~32);
+                if (curr < 'A' || 'Z' < curr)
+                    break;
                 ++ptr;
+            }
 
-            var type = reader.ExtractBasicSpan((int)(ptr - start));
-            reader.Position = (int)(ptr - reader.file.ptr);
+            int length = (int)(ptr - start);
+            reader.Position = (int)(ptr - this.ptr);
             foreach (var combo in eventSet)
-                if (type.SequenceEqual(combo.descriptor))
+                if (EqualSequences(start, length,combo.descriptor))
                 {
                     reader.SkipWhiteSpace();
                     return new(position, combo.eventType);
@@ -292,7 +313,6 @@ namespace YARG.Serialization
         public void SkipTrack()
         {
             reader.GotoNextLine();
-            byte* ptr = reader.file.ptr;
             int position = reader.Position;
             while (GetDistanceToTrackCharacter(position, out int next))
             {
@@ -311,14 +331,14 @@ namespace YARG.Serialization
                 position += next + 1;
             }
 
-            reader.Position = reader.file.Length;
+            reader.Position = length;
             reader.SetNextPointer();
         }
 
         private bool GetDistanceToTrackCharacter(int position, out int i)
         {
-            int distanceToEnd = reader.file.Length - position;
-            byte* curr = reader.file.ptr + position;
+            int distanceToEnd = length - position;
+            byte* curr = ptr + position;
             i = 0;
             while (i < distanceToEnd)
             {

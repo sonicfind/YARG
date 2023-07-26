@@ -13,14 +13,14 @@ namespace YARG.Serialization
         public readonly int format;
         public readonly int width;
         public readonly int height;
-        public XboxImageSettings(FrameworkFile xboxImage)
+        public unsafe XboxImageSettings(byte* data)
         {
             unsafe
             {
-                bitsPerPixel = xboxImage.ptr[1];
-                format = BinaryPrimitives.ReadInt32LittleEndian(new(xboxImage.ptr + 2, 4));
-                width = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 7, 2));
-                height = BinaryPrimitives.ReadInt16LittleEndian(new(xboxImage.ptr + 9, 2));
+                bitsPerPixel = data[1];
+                format = BinaryPrimitives.ReadInt32LittleEndian(new(data + 2, 4));
+                width = BinaryPrimitives.ReadInt16LittleEndian(new(data + 7, 2));
+                height = BinaryPrimitives.ReadInt16LittleEndian(new(data + 9, 2));
             }
         }
     }
@@ -28,20 +28,22 @@ namespace YARG.Serialization
     public static class XboxImageTextureGenerator
     {
 #nullable enable
-        public static unsafe XboxImageSettings? GetTexture(FrameworkFile xboxImage, CancellationToken ct)
+        public static unsafe XboxImageSettings? GetTexture(FrameworkFile file, CancellationToken ct)
         {
             // Swap bytes because xbox is weird like that
+            byte* data = file.Ptr;
+            int length = file.Length;
             byte buf;
-            for (int i = 32; i < xboxImage.Length; i += 2)
+            for (int i = 32; i < length; i += 2)
             {
-                buf = xboxImage.ptr[i];
-                xboxImage.ptr[i] = xboxImage.ptr[i + 1];
-                xboxImage.ptr[i + 1] = buf;
+                buf = data[i];
+                data[i] = data[i + 1];
+                data[i + 1] = buf;
             }
 
             if (ct.IsCancellationRequested)
                 return null;
-            return new XboxImageSettings(xboxImage);
+            return new XboxImageSettings(data);
         }
     }
 }

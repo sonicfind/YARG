@@ -778,20 +778,20 @@ namespace YARG.Song.Entries
                 SetVocalsCount();
 
                 using PointerHandler buffer = new(bufLength);
-                Copier.MemCpy(buffer.Data, chartFile.ptr, (nuint)chartFile.Length);
+                Copier.MemCpy(buffer.Data, chartFile.Ptr, (nuint)chartFile.Length);
                 chartFile.Dispose();
 
                 int offset = chartFile.Length;
                 if (updateFile != null)
                 {
-                    Copier.MemCpy(buffer.Data + offset, updateFile.ptr, (nuint)updateFile.Length);
+                    Copier.MemCpy(buffer.Data + offset, updateFile.Ptr, (nuint)updateFile.Length);
                     updateFile.Dispose();
                     offset += updateFile!.Length;
                 }
 
                 if (upgradeFile != null)
                 {
-                    Copier.MemCpy(buffer.Data + offset, upgradeFile.ptr, (nuint)upgradeFile.Length);
+                    Copier.MemCpy(buffer.Data + offset, upgradeFile.Ptr, (nuint)upgradeFile.Length);
                     upgradeFile.Dispose();
                     offset += upgradeFile.Length;
                 }
@@ -1065,7 +1065,7 @@ namespace YARG.Song.Entries
 
             unsafe
             {
-                switch (BinaryPrimitives.ReadInt32LittleEndian(new(file.ptr, 4)))
+                switch (BinaryPrimitives.ReadInt32LittleEndian(new(file.Ptr, 4)))
                 {
                     case 0x0A:
                     case 0xF0:
@@ -1150,7 +1150,7 @@ namespace YARG.Song.Entries
                 if (filebuffer == null)
                     throw new Exception("Update File not present");
 
-                using var stream = new UnmanagedMemoryStream(filebuffer.ptr, filebuffer.Length);
+                using var stream = new UnmanagedMemoryStream(filebuffer.Ptr, filebuffer.Length);
                 midi = MidiFile.Read(stream, readSettings);
             }
 
@@ -1161,7 +1161,7 @@ namespace YARG.Song.Entries
                 if (filebuffer == null)
                     throw new Exception("Upgrade File not present");
 
-                var stream = new UnmanagedMemoryStream(filebuffer.ptr, filebuffer.Length);
+                var stream = new UnmanagedMemoryStream(filebuffer.Ptr, filebuffer.Length);
                 var tmpMidi = MidiFile.Read(stream, readSettings);
                 if (midi == null)
                 {
@@ -1186,7 +1186,7 @@ namespace YARG.Song.Entries
                 if (filebuffer == null)
                     throw new Exception("Midi File not present");
 
-                var stream = new UnmanagedMemoryStream(filebuffer.ptr, filebuffer.Length);
+                var stream = new UnmanagedMemoryStream(filebuffer.Ptr, filebuffer.Length);
                 midi = MidiFile.Read(stream, readSettings);
             }
             else
@@ -1195,7 +1195,7 @@ namespace YARG.Song.Entries
                 if (filebuffer == null)
                     throw new Exception("Midi File not present");
 
-                var stream = new UnmanagedMemoryStream(filebuffer.ptr, filebuffer.Length);
+                var stream = new UnmanagedMemoryStream(filebuffer.Ptr, filebuffer.Length);
                 var tmpMidi = MidiFile.Read(stream, readSettings);
 
                 HashSet<string> tracksInMidi = new();

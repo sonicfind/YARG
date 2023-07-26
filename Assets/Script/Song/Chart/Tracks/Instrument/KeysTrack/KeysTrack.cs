@@ -9,7 +9,7 @@ using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart.KeysTrack
 {
-    public class Midi_Keys_Loader : Midi_Instrument_Loader<Keys>
+    public class Midi_Keys_Loader : Midi_Instrument_Loader<Keys_S>
     {
         private readonly ulong[,] notes = new ulong[4, 5] {
             { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue },
@@ -36,7 +36,7 @@ namespace YARG.Song.Chart.KeysTrack
             }))
         { }
 
-        protected override void ParseLaneColor(ref InstrumentTrack<Keys> track)
+        protected override void ParseLaneColor(ref InstrumentTrack<Keys_S> track)
         {
             uint noteValue = note.value - 60;
             uint lane = lanes[noteValue];
@@ -49,7 +49,7 @@ namespace YARG.Song.Chart.KeysTrack
             }
         }
 
-        protected override void ParseLaneColor_Off(ref InstrumentTrack<Keys> track)
+        protected override void ParseLaneColor_Off(ref InstrumentTrack<Keys_S> track)
         {
             uint noteValue = note.value - 60;
             uint lane = lanes[noteValue];

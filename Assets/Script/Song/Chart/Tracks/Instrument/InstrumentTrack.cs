@@ -56,7 +56,7 @@ namespace YARG.Song.Chart
     }
 
     public class InstrumentTrack<T> : InstrumentTrack_Base<DifficultyTrack<T>>
-        where T : class, INote, new()
+        where T : unmanaged, INote_S
     {
     }
 }

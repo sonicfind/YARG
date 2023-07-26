@@ -9,15 +9,19 @@ namespace YARG.Serialization
 {
     public unsafe abstract class TxtReader_Base
     {
-        public readonly FrameworkFile file;
+        protected readonly byte* ptr;
+        protected readonly int length;
         protected int _position;
+
+        public byte* Ptr => ptr;
+        public int Length => length;
 
         public int Position
         {
             get { return _position; }
             set
             {
-                if (value < _position && _position <= file.Length)
+                if (value < _position && _position <= length)
                     throw new ArgumentOutOfRangeException("Position");
                 _position = value;
             }
@@ -28,31 +32,35 @@ namespace YARG.Serialization
 
         public byte PeekByte()
         {
-            return file.ptr[_position];
+            return ptr[_position];
         }
 
-        public byte* CurrentPtr { get { return file.ptr + _position; } }
+        public byte* CurrentPtr { get { return ptr + _position; } }
 
-        protected TxtReader_Base(FrameworkFile file) { this.file = file; }
+        protected TxtReader_Base(byte* ptr, int length)
+        {
+            this.ptr = ptr;
+            this.length = length;
+        }
 
-        public abstract void SkipWhiteSpace();
+        public abstract byte SkipWhiteSpace();
 
         public bool IsEndOfFile()
         {
-            return _position >= file.Length;
+            return _position >= length;
         }
 
         public bool ReadBoolean(ref bool value)
         {
-            value = file.ptr[_position] switch
+            value = ptr[_position] switch
             {
                 (byte)'0' => false,
                 (byte)'1' => true,
                 _ => _position + 4 <= _next &&
-                                    (file.ptr[_position] == 't' || file.ptr[_position] == 'T') &&
-                                    (file.ptr[_position + 1] == 'r' || file.ptr[_position + 1] == 'R') &&
-                                    (file.ptr[_position + 2] == 'u' || file.ptr[_position + 2] == 'U') &&
-                                    (file.ptr[_position + 3] == 'e' || file.ptr[_position + 3] == 'E'),
+                                    (ptr[_position] == 't' || ptr[_position] == 'T') &&
+                                    (ptr[_position + 1] == 'r' || ptr[_position + 1] == 'R') &&
+                                    (ptr[_position + 2] == 'u' || ptr[_position + 2] == 'U') &&
+                                    (ptr[_position + 3] == 'e' || ptr[_position + 3] == 'E'),
             };
             return true;
         }
@@ -62,7 +70,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            value = file.ptr[_position++];
+            value = ptr[_position++];
             SkipWhiteSpace();
             return true;
         }
@@ -72,7 +80,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            value = (sbyte)file.ptr[_position++];
+            value = (sbyte)ptr[_position++];
             SkipWhiteSpace();
             return true;
         }
@@ -82,7 +90,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            short b = file.ptr[_position];
+            short b = ptr[_position];
             if (b != '-')
             {
                 if (b == '+')
@@ -90,7 +98,7 @@ namespace YARG.Serialization
                     ++_position;
                     if (_position == _next)
                         return false;
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                 }
 
                 if (b < '0' || b > '9')
@@ -106,7 +114,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -126,7 +134,7 @@ namespace YARG.Serialization
                 if (_position == _next)
                     return false;
 
-                b = file.ptr[_position];
+                b = ptr[_position];
                 if (b < '0' || b > '9')
                     return false;
 
@@ -140,7 +148,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -164,13 +172,13 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            ushort b = file.ptr[_position];
+            ushort b = ptr[_position];
             if (b == '+')
             {
                 ++_position;
                 if (_position == _next)
                     return false;
-                b = file.ptr[_position];
+                b = ptr[_position];
             }
 
             if (b < '0' || b > '9')
@@ -186,7 +194,7 @@ namespace YARG.Serialization
                     if (_position == _next)
                         break;
 
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if (b < '0' || b > '9')
                         break;
 
@@ -208,7 +216,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            int b = file.ptr[_position];
+            int b = ptr[_position];
             if (b != '-')
             {
                 if (b == '+')
@@ -216,7 +224,7 @@ namespace YARG.Serialization
                     ++_position;
                     if (_position == _next)
                         return false;
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                 }
 
                 if (b < '0' || b > '9')
@@ -232,7 +240,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -252,7 +260,7 @@ namespace YARG.Serialization
                 if (_position == _next)
                     return false;
 
-                b = file.ptr[_position];
+                b = ptr[_position];
                 if (b < '0' || b > '9')
                     return false;
 
@@ -266,7 +274,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -289,13 +297,13 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            uint b = file.ptr[_position];
+            uint b = ptr[_position];
             if (b == '+')
             {
                 ++_position;
                 if (_position == _next)
                     return false;
-                b = file.ptr[_position];
+                b = ptr[_position];
             }
 
             if (b < '0' || b > '9')
@@ -311,7 +319,7 @@ namespace YARG.Serialization
                     if (_position == _next)
                         break;
 
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if (b < '0' || b > '9')
                         break;
 
@@ -333,7 +341,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            long b = file.ptr[_position];
+            long b = ptr[_position];
             if (b != '-')
             {
                 if (b == '+')
@@ -341,7 +349,7 @@ namespace YARG.Serialization
                     ++_position;
                     if (_position == _next)
                         return false;
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                 }
 
                 if (b < '0' || b > '9')
@@ -357,7 +365,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -377,7 +385,7 @@ namespace YARG.Serialization
                 if (_position == _next)
                     return false;
 
-                b = file.ptr[_position];
+                b = ptr[_position];
                 if (b < '0' || b > '9')
                     return false;
 
@@ -391,7 +399,7 @@ namespace YARG.Serialization
                         if (_position == _next)
                             break;
 
-                        b = file.ptr[_position];
+                        b = ptr[_position];
                         if (b < '0' || b > '9')
                             break;
 
@@ -414,13 +422,13 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            ulong b = file.ptr[_position];
+            ulong b = ptr[_position];
             if (b == '+')
             {
                 ++_position;
                 if (_position == _next)
                     return false;
-                b = file.ptr[_position];
+                b = ptr[_position];
             }
 
             if (b < '0' || b > '9')
@@ -436,7 +444,7 @@ namespace YARG.Serialization
                     if (_position == _next)
                         break;
 
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if (b < '0' || b > '9')
                         break;
 
@@ -458,7 +466,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            byte b = file.ptr[_position];
+            byte b = ptr[_position];
             bool isNegative = false;
 
             if (b == '+')
@@ -466,14 +474,14 @@ namespace YARG.Serialization
                 ++_position;
                 if (_position == _next)
                     return false;
-                b = file.ptr[_position];
+                b = ptr[_position];
             }
             else if (b == '-')
             {
                 ++_position;
                 if (_position == _next)
                     return false;
-                b = file.ptr[_position];
+                b = ptr[_position];
                 isNegative = true;
             }
 
@@ -492,7 +500,7 @@ namespace YARG.Serialization
                     if (_position == _next)
                         break;
 
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if (b < '0' || b > '9')
                         break;
 
@@ -508,7 +516,7 @@ namespace YARG.Serialization
                 int count = 0;
                 if (_position < _next)
                 {
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if ('0' <= b && b <= '9')
                     {
                         ++count;
@@ -519,7 +527,7 @@ namespace YARG.Serialization
                             if (_position == _next)
                                 break;
 
-                            b = file.ptr[_position];
+                            b = ptr[_position];
                             if (b < '0' || b > '9')
                                 break;
                             dec *= 10;
@@ -546,7 +554,7 @@ namespace YARG.Serialization
             if (_position >= _next)
                 return false;
 
-            byte b = file.ptr[_position];
+            byte b = ptr[_position];
             bool isNegative = false;
 
             if (b == '+')
@@ -578,7 +586,7 @@ namespace YARG.Serialization
                     if (_position == _next)
                         break;
 
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if (b < '0' || b > '9')
                         break;
 
@@ -594,7 +602,7 @@ namespace YARG.Serialization
                 int count = 0;
                 if (_position < _next)
                 {
-                    b = file.ptr[_position];
+                    b = ptr[_position];
                     if ('0' <= b && b <= '9')
                     {
                         ++count;
@@ -605,7 +613,7 @@ namespace YARG.Serialization
                             if (_position == _next)
                                 break;
 
-                            b = file.ptr[_position];
+                            b = ptr[_position];
                             if (b < '0' || b > '9')
                                 break;
                             dec *= 10;
@@ -647,7 +655,7 @@ namespace YARG.Serialization
         {
             if (_position + 1 > _next)
                 throw new Exception("Failed to parse data");
-            return ref file.ptr[_position++];
+            return ref ptr[_position++];
         }
 
         public sbyte ReadSByte()
@@ -717,7 +725,7 @@ namespace YARG.Serialization
 
         public ReadOnlySpan<byte> ExtractBasicSpan(int length)
         {
-            return new ReadOnlySpan<byte>(file.ptr + _position, length);
+            return new ReadOnlySpan<byte>(ptr + _position, length);
         }
     }
 }

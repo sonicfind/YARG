@@ -14,9 +14,12 @@ namespace YARG.Serialization
         BigEndian = 1,
     };
 
+#nullable enable
     public unsafe class BinaryFileReader : IDisposable
     {
-        private readonly FrameworkFile file;
+        private readonly FrameworkFile? file;
+        private readonly byte* ptr;
+        private readonly int length;
 
         private int boundaryIndex = 0;
         private readonly int* boundaries;
@@ -24,7 +27,6 @@ namespace YARG.Serialization
 
         private int _position;
         private bool disposedValue;
-        private readonly bool disposeFile = false;
 
         public int Position
         {
@@ -38,25 +40,30 @@ namespace YARG.Serialization
         }
         public int Boundary { get { return currentBoundary; } }
 
-        public BinaryFileReader(FrameworkFile file, bool disposeFile = false)
+        public BinaryFileReader(byte* ptr, int length)
         {
-            this.file = file;
-            this.disposeFile = disposeFile;
-            boundaries = (int*)Marshal.AllocHGlobal(sizeof(int) * 8);
-            currentBoundary = boundaries[0] = file.Length;
+            this.ptr = ptr;
+            this.length = length;
+            boundaries = (int*) Marshal.AllocHGlobal(sizeof(int) * 8);
+            currentBoundary = boundaries[0] = length;
         }
 
-        public BinaryFileReader(byte[] data) : this(new FrameworkFile_Handle(data), true) { }
+        public BinaryFileReader(FrameworkFile file) : this(file.Ptr, file.Length)
+        {
+            this.file = file;
+        }
 
-        public BinaryFileReader(string path) : this(new FrameworkFile_Alloc(path), true) { }
+        public BinaryFileReader(byte[] data) : this(new FrameworkFile_Handle(data)) { } 
 
-        public BinaryFileReader(PointerHandler handler, bool dispose = false) : this(new FrameworkFile_Pointer(handler, dispose), true) { }
+        public BinaryFileReader(string path) : this(new FrameworkFile_Alloc(path)) { }
+
+        public BinaryFileReader(PointerHandler handler, bool dispose = false) : this(new FrameworkFile_Pointer(handler, dispose)) { }
 
         protected void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
-                if (disposing && disposeFile)
+                if (disposing && file != null)
                     file.Dispose();
                 Marshal.FreeHGlobal((IntPtr)boundaries);
                 disposedValue = true;
@@ -95,10 +102,10 @@ namespace YARG.Serialization
         public bool CompareTag(byte[] tag)
         {
             Debug.Assert(tag.Length == 4);
-            if (tag[0] != file.ptr[_position] ||
-                tag[1] != file.ptr[_position + 1] ||
-                tag[2] != file.ptr[_position + 2] ||
-                tag[3] != file.ptr[_position + 3])
+            if (tag[0] != ptr[_position] ||
+                tag[1] != ptr[_position + 1] ||
+                tag[2] != ptr[_position + 2] ||
+                tag[3] != ptr[_position + 3])
                 return false;
 
             _position += 4;
@@ -121,7 +128,7 @@ namespace YARG.Serialization
 
         public byte PeekByte()
         {
-            return file.ptr[_position];
+            return ptr[_position];
         }
 
         public bool ReadByte(ref byte value)
@@ -129,7 +136,7 @@ namespace YARG.Serialization
             if (_position >= currentBoundary)
                 return false;
 
-            value = file.ptr[_position++];
+            value = ptr[_position++];
             return true;
         }
 
@@ -138,7 +145,7 @@ namespace YARG.Serialization
             if (_position >= currentBoundary)
                 return false;
 
-            value = (sbyte)file.ptr[_position++];
+            value = (sbyte)ptr[_position++];
             return true;
         }
         
@@ -147,7 +154,7 @@ namespace YARG.Serialization
             if (_position + 2 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 2);
+            Span<byte> span = new(ptr + _position, 2);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadInt16LittleEndian(span);
             else
@@ -161,7 +168,7 @@ namespace YARG.Serialization
             if (_position + 2 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 2);
+            Span<byte> span = new(ptr + _position, 2);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadUInt16LittleEndian(span);
             else
@@ -175,7 +182,7 @@ namespace YARG.Serialization
             if (_position + 4 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 4);
+            Span<byte> span = new(ptr + _position, 4);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadInt32LittleEndian(span);
             else
@@ -189,7 +196,7 @@ namespace YARG.Serialization
             if (_position + 4 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 4);
+            Span<byte> span = new(ptr + _position, 4);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadUInt32LittleEndian(span);
             else
@@ -203,7 +210,7 @@ namespace YARG.Serialization
             if (_position + 8 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 8);
+            Span<byte> span = new(ptr + _position, 8);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadInt64LittleEndian(span);
             else
@@ -217,7 +224,7 @@ namespace YARG.Serialization
             if (_position + 8 > currentBoundary)
                 return false;
 
-            Span<byte> span = new(file.ptr + _position, 8);
+            Span<byte> span = new(ptr + _position, 8);
             if (endianness == Endianness.LittleEndian)
                 value = BinaryPrimitives.ReadUInt64LittleEndian(span);
             else
@@ -231,7 +238,7 @@ namespace YARG.Serialization
             if (_position + 4 > currentBoundary)
                 return false;
 
-            value = BitConverter.ToSingle(new Span<byte>(file.ptr + _position, 4));
+            value = BitConverter.ToSingle(new Span<byte>(ptr + _position, 4));
             _position += 4;
             return true;
         }
@@ -240,14 +247,14 @@ namespace YARG.Serialization
             if (_position >= currentBoundary)
                 throw new Exception("Failed to parse data");
 
-            return file.ptr[_position++];
+            return ptr[_position++];
         }
 
         public ref byte ReadByte_Ref()
         {
             if (_position >= currentBoundary)
                 throw new Exception("Failed to parse data");
-            return ref file.ptr[_position++];
+            return ref ptr[_position++];
         }
 
         public sbyte ReadSByte()
@@ -255,7 +262,7 @@ namespace YARG.Serialization
             if (_position >= currentBoundary)
                 throw new Exception("Failed to parse data");
 
-            return (sbyte)file.ptr[_position++];
+            return (sbyte)ptr[_position++];
         }
 
         public bool ReadBoolean()
@@ -317,7 +324,7 @@ namespace YARG.Serialization
             if (endPos > currentBoundary)
                 return false;
 
-            Marshal.Copy((IntPtr)(file.ptr + _position), bytes, 0, bytes.Length);
+            Marshal.Copy((IntPtr)(ptr + _position), bytes, 0, bytes.Length);
             _position = endPos;
             return true;
         }
@@ -347,7 +354,7 @@ namespace YARG.Serialization
                 if (_position >= currentBoundary)
                     throw new Exception("Failed to parse data");
 
-                byteReadJustNow = file.ptr[_position++];
+                byteReadJustNow = ptr[_position++];
                 result |= (byteReadJustNow & 0x7Fu) << shift;
 
                 if (byteReadJustNow <= 0x7Fu)
@@ -359,7 +366,7 @@ namespace YARG.Serialization
             if (_position >= currentBoundary)
                 throw new Exception("Failed to parse data");
 
-            byteReadJustNow = file.ptr[_position++];
+            byteReadJustNow = ptr[_position++];
             if (byteReadJustNow > 0b_1111u)
             {
                 throw new Exception("Failed to parse data");
@@ -378,7 +385,7 @@ namespace YARG.Serialization
                 if (_position >= currentBoundary)
                     throw new Exception("Failed to parse data");
 
-                uint b = file.ptr[_position++];
+                uint b = ptr[_position++];
                 value |= b & 127;
                 if (b < 128)
                     return value;
@@ -397,7 +404,7 @@ namespace YARG.Serialization
             if (endPos > currentBoundary)
                 throw new Exception("Failed to copy data");
 
-            Copier.MemCpy(data, file.ptr + _position, (nuint)length);
+            Copier.MemCpy(data, ptr + _position, (nuint)length);
             _position = endPos;
         }
 
@@ -407,7 +414,7 @@ namespace YARG.Serialization
             if (endPos > currentBoundary)
                 throw new Exception("Failed to parse data");
 
-            ReadOnlySpan<byte> span = new(file.ptr + _position, length);
+            ReadOnlySpan<byte> span = new(ptr + _position, length);
             _position = endPos;
             return span;
         }
@@ -418,7 +425,7 @@ namespace YARG.Serialization
             if (endPos > currentBoundary)
                 throw new Exception("Failed to create reader");
 
-            BinaryFileReader reader = new(new FrameworkFile(file.ptr + _position, length));
+            BinaryFileReader reader = new(new FrameworkFile(ptr + _position, length));
             _position = endPos;
             return reader;
         }

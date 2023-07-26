@@ -29,7 +29,7 @@ namespace YARG.Serialization.Parser
         // inflate a milo file's bytes so that you can parse them
         private static unsafe byte[] Inflate(FrameworkFile file)
         {
-            using var ms = new UnmanagedMemoryStream(file.ptr, file.Length);
+            using var ms = new UnmanagedMemoryStream(file.Ptr, file.Length);
             using var br = new BinaryReader(ms, new ASCIIEncoding());
 
             // 0xCABEDEAF = RBN

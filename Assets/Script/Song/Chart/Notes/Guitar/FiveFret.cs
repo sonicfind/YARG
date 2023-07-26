@@ -15,7 +15,7 @@ namespace YARG.Song.Chart.Notes
 #nullable enable
         public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
         {
-            (var type, var notes) = ConstructTypeAndNotes(position, prevPosition, prevNote as FiveFret);
+            var type = GetGuitarType(position, prevPosition, prevNote as FiveFret);
             string mesh = type switch
             {
                 PlayableGuitarType.STRUM => "FiveFret",
@@ -23,14 +23,14 @@ namespace YARG.Song.Chart.Notes
                 PlayableGuitarType.TAP => "FiveFretTap",
                 _ => throw new Exception("stoopid")
             };
-            return new PlayableNote_Guitar(mesh, type, notes);
+            return new PlayableNote_Guitar(mesh, type, lanes);
         }
 
         public bool Set_From_Chart(uint lane, ulong length)
         {
             if (lane < 5)
             {
-                lanes[lane + 1] = length;
+                lanes[lane + 1].Duration = length;
                 lanes[0].Disable();
             }
             else if (lane == 5)
@@ -39,9 +39,9 @@ namespace YARG.Song.Chart.Notes
                 IsTap = true;
             else if (lane == 7)
             {
-                lanes[0] = length;
+                lanes[0].Duration = length;
                 for (uint i = 1; i < 6; ++i)
-                    lanes[i].Disable();
+                    lanes[i] = default;
             }
             else
                 return false;
@@ -73,14 +73,14 @@ namespace YARG.Song.Chart.Notes
             {
                 fixed (TruncatableSustain* lanes = &open)
                 {
-                    lanes[lane] = value;
+                    lanes[lane].Duration = value;
                     if (lane == 0)
                     {
                         for (int i = 1; i < 6; ++i)
-                            lanes[i].Disable();
+                            lanes[i] = default;
                     }
                     else
-                        lanes[0].Disable();
+                        lanes[0] = default;
                 }
             }
         }
@@ -88,7 +88,7 @@ namespace YARG.Song.Chart.Notes
         public void Disable(uint lane)
         {
             fixed (TruncatableSustain* lanes = &open)
-                lanes[lane].Disable();
+                lanes[lane] = default;
         }
 
         public bool Set_From_Chart(uint lane, ulong length)
@@ -96,7 +96,7 @@ namespace YARG.Song.Chart.Notes
             if (lane < 5)
             {
                 this[lane + 1] = length;
-                open.Disable();
+                open = default;
             }
             else if (lane == 5)
                 Forcing = ForceStatus.FORCED_LEGACY;
@@ -107,7 +107,7 @@ namespace YARG.Song.Chart.Notes
                 open = length;
                 fixed (TruncatableSustain* lanes = &open)
                     for (uint i = 1; i < 6; ++i)
-                        lanes[i].Disable();
+                        lanes[i] = default;
             }
             else
                 return false;
@@ -117,7 +117,7 @@ namespace YARG.Song.Chart.Notes
         public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
             where T : unmanaged, INote_S
         {
-            (var type, var notes) = IGuitarNote.ConstructTypeAndNotes(position, prevPosition, this, (FiveFret_S*)prevNote);
+            var type = IGuitarNote.GetGuitarType(position, prevPosition, ref this, (FiveFret_S*)prevNote);
             string mesh = type switch
             {
                 PlayableGuitarType.STRUM => "FiveFret",
@@ -125,7 +125,9 @@ namespace YARG.Song.Chart.Notes
                 PlayableGuitarType.TAP => "FiveFretTap",
                 _ => throw new Exception("stoopid")
             };
-            return new PlayableNote_Guitar(mesh, type, notes);
+
+            fixed (TruncatableSustain* lanes = &open)
+                return new PlayableNote_Guitar_S(mesh, type, lanes, 5);
         }
 
         public ulong GetLongestSustain()

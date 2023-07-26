@@ -9,7 +9,7 @@ using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart.GuitarTrack
 {
-    public class Midi_SixFret_Loader : Midi_Instrument_Loader<SixFret>
+    public class Midi_SixFret_Loader : Midi_Instrument_Loader<SixFret_S>
     {
         private class SixFret_MidiDiff
         {
@@ -41,7 +41,7 @@ namespace YARG.Song.Chart.GuitarTrack
 
         protected override bool IsNote() { return 58 <= note.value && note.value <= 103; }
 
-        protected override void ParseLaneColor(ref InstrumentTrack<SixFret> track)
+        protected override void ParseLaneColor(ref InstrumentTrack<SixFret_S> track)
         {
             uint noteValue = note.value - 58;
             uint lane = lanes[noteValue];
@@ -53,7 +53,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 diff.notes[lane] = currEvent.position;
                 if (!track[diffIndex].notes.ValidateLastKey(currEvent.position))
                 {
-                    ref SixFret guitar = ref track[diffIndex].notes.Add(currEvent.position);
+                    ref var guitar = ref track[diffIndex].notes.Add(currEvent.position);
                     if (diff.SliderNotes)
                         guitar.IsTap = true;
 
@@ -80,7 +80,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 difficulties[diffIndex].SliderNotes = true;
         }
 
-        protected override void ParseLaneColor_Off(ref InstrumentTrack<SixFret> track)
+        protected override void ParseLaneColor_Off(ref InstrumentTrack<SixFret_S> track)
         {
             uint noteValue = note.value - 58;
             uint lane = lanes[noteValue];
@@ -90,7 +90,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 ulong colorPosition = difficulties[diffIndex].notes[lane];
                 if (colorPosition != ulong.MaxValue)
                 {
-                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[(int)lane] = currEvent.position - colorPosition;
+                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane] = currEvent.position - colorPosition;
                     difficulties[diffIndex].notes[lane] = ulong.MaxValue;
                 }
             }
@@ -102,7 +102,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 difficulties[diffIndex].SliderNotes = false;
         }
 
-        protected override void ParseSysEx(ReadOnlySpan<byte> str, ref InstrumentTrack<SixFret> track)
+        protected override void ParseSysEx(ReadOnlySpan<byte> str, ref InstrumentTrack<SixFret_S> track)
         {
             if (str.StartsWith(SYSEXTAG))
             {

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace YARG.Serialization
 {
-    public class MidiFileReader : IDisposable
+    public unsafe class MidiFileReader : IDisposable
     {
         public static readonly Dictionary<string, MidiTrackType> TRACKNAMES = new()
         {
@@ -70,7 +70,9 @@ namespace YARG.Serialization
             ProcessHeaderChunk();
         }
 
-        public MidiFileReader(FrameworkFile file, bool disposeFile = false, byte multiplierNote = 116) : this(new BinaryFileReader(file, disposeFile), true, multiplierNote) { }
+        public MidiFileReader(byte* ptr, int length, byte multiplierNote = 116) : this(new BinaryFileReader(ptr, length), true, multiplierNote) { }
+
+        public MidiFileReader(FrameworkFile file, byte multiplierNote = 116) : this(new BinaryFileReader(file), true, multiplierNote) { }
 
         public MidiFileReader(byte[] data, byte multiplierNote = 116) : this(new BinaryFileReader(data), true, multiplierNote) { }
 

@@ -153,6 +153,23 @@ namespace YARG.Song.Chart.Notes
             return true;
         }
 
+        public DrumType ParseDrumType()
+        {
+            if (green5.IsActive())
+                return DrumType.FIVE_LANE;
+            return cymbal_yellow || cymbal_blue || cymbal_green ? DrumType.FOUR_PRO : DrumType.UNKNOWN;
+        }
+
+        public static DrumType EvaluateDrumType(uint index)
+        {
+            if (index == 5)
+                return DrumType.FIVE_LANE;
+            else if (66 <= index && index <= 68)
+                return DrumType.FOUR_PRO;
+            else
+                return DrumType.UNKNOWN;
+        }
+
         public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
             where T : unmanaged, INote_S
         {

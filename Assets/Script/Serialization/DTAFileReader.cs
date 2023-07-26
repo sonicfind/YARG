@@ -11,10 +11,15 @@ namespace YARG.Serialization
 {
     public unsafe class DTAFileReader : TxtReader_Base
     {
+        private readonly FrameworkFile file;
         private readonly List<int> nodeEnds = new();
         //private static readonly Encoding Western = Encoding.GetEncoding(1252);
 
-        public DTAFileReader(FrameworkFile file) : base(file) { SkipWhiteSpace(); }
+        public DTAFileReader(FrameworkFile file) : base(file.Ptr, file.Length)
+        {
+            this.file = file;
+            SkipWhiteSpace();
+        }
 
         public DTAFileReader(byte[] data) : this(new FrameworkFile_Handle(data)) { }
 
@@ -32,44 +37,45 @@ namespace YARG.Serialization
             };
         }
 
-        public override void SkipWhiteSpace()
+        public override byte SkipWhiteSpace()
         {
-            int length = file.Length;
             while (_position < length)
             {
-                byte ch = file.ptr[_position];
+                byte ch = ptr[_position];
+                if (ch > 32 && ch != ';')
+                    return ch;
+
                 if (ch <= 32)
                     ++_position;
-                else if (ch == ';')
+                else
                 {
                     ++_position;
                     while (_position < length)
                     {
                         ++_position;
-                        if (file.ptr[_position - 1] == '\n')
+                        if (ptr[_position - 1] == '\n')
                             break;
                     }
                 }
-                else
-                    break;
             }
+            return 0;
         }
 
         public string GetNameOfNode()
         {
-            byte ch = file.ptr[_position];
+            byte ch = ptr[_position];
             if (ch == '(')
                 return string.Empty;
 
             bool hasApostrophe = true;
             if (ch != '\'')
             {
-                if (file.ptr[_position - 1] != '(')
+                if (ptr[_position - 1] != '(')
                     throw new Exception("Invalid name call");
                 hasApostrophe = false;
             }
             else
-                ch = file.ptr[++_position];
+                ch = ptr[++_position];
 
             int start = _position;
             while (ch != '\'')
@@ -80,16 +86,16 @@ namespace YARG.Serialization
                         throw new Exception("Invalid name format");
                     break;
                 }
-                ch = file.ptr[++_position];
+                ch = ptr[++_position];
             }
             int end = _position++;
             SkipWhiteSpace();
-            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(file.ptr + start, end - start));
+            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(ptr + start, end - start));
         }
 
         public string ExtractText()
         {
-            byte ch = file.ptr[_position];
+            byte ch = ptr[_position];
             bool inSquirley = ch == '{';
             bool inQuotes = !inSquirley && ch == '\"';
             bool inApostrophes = !inQuotes && ch == '\'';
@@ -100,7 +106,7 @@ namespace YARG.Serialization
             int start = _position++;
             while (_position < _next)
             {
-                ch = file.ptr[_position];
+                ch = ptr[_position];
                 if (ch == '{')
                     throw new Exception("Text error - no { braces allowed");
 
@@ -143,7 +149,7 @@ namespace YARG.Serialization
             else if (inSquirley || inQuotes || inApostrophes)
                 throw new Exception("Improper end to text");
 
-            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(file.ptr + start, end - start)).Replace("\\q", "\"");
+            return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(ptr + start, end - start)).Replace("\\q", "\"");
         }
 
         public List<int> ExtractList_Int()
@@ -172,7 +178,7 @@ namespace YARG.Serialization
 
         public bool StartNode()
         {
-            byte ch = file.ptr[_position];
+            byte ch = ptr[_position];
             if (ch != '(')
                 return false;
 
@@ -184,10 +190,9 @@ namespace YARG.Serialization
             bool inQuotes = false;
             bool inComment = false;
             int pos = _position;
-            int length = file.Length;
             while (scopeLevel >= 1 && pos < length)
             {
-                ch = file.ptr[pos];
+                ch = ptr[pos];
                 if (inComment)
                 {
                     if (ch == '\n')

@@ -295,6 +295,7 @@ namespace YARG.UI.MusicLibrary
             var file = entry.LoadImgFile();
             if (file == null) return;
 
+
             XboxImageSettings? settings = null;
             await Task.Run(() => settings = XboxImageTextureGenerator.GetTexture(file, _cancellationToken.Token));
             if (settings != null)
@@ -303,7 +304,7 @@ namespace YARG.UI.MusicLibrary
                 var texture = new Texture2D(settings.width, settings.height, (isDXT1) ? GraphicsFormat.RGBA_DXT1_SRGB : GraphicsFormat.RGBA_DXT5_SRGB, TextureCreationFlags.None);
                 unsafe
                 {
-                    texture.LoadRawTextureData((IntPtr) (file.ptr + 32), file.Length - 32);
+                    texture.LoadRawTextureData((IntPtr) (file.Ptr + 32), file.Length - 32);
                 }
                 texture.Apply();
                 _albumCover.texture = texture;

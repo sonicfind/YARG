@@ -13,20 +13,21 @@ namespace YARG.Serialization
 {
     public unsafe class FrameworkFile : IDisposable
     {
-        public byte* ptr;
+        public byte* Ptr { get; protected set; }
+        public int Length { get; protected set; }
         protected bool disposedValue;
 
-        public int Length { get; set; }
+        
 
         protected FrameworkFile() { }
 
         public FrameworkFile(byte* ptr, int length)
         {
-            this.ptr = ptr;
+            Ptr = ptr;
             Length = length;
         }
 
-        public Hash128 CalcHash128() { return Hash128.Compute(ptr, (ulong) Length); }
+        public Hash128 CalcHash128() { return Hash128.Compute(Ptr, (ulong) Length); }
 
         protected virtual void Dispose(bool disposing) { }
 
@@ -39,14 +40,12 @@ namespace YARG.Serialization
 
     public unsafe class FrameworkFile_Handle : FrameworkFile
     {
-        private readonly byte[] buffer;
         private readonly GCHandle handle;
 
         public FrameworkFile_Handle(byte[] data)
         {
-            buffer = data;
-            handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-            ptr = (byte*)handle.AddrOfPinnedObject();
+            handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            Ptr = (byte*)handle.AddrOfPinnedObject();
             Length = data.Length;
         }
 
@@ -69,8 +68,8 @@ namespace YARG.Serialization
             using var fs = File.OpenRead(path);
             int length = (int)fs.Length;
             Length = length;
-            ptr = (byte*)Marshal.AllocHGlobal(length);
-            fs.Read(new Span<byte>(ptr, length));
+            Ptr = (byte*)Marshal.AllocHGlobal(length);
+            fs.Read(new Span<byte>(Ptr, length));
         }
 
         ~FrameworkFile_Alloc() { Dispose(false); }
@@ -79,7 +78,7 @@ namespace YARG.Serialization
         {
             if (!disposedValue)
             {
-                Marshal.FreeHGlobal((IntPtr)ptr);
+                Marshal.FreeHGlobal((IntPtr)Ptr);
                 disposedValue = true;
             }
         }
@@ -91,7 +90,7 @@ namespace YARG.Serialization
         public FrameworkFile_Pointer(PointerHandler handler, bool dispose = false)
         {
             this.handler = handler;
-            ptr = handler.Data;
+            Ptr = handler.Data;
             Length = handler.Length;
             disposedValue= !dispose;
         }
