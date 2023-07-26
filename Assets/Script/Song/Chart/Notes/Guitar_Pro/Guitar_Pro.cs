@@ -72,7 +72,7 @@ namespace YARG.Song.Chart.Notes
     };
 
     public struct ProString<FretType> : IEnableable
-        where FretType : IFretted
+        where FretType : unmanaged, IFretted
     {
         private TruncatableSustain _duration;
         public FretType fret;
@@ -98,17 +98,16 @@ namespace YARG.Song.Chart.Notes
     }
 
     public class Guitar_Pro<FretType> : Note<ProString<FretType>>
-        where FretType : IFretted
+        where FretType : unmanaged, IFretted
     {
-        private readonly ProString<FretType>[] strings;
-        public ref ProString<FretType> this[int lane] => ref strings[lane];
+        public ref ProString<FretType> this[int lane] => ref lanes[lane];
 
         public bool HOPO { get; set; }
         public bool ForceNumbering { get; set; }
         public ProSlide Slide { get; set; }
         public EmphasisType Emphasis { get; set; }
 
-        public Guitar_Pro() : base(6) { strings = lanes; }
+        public Guitar_Pro() : base(6) { }
 
         public ProSlide WheelSlide()
         {
@@ -136,6 +135,81 @@ namespace YARG.Song.Chart.Notes
 
 #nullable enable
         public override IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public unsafe struct Guitar_Pro_S<FretType> : INote_S
+        where FretType : unmanaged, IFretted
+    {
+        public uint NumLanes => 6;
+        private ProString<FretType> string_0;
+        private ProString<FretType> string_1;
+        private ProString<FretType> string_2;
+        private ProString<FretType> string_3;
+        private ProString<FretType> string_4;
+        private ProString<FretType> string_5;
+        public ref ProString<FretType> this[int lane]
+        {
+            get { fixed (ProString<FretType>* strings = &string_1) return ref strings[lane]; }
+        }
+
+        public bool HOPO { get; set; }
+        public bool ForceNumbering { get; set; }
+        public ProSlide Slide { get; set; }
+        public EmphasisType Emphasis { get; set; }
+
+        public ProSlide WheelSlide()
+        {
+            if (Slide == ProSlide.None)
+                Slide = ProSlide.Normal;
+            else if (Slide == ProSlide.Normal)
+                Slide = ProSlide.Reversed;
+            else
+                Slide = ProSlide.None;
+            return Slide;
+        }
+
+        public EmphasisType WheelEmphasis()
+        {
+            if (Emphasis == EmphasisType.None)
+                Emphasis = EmphasisType.High;
+            else if (Emphasis == EmphasisType.High)
+                Emphasis = EmphasisType.Middle;
+            else if (Emphasis == EmphasisType.Middle)
+                Emphasis = EmphasisType.Low;
+            else
+                Emphasis = EmphasisType.None;
+            return Emphasis;
+        }
+
+        public ulong GetLongestSustain()
+        {
+            ulong sustain = 0;
+            fixed (ProString<FretType>* strings = &string_1)
+            {
+                for (int i = 0; i < 6; ++i)
+                {
+                    ulong end = strings[i].Duration;
+                    if (end > sustain)
+                        sustain = end;
+                }
+            }
+            return sustain;
+        }
+
+        public bool HasActiveNotes()
+        {
+            fixed (ProString<FretType>* strings = &string_1)
+                for (int i = 0; i < 6; ++i)
+                    if (strings[i].IsActive())
+                        return true;
+            return false;
+        }
+
+        public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
+            where T : unmanaged, INote_S
         {
             throw new NotImplementedException();
         }

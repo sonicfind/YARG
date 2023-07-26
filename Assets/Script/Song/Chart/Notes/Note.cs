@@ -23,7 +23,7 @@ namespace YARG.Song.Chart.Notes
             return false;
         }
 
-        public ulong GetLongestSustain()
+        public virtual ulong GetLongestSustain()
         {
             ulong sustain = 0;
             for (int i = 0; i < lanes.Length; ++i)

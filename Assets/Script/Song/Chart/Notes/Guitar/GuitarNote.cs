@@ -150,15 +150,14 @@ namespace YARG.Song.Chart.Notes
         }
     }
 
-    public unsafe interface IGuitarNote : INote
+    public unsafe interface IGuitarNote : INote_S
     {
         public static ulong HopoFrequency { get; set; }
-        public int NumLanes { get; }
         public ForceStatus Forcing { get; set; }
         public bool IsTap { get; set; }
         public void ToggleTap() { IsTap = !IsTap; }
 
-        public ulong this[int lane] { get; set; }
+        public ulong this[uint lane] { get; set; }
 
         public void Disable(uint lane);
 
@@ -167,11 +166,11 @@ namespace YARG.Song.Chart.Notes
             where T : unmanaged, IGuitarNote
         {
             var notes = new List<SubNote>();
-            for (int i = 0; i < currNote.NumLanes; ++i)
+            for (uint i = 0; i < currNote.NumLanes; ++i)
             {
                 ulong duration = currNote[i];
                 if (duration > 0)
-                    notes.Add(new(i, position + duration));
+                    notes.Add(new((int)i, position + duration));
             }
 
             PlayableGuitarType type;
@@ -205,7 +204,7 @@ namespace YARG.Song.Chart.Notes
                 return false;
 
             int num = 0;
-            for (int i = 1; i < note.NumLanes; ++i)
+            for (uint i = 1; i < note.NumLanes; ++i)
                 if (note[i] > 0)
                     num++;
             return num > 1;
@@ -214,7 +213,7 @@ namespace YARG.Song.Chart.Notes
         // Assumes the current note is NOT a chord
         public static bool Contains(IGuitarNote note, IGuitarNote container)
         {
-            for (int i = 0; i < container.NumLanes; ++i)
+            for (uint i = 0; i < container.NumLanes; ++i)
                 if (note[i] > 0)
                     return container[i] > 0;
             return false;

@@ -17,7 +17,7 @@ namespace YARG.Song.Chart
     }
 
     public class DifficultyTrack<T> : Track, IDifficultyTrack
-        where T : class, INote, new()
+        where T : unmanaged, INote_S
     {
         public readonly TimedFlatMap<T> notes = new();
 
@@ -37,7 +37,7 @@ namespace YARG.Song.Chart
             return note.key + note.obj.GetLongestSustain();
         }
 
-        public Player_Instrument[] SetupPlayers(InputHandler[] handlers, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
+        public unsafe Player_Instrument[] SetupPlayers(InputHandler[] handlers, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
         {
             var players = new Player_Instrument[handlers.Length];
             var separateTracks = new (ulong, IPlayableNote)[handlers.Length][];

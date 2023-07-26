@@ -10,7 +10,7 @@ using YARG.Types;
 namespace YARG.Song.Chart.ProGuitarTrack
 {
     public class ProGuitarDifficulty<FretType> : DifficultyTrack<Guitar_Pro<FretType>>
-        where FretType : IFretted
+        where FretType : unmanaged, IFretted
     {
         public readonly TimedFlatMap<Arpeggio<FretType>> arpeggios = new();
 

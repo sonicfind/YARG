@@ -20,6 +20,15 @@ namespace YARG.Song.Chart.Notes
         public IPlayableNote ConvertToPlayable(in ulong position, in ulong prevPosition, in INote? prevNote);
     }
 
+    public unsafe interface INote_S
+    {
+        public uint NumLanes { get; }
+        public bool HasActiveNotes();
+        public ulong GetLongestSustain();
+        public IPlayableNote ConvertToPlayable<T>(in ulong position, in ulong prevPosition, in T* prevNote)
+            where T : unmanaged, INote_S;
+    }
+
     public class InputHandler
     {
         public readonly int laneCount;

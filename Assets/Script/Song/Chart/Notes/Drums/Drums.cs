@@ -118,12 +118,26 @@ namespace YARG.Song.Chart.Notes
     public abstract class DrumNote_Pro : DrumNote
     {
         public readonly bool[] cymbals = new bool[3];
-
         protected DrumNote_Pro(int numPads) : base(numPads) { }
-
         protected DrumNote_Pro(int numPads, DrumNote_Pro other) : base(numPads, other)
         {
             cymbals = other.cymbals;
         }
+    }
+
+    public interface IDrumNote : INote_S
+    {
+        public ulong Bass { get; set; }
+        public ulong DoubleBass { get; set; }
+        public ref DrumPad Pads(uint index);
+        public bool IsFlammed { get; set; }
+
+        public ulong this[uint lane] { get; set; }
+        public void Disable(uint lane);
+    }
+
+    public interface IDrumNote_Pro : IDrumNote
+    {
+        public ref bool Cymbals(uint index);
     }
 }
