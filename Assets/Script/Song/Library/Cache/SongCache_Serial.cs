@@ -14,8 +14,9 @@ namespace YARG.Song.Library
 {
     public class SongCache_Serial : SongCache
     {
-        protected override void FindNewEntries()
+        public override void FindNewEntries()
         {
+            Progress = ScanProgress.LoadingSongs;
             foreach (string directory in baseDirectories)
             {
                 if ((File.GetAttributes(directory) & FileAttributes.Hidden) != FileAttributes.Hidden)
@@ -25,7 +26,7 @@ namespace YARG.Song.Library
             LoadExtractedCONSongs();
         }
 
-        protected override bool LoadCacheFile()
+        public override bool LoadCacheFile()
         {
             Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
             {
@@ -98,7 +99,7 @@ namespace YARG.Song.Library
             return true;
         }
 
-        protected override bool LoadCacheFile_Quick()
+        public override bool LoadCacheFile_Quick()
         {
             Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
             {
@@ -169,8 +170,9 @@ namespace YARG.Song.Library
             return true;
         }
 
-        protected override void MapCategories()
+        public override void MapCategories()
         {
+            Progress = ScanProgress.Sorting;
             foreach (var entryList in entries)
             {
                 foreach (var entry in entryList.Value)

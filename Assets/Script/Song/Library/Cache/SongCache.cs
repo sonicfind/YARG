@@ -39,7 +39,9 @@ namespace YARG.Song.Library
 
     public abstract class SongCache : IDisposable
     {
-        protected const int CACHE_VERSION = 23_07_28_02;
+        public static readonly string CACHE_FILE = Path.Combine(PathHelper.PersistentDataPath, "songcache.bin");
+
+        protected const int CACHE_VERSION = 23_07_28_04;
         protected static readonly object dirLock = new();
         protected static readonly object fileLock = new();
         protected static readonly object iniLock = new();
@@ -52,7 +54,6 @@ namespace YARG.Song.Library
         protected static readonly object entryLock = new();
         protected static readonly object badsongsLock = new();
         protected static readonly object invalidLock = new();
-        protected static readonly string CACHE_FILE = Path.Combine(PathHelper.PersistentDataPath, "songcache.bin");
 
         static SongCache() { }
 
@@ -73,7 +74,7 @@ namespace YARG.Song.Library
         public int NumScannedDirectories { get { lock (dirLock) return preScannedDirectories.Count; } }
         public int BadSongCount { get { lock (badsongsLock) return badSongs.Count; } }
 
-        public ScanProgress Progress { get; private set; } = ScanProgress.LoadingCache;
+        public ScanProgress Progress { get; set; } = ScanProgress.LoadingCache;
 
         protected readonly string[] baseDirectories;
         protected readonly List<UpdateGroup> updateGroups = new();
@@ -140,60 +141,6 @@ namespace YARG.Song.Library
             GC.SuppressFinalize(this);
         }
 
-        public bool QuickScan()
-        {
-            Debug.Log("Performing quick scan");
-            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
-            if (!LoadCacheFile_Quick())
-            {
-                ToastManager.ToastWarning("Song cache is not present or outdated - rescan required");
-                Debug.Log("Cache file unavailable or outdated");
-                return false;
-            }
-
-            Debug.Log($"Cache load successful");
-
-            Progress = ScanProgress.Sorting;
-            MapCategories();
-            Debug.Log("Finished quick scan");
-            return true;
-        }
-
-        public void FullScan(bool loadCache = true)
-        {
-            Debug.Log("Performing full scan");
-            if (loadCache)
-            {
-                Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
-                if (LoadCacheFile())
-                    Debug.Log($"Cache load successful");
-                else
-                    Debug.Log($"Cache load failed - Unavailable or outdated");
-            }
-
-            Debug.Log($"Traversing song directories");
-            Progress = ScanProgress.LoadingSongs;
-            FindNewEntries();
-            FinalizeIniEntries();
-
-            Progress = ScanProgress.Sorting;
-            MapCategories();
-
-            Debug.Log($"Attempting to write cache file '{CACHE_FILE}'");
-            try
-            {
-                Progress = ScanProgress.WritingCache;
-                SaveToFile();
-                Debug.Log($"Cache file write successful");
-            }
-            catch (Exception ex)
-            {
-                Debug.Log($"Cache file write unsuccessful");
-                Debug.LogError(ex);
-            }
-            Debug.Log("Full scan complete");
-        }
-
         public async UniTask WriteBadSongs()
         {
 #if UNITY_EDITOR
@@ -241,16 +188,93 @@ namespace YARG.Song.Library
             }
         }
 
-        protected abstract void FindNewEntries();
-        protected abstract void MapCategories();
-        protected abstract bool LoadCacheFile();
-        protected abstract bool LoadCacheFile_Quick();
+        public abstract void FindNewEntries();
+        public abstract void MapCategories();
+        public abstract bool LoadCacheFile();
+        public abstract bool LoadCacheFile_Quick();
 
-        protected void FinalizeIniEntries()
+        public void FinalizeIniEntries()
         {
             foreach (var entryList in iniEntries)
                 foreach (var entry in entryList.Value)
                     entry.FinishScan();
+        }
+
+        public void SaveToFile()
+        {
+            Progress = ScanProgress.WritingCache;
+            using var writer = new BinaryWriter(new FileStream(CACHE_FILE, FileMode.Create, FileAccess.Write));
+            Dictionary<SongEntry, CategoryCacheWriteNode> nodes = new();
+
+            writer.Write(CACHE_VERSION);
+
+            titles.WriteToCache(writer, ref nodes);
+            artists.WriteToCache(writer, ref nodes);
+            albums.WriteToCache(writer, ref nodes);
+            genres.WriteToCache(writer, ref nodes);
+            years.WriteToCache(writer, ref nodes);
+            charters.WriteToCache(writer, ref nodes);
+            playlists.WriteToCache(writer, ref nodes);
+            sources.WriteToCache(writer, ref nodes);
+
+            writer.Write(baseDirectories.Length);
+            foreach (string baseDirectory in baseDirectories)
+            {
+                byte[] buffer = FormatIniEntriesToCache(baseDirectory, nodes);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(updateGroups.Count);
+            foreach (var group in updateGroups)
+            {
+                byte[] buffer = group.FormatForCache();
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(upgradeGroups.Count);
+            foreach (var group in upgradeGroups)
+            {
+                byte[] buffer = group.FormatForCache();
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            List<KeyValuePair<string, PackedCONGroup>> upgradeCons = new();
+            List<KeyValuePair<string, PackedCONGroup>> entryCons = new();
+            foreach (var group in conGroups)
+            {
+                if (group.Value.UpgradeCount > 0)
+                    upgradeCons.Add(group);
+
+                if (group.Value.EntryCount > 0)
+                    entryCons.Add(group);
+            }
+
+            writer.Write(upgradeCons.Count);
+            foreach (var group in upgradeCons)
+            {
+                byte[] buffer = group.Value.FormatUpgradesForCache(group.Key);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(entryCons.Count);
+            foreach (var group in entryCons)
+            {
+                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
+
+            writer.Write(extractedConGroups.Count);
+            foreach (var group in extractedConGroups)
+            {
+                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
+                writer.Write(buffer.Length);
+                writer.Write(buffer);
+            }
         }
 
         protected bool ScanIniEntry(string?[] charts, string? ini)
@@ -1066,82 +1090,6 @@ namespace YARG.Song.Library
                 ++_count;
             }
             return true;
-        }
-
-        private void SaveToFile()
-        {
-            using var writer = new BinaryWriter(new FileStream(CACHE_FILE, FileMode.Create, FileAccess.Write));
-            Dictionary<SongEntry, CategoryCacheWriteNode> nodes = new();
-
-            writer.Write(CACHE_VERSION);
-
-            titles.WriteToCache(writer, ref nodes);
-            artists.WriteToCache(writer, ref nodes);
-            albums.WriteToCache(writer, ref nodes);
-            genres.WriteToCache(writer, ref nodes);
-            years.WriteToCache(writer, ref nodes);
-            charters.WriteToCache(writer, ref nodes);
-            playlists.WriteToCache(writer, ref nodes);
-            sources.WriteToCache(writer, ref nodes);
-
-            writer.Write(baseDirectories.Length);
-            foreach (string baseDirectory in baseDirectories)
-            {
-                byte[] buffer = FormatIniEntriesToCache(baseDirectory, nodes);
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
-
-            writer.Write(updateGroups.Count);
-            foreach (var group in updateGroups)
-            {
-                byte[] buffer = group.FormatForCache();
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
-
-            writer.Write(upgradeGroups.Count);
-            foreach (var group in upgradeGroups)
-            {
-                byte[] buffer = group.FormatForCache();
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
-
-            List<KeyValuePair<string, PackedCONGroup>> upgradeCons = new();
-            List<KeyValuePair<string, PackedCONGroup>> entryCons = new();
-            foreach (var group in conGroups)
-            {
-                if (group.Value.UpgradeCount > 0)
-                    upgradeCons.Add(group);
-
-                if (group.Value.EntryCount > 0)
-                    entryCons.Add(group);
-            }
-
-            writer.Write(upgradeCons.Count);
-            foreach (var group in upgradeCons)
-            {
-                byte[] buffer = group.Value.FormatUpgradesForCache(group.Key);
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
-
-            writer.Write(entryCons.Count);
-            foreach (var group in entryCons)
-            {
-                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
-
-            writer.Write(extractedConGroups.Count);
-            foreach (var group in extractedConGroups)
-            {
-                byte[] buffer = group.Value.FormatEntriesForCache(group.Key, ref nodes);
-                writer.Write(buffer.Length);
-                writer.Write(buffer);
-            }
         }
 
         private byte[] FormatIniEntriesToCache(string baseDirectory, Dictionary<SongEntry, CategoryCacheWriteNode> nodes)

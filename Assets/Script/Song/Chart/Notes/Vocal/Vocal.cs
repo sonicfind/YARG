@@ -14,7 +14,7 @@ namespace YARG.Song.Chart.Notes
 
         private PitchName _note;
         private int _octave;
-        private uint _binary;
+        private int _binary;
 
         public int OCTAVE_MIN => 2;
         public int OCTAVE_MAX => 6;
@@ -24,9 +24,9 @@ namespace YARG.Song.Chart.Notes
             get { return _note; }
             set
             {
-                uint binaryNote = IPitched.ThrowIfInvalidPitch(this, value);
+                int binaryNote = IPitched.ThrowIfInvalidPitch(this, value);
                 _note = value;
-                _binary = (uint) (_octave + 1) * IPitched.OCTAVE_LENGTH + binaryNote;
+                _binary = (_octave + 1) * IPitched.OCTAVE_LENGTH + binaryNote;
             }
         }
         public int Octave
@@ -34,12 +34,12 @@ namespace YARG.Song.Chart.Notes
             get { return _octave; }
             set
             {
-                uint binaryOctave = IPitched.ThrowIfInvalidOctave(this, value);
+                int binaryOctave = IPitched.ThrowIfInvalidOctave(this, value);
                 _octave = value;
-                _binary = (uint) _note + binaryOctave;
+                _binary = (int)_note + binaryOctave;
             }
         }
-        public uint Binary
+        public int Binary
         {
             get { return _binary; }
             set

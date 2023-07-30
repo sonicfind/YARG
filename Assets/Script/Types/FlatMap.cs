@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using TagLib.Riff;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine.InputSystem;
 
 namespace YARG.Types
@@ -464,7 +465,7 @@ namespace YARG.Types
                         void* newItems = (void*) Marshal.AllocHGlobal(value * SIZEOFNODE);
 
                         if (_count > 0)
-                            Copier.MemCpy(newItems, _buffer, (nuint)(_count * SIZEOFNODE));
+                            UnsafeUtility.MemCpy(newItems, _buffer, _count * SIZEOFNODE);
 
                         Marshal.FreeHGlobal((IntPtr) _buffer);
                         _buffer = (FlatMapNode<Key, T>*) newItems;
@@ -493,7 +494,7 @@ namespace YARG.Types
             if (index >= _count)
                 index = _count;
             else
-                Copier.MemMove(_buffer + index + 1, _buffer + index, (nuint) ((_count - index) * SIZEOFNODE));
+                UnsafeUtility.MemMove(_buffer + index + 1, _buffer + index, (_count - index) * SIZEOFNODE);
 
             ++_count;
             ref var node = ref _buffer[index];
@@ -528,7 +529,7 @@ namespace YARG.Types
             _buffer[index] = default;
             --_count;
             if (index < _count)
-                Copier.MemMove(_buffer + index, _buffer + index + 1, (nuint) ((_count - index) * SIZEOFNODE));
+                UnsafeUtility.MemMove(_buffer + index, _buffer + index + 1, (_count - index) * SIZEOFNODE);
             ++_version;
         }
 
@@ -541,7 +542,7 @@ namespace YARG.Types
                 CheckAndGrow();
 
                 if (index < _count)
-                    Copier.MemMove(_buffer + index + 1, _buffer + index, (nuint) ((_count - index) * SIZEOFNODE));
+                    UnsafeUtility.MemMove(_buffer + index + 1, _buffer + index, (_count - index) * SIZEOFNODE);
 
                 ++_count;
                 ref var node = ref _buffer[index];
@@ -557,7 +558,7 @@ namespace YARG.Types
             var arr = new FlatMapNode<Key, T>[_count];
             fixed (FlatMapNode<Key, T>* b = arr)
             {
-                Copier.MemCpy(b, _buffer, (nuint) (_count * sizeof(FlatMapNode<Key, T>)));
+                UnsafeUtility.MemCpy(b, _buffer, _count * sizeof(FlatMapNode<Key, T>));
             }
             return arr;
         }
@@ -566,12 +567,12 @@ namespace YARG.Types
     }
 
 
-    public class TimedFlatMap<T> : FlatMap<ulong, T>
+    public class TimedFlatMap<T> : FlatMap<long, T>
         where T : new()
     {
     }
 
-    public class TimedNativeFlatMap<T> : NativeFlatMap<ulong, T>
+    public class TimedNativeFlatMap<T> : NativeFlatMap<long, T>
         where T : unmanaged
     {
     }

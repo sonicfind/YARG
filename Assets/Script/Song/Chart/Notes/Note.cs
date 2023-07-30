@@ -9,6 +9,7 @@ namespace YARG.Song.Chart.Notes
     public abstract class Note<NoteType> : INote
         where NoteType : struct, IEnableable
     {
+        public abstract int NumLanes { get; }
         protected readonly NoteType[] lanes;
         protected Note(int numcolors)
         {
@@ -32,12 +33,12 @@ namespace YARG.Song.Chart.Notes
             return false;
         }
 
-        public virtual ulong GetLongestSustain()
+        public virtual long GetLongestSustain()
         {
-            ulong sustain = 0;
+            long sustain = 0;
             for (int i = 0; i < lanes.Length; ++i)
             {
-                ulong end = lanes[i].Duration;
+                long end = lanes[i].Duration;
                 if (end > sustain)
                     sustain = end;
             }
@@ -45,6 +46,6 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        public abstract IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote);
+        public abstract PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote);
     }
 }

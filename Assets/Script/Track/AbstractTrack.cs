@@ -3,12 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
+using YARG.Assets.Script.Types;
 using YARG.Audio;
 using YARG.Chart;
 using YARG.Data;
 using YARG.Input;
 using YARG.Pools;
 using YARG.Settings;
+using YARG.Song.Chart.Notes;
 using YARG.UI;
 
 namespace YARG.PlayMode
@@ -26,6 +28,7 @@ namespace YARG.PlayMode
         protected Pool genericPool;
 
         public PlayerManager.Player player;
+        public Player playerNew;
 
         // Time values
 
@@ -266,9 +269,10 @@ namespace YARG.PlayMode
             halfIntervalSize = intervalSize / 2;
 
             // Queue up events
-            string spName = $"starpower_{player.chosenInstrument}";
-            string soloName = $"solo_{player.chosenInstrument}";
-            string fillName = $"fill_{player.chosenInstrument}";
+            string insName = player.chosenInstrument.ToStringName();
+            string spName = $"starpower_{insName}";
+            string soloName = $"solo_{insName}";
+            string fillName = $"fill_{insName}";
             // Solos and SP cannot share notes, so we can save some iteration time and only go start-to-end once overall
             int spNoteIndex = 0;
             int soloNoteIndex = 0;

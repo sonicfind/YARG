@@ -23,6 +23,7 @@ using YARG.Song;
 using YARG.Song.Chart;
 using YARG.Song.Chart.Notes;
 using YARG.Song.Entries;
+using YARG.Types;
 using YARG.UI;
 using YARG.Venue;
 
@@ -212,22 +213,18 @@ namespace YARG.PlayMode
             // Spawn tracks
             _tracks = new List<AbstractTrack>();
             currAudioArrays = AudioArrays_Rhythmless;
+            Dictionary<Instrument, Dictionary<int, List<(GameObject, PlayerManager.Player)>>> instruemntMap = new();
             int trackIndex = 0;
             foreach (var player in PlayerManager.players)
             {
                 if (player.chosenInstrument == Instrument.INVALID)
-                {
-                    // Skip players that are sitting out
                     continue;
-                }
 
-                // Temporary, will make a better system later
                 if (player.chosenInstrument == Instrument.RHYTHM)
                 {
                     currAudioArrays = AudioArrays;
                 }
 
-                // Temporary, same here
                 if (player.chosenInstrument is Instrument.VOCALS or Instrument.HARMONY)
                 {
                     playingVocals = true;
@@ -241,12 +238,36 @@ namespace YARG.PlayMode
                 }
 
                 var prefab = Addressables.LoadAssetAsync<GameObject>(trackPath).WaitForCompletion();
-                var track = Instantiate(prefab, new Vector3(trackIndex * 25f, 100f, 0f), prefab.transform.rotation);
-                _tracks.Add(track.GetComponent<AbstractTrack>());
-                _tracks[trackIndex].player = player;
+                var track = Instantiate(prefab, new Vector3(trackIndex++ * 25f, 100f, 0f), prefab.transform.rotation);
+                var abstrack = track.GetComponent<AbstractTrack>();
+                _tracks.Add(abstrack);
+                abstrack.player = player;
 
-                trackIndex++;
+                Dictionary<int, List<(GameObject, PlayerManager.Player)>> diffs;
+                if (instruemntMap.TryGetValue(player.chosenInstrument, out var ins))
+                    diffs = ins;
+                else
+                    instruemntMap[player.chosenInstrument] = diffs = new();
+
+                int diff = player.chosenDifficulty switch
+                {
+                    Difficulty.EASY => 0,
+                    Difficulty.MEDIUM => 1,
+                    Difficulty.HARD => 2,
+                    Difficulty.EXPERT => 3,
+                    Difficulty.EXPERT_PLUS => 3,
+                    _ => throw new Exception("stooopid")
+                };
+
+                List<(GameObject, PlayerManager.Player)> list;
+                if (diffs.TryGetValue(diff, out var p))
+                    list = p;
+                else
+                    diffs[diff] = list = new();
+                list.Add(new(track, player));
             }
+
+            players = chartNew.SetupPlayers(instruemntMap);
 
             // Load background (venue, video, image, etc.)
             LoadBackground();
@@ -318,9 +339,7 @@ namespace YARG.PlayMode
         {
             chart = Song.LoadChart_Original();
             chartNew = Song.LoadChart();
-
-            InputHandler handler = new(5);
-            players = chartNew.m_tracks.lead_5.SetupPlayers(new() { { 3, new[] { handler } } }, chartNew.m_sync);
+            Playable_Guitar.HopoFrequency = chartNew.HopoFrequency;
 
             // initialize current tempo
             if (chartNew.m_beatMap.Count > 2)

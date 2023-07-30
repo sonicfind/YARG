@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart
@@ -33,30 +34,30 @@ namespace YARG.Song.Chart
         }
         public ref Difficulty this[int index] { get { return ref difficulties[index]; } }
 
-        public override ulong GetLastNoteTime()
+        public override long GetLastNoteTime()
         {
-            ulong endTime = 0;
+            long endTime = 0;
             for (int i = 0; i < difficulties.Length; ++i)
             {
-                ulong end = difficulties[i].GetLastNoteTime();
+                long end = difficulties[i].GetLastNoteTime();
                 if (end > endTime)
                     endTime = end;
             }
             return endTime;
         }
 
-        public Player[] SetupPlayers(Dictionary<int, InputHandler[]> playerMapping, SyncTrack sync)
+        public Player[] SetupPlayers(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync)
         {
             var result = new List<Player>();
             var phrases = !specialPhrases.IsEmpty() ? specialPhrases : null;
             foreach ((int diffIndex, var handlers) in playerMapping)
-                result.AddRange(difficulties[diffIndex].SetupPlayers(handlers, sync, phrases));
+                result.AddRange(difficulties[diffIndex].SetupPlayers(handlers.ToArray(), sync, phrases));
             return result.ToArray();
         }
     }
 
     public class InstrumentTrack<T> : InstrumentTrack_Base<DifficultyTrack<T>>
-        where T : unmanaged, INote_S
+        where T : class, INote, new()
     {
     }
 }

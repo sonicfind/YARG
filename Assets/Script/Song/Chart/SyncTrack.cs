@@ -36,6 +36,7 @@ namespace YARG.Song.Chart
                         break;
                 }
             }
+            FinalizeTempoMap();
         }
 
         public void AddFromDotChart(ChartFileReader reader)
@@ -78,21 +79,23 @@ namespace YARG.Song.Chart
             {
                 ref var marker = ref tempoMarkers.At_index(i);
                 if (marker.obj.Anchor == 0)
-                    marker.obj.Anchor = (ulong)(((marker.key - prevNode.key) / (float)tickrate) * prevNode.obj.Micros) + prevNode.obj.Anchor;
+                    marker.obj.Anchor = (long)(((marker.key - prevNode.key) / (float)tickrate) * prevNode.obj.Micros) + prevNode.obj.Anchor;
                 prevNode = marker;
             }
         }
 
         internal const int MICROS_PER_SECOND = 1000000;
 
-        public float ConvertToSeconds(ulong ticks)
+        public float ConvertToSeconds(long ticks)
         {
-            for (int i = 0; i < tempoMarkers.Count; i++)
+            var data = tempoMarkers.Data;
+            int count = tempoMarkers.Count;
+            for (int i = 0; i < count; i++)
             {
-                ref var marker = ref tempoMarkers.At_index(i);
-                if (i + 1 == tempoMarkers.Count || ticks < tempoMarkers.At_index(i + 1).key)
+                ref var marker = ref data[i];
+                if (i + 1 == count || ticks < data[i + 1].key)
                 {
-                    return ((marker.obj.Micros / (float)(tickrate)) * (ticks - marker.key) + marker.obj.Anchor) / MICROS_PER_SECOND;
+                    return ((marker.obj.Micros / (float)tickrate) * (ticks - marker.key) + marker.obj.Anchor) / MICROS_PER_SECOND;
                 }
             }
             throw new Exception("dafuq");

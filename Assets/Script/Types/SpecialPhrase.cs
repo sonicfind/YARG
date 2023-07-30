@@ -24,19 +24,15 @@ namespace YARG.Types
 
     public struct SpecialPhrase
     {
-        private ulong _duration;
-        public ulong Duration
+        private NormalizedDuration _duration;
+        public long Duration
         { 
             get { return _duration; } 
-            set{
-                if (value == 0)
-                    value = 1;
-                _duration = value;
-            }
+            set { _duration = value; }
         }
         public SpecialPhraseType Type { get; set; }
-        public uint Velocity { get; set; }
-        public SpecialPhrase(SpecialPhraseType type, ulong duration, uint velocity = 100)
+        public int Velocity { get; set; }
+        public SpecialPhrase(SpecialPhraseType type, long duration, int velocity = 100)
         {
             Type = type;
             Velocity = velocity;

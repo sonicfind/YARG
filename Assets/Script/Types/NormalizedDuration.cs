@@ -8,8 +8,8 @@ namespace YARG.Types
 {
     public struct NormalizedDuration
     {
-        private ulong _duration;
-        public ulong Duration
+        private long _duration;
+        public long Duration
         {
             get { return _duration; }
             set
@@ -20,13 +20,13 @@ namespace YARG.Types
             }
         }
 
-        public NormalizedDuration(ulong duration)
+        public NormalizedDuration(long duration)
         {
             _duration = 1;
             Duration = duration;
         }
 
-        public static implicit operator ulong(NormalizedDuration dur) => dur._duration;
-        public static implicit operator NormalizedDuration(ulong dur) => new(dur);
+        public static implicit operator long(NormalizedDuration dur) => dur._duration;
+        public static implicit operator NormalizedDuration(long dur) => new(dur);
     }
 }

@@ -53,19 +53,19 @@ namespace YARG.Serialization
 
     public struct MidiNote
     {
-        public uint value;
-        public uint velocity;
+        public int value;
+        public int velocity;
     };
 
     public struct ControlChange
     {
-        public uint Controller { get; set; }
-        public uint Value { get; set; }
+        public int Controller { get; set; }
+        public int Value { get; set; }
     };
 
     public struct MidiParseEvent
     {
-        public ulong position;
+        public long position;
         public MidiEventType type;
         public int channel;
     };

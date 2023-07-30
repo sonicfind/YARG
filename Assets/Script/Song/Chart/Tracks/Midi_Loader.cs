@@ -14,12 +14,12 @@ namespace YARG.Song.Chart
     public struct Midi_Phrase
     {
         public readonly SpecialPhraseType type;
-        public ulong position;
-        public uint velocity;
+        public long position;
+        public int velocity;
         public Midi_Phrase(SpecialPhraseType type)
         {
             this.type = type;
-            position = ulong.MaxValue;
+            position = -1;
             velocity = 0;
         }
     }
@@ -29,7 +29,7 @@ namespace YARG.Song.Chart
         private readonly (byte[], Midi_Phrase)[] _phrases;
         public Midi_PhraseList((byte[], Midi_Phrase)[] phrases) { _phrases = phrases; }
 
-        public bool AddPhrase(ref TimedFlatMap<List<SpecialPhrase>> phrases, ulong position, MidiNote note)
+        public bool AddPhrase(ref TimedFlatMap<List<SpecialPhrase>> phrases, long position, MidiNote note)
         {
             for (int i = 0; i < _phrases.Length; ++i)
             {
@@ -47,7 +47,7 @@ namespace YARG.Song.Chart
             return false;
         }
 
-        public bool AddPhrase_Off(ref TimedFlatMap<List<SpecialPhrase>> phrases, ulong position, MidiNote note)
+        public bool AddPhrase_Off(ref TimedFlatMap<List<SpecialPhrase>> phrases, long position, MidiNote note)
         {
             for (int i = 0; i < _phrases.Length; ++i)
             {
@@ -56,10 +56,10 @@ namespace YARG.Song.Chart
                     if (val == note.value)
                     {
                         ref var phr = ref _phrases[i].Item2;
-                        if (phr.position != ulong.MaxValue)
+                        if (phr.position != -1)
                         {
                             phrases.Traverse_Backwards_Until(phr.position).Add(new(phr.type, position - phr.position, phr.velocity));
-                            phr.position = ulong.MaxValue;
+                            phr.position = -1;
                         }
                         return true;
                     }
@@ -68,7 +68,7 @@ namespace YARG.Song.Chart
             return false;
         }
 
-        public bool AddPhrase(ref TimedFlatMap<List<SpecialPhrase>> phrases, ulong position, SpecialPhraseType type, byte velocity)
+        public bool AddPhrase(ref TimedFlatMap<List<SpecialPhrase>> phrases, long position, SpecialPhraseType type, byte velocity)
         {
             for (int i = 0; i < _phrases.Length; ++i)
             {
@@ -84,17 +84,17 @@ namespace YARG.Song.Chart
             return false;
         }
 
-        public bool AddPhrase_Off(ref TimedFlatMap<List<SpecialPhrase>> phrases, ulong position, SpecialPhraseType type)
+        public bool AddPhrase_Off(ref TimedFlatMap<List<SpecialPhrase>> phrases, long position, SpecialPhraseType type)
         {
             for (int i = 0; i < _phrases.Length; ++i)
             {
                 ref var phr = ref _phrases[i].Item2;
                 if (phr.type == type)
                 {
-                    if (phr.position != ulong.MaxValue)
+                    if (phr.position != -1)
                     {
                         phrases.Traverse_Backwards_Until(phr.position).Add(new(phr.type, position - phr.position, phr.velocity));
-                        phr.position = ulong.MaxValue;
+                        phr.position = -1;
                     }
                     return true;
                 }

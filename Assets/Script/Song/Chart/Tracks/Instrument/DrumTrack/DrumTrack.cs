@@ -10,9 +10,9 @@ using YARG.Song.Chart.Notes;
 namespace YARG.Song.Chart.DrumTrack
 {
     public abstract class Midi_Drum_Loader_Base<T> : Midi_Instrument_Loader<T>
-        where T : unmanaged, IDrumNote
+        where T : DrumNote, new()
     {
-        internal static readonly uint[] LANEVALUES = new uint[] {
+        internal static readonly int[] LANEVALUES = new int[] {
             0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
             0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
             0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
@@ -23,7 +23,7 @@ namespace YARG.Song.Chart.DrumTrack
         protected class Drum4_MidiDiff
         {
             public bool Flam { get; set; }
-            public readonly ulong[] notes = new ulong[7] { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue };
+            public readonly long[] notes = new long[7] { -1, -1, -1, -1, -1, -1, -1 };
             public Drum4_MidiDiff() { }
         }
 
@@ -55,11 +55,11 @@ namespace YARG.Song.Chart.DrumTrack
             if (note.value != 95)
                 return false;
 
-            ulong colorPosition = difficulties[3].notes[1];
-            if (colorPosition != ulong.MaxValue)
+            long colorPosition = difficulties[3].notes[1];
+            if (colorPosition != -1)
             {
                 track[3].notes.Traverse_Backwards_Until(colorPosition)[1] = currEvent.position - colorPosition;
-                difficulties[3].notes[1] = ulong.MaxValue;
+                difficulties[3].notes[1] = -1;
             }
             return true;
         }

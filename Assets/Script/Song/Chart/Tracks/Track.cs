@@ -21,6 +21,6 @@ namespace YARG.Song.Chart
             events.Clear();
         }
         public abstract void TrimExcess();
-        public abstract ulong GetLastNoteTime();
+        public abstract long GetLastNoteTime();
     }
 }

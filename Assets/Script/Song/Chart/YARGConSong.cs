@@ -20,15 +20,13 @@ namespace YARG.Song.Chart
         {
             using MidiFileReader reader = new(file);
             m_sync.Tickrate = reader.GetTickRate();
-            TruncatableSustain.MinDuration = (m_sync.Tickrate / 3);
             Parse(reader, encoding);
-            FinalizeData();
+            FinalizeData(false);
         }
 
         public void Prepare_Midi(FrameworkFile file)
         {
             using MidiFileReader reader = new(file);
-            TruncatableSustain.MinDuration = (ulong) (reader.GetTickRate() / 3);
             while (reader.StartTrack())
             {
                 if (reader.GetTrackNumber() > 1 && reader.GetEvent().type == MidiEventType.Text_TrackName)

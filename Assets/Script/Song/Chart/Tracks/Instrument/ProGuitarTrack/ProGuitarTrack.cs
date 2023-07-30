@@ -47,7 +47,7 @@ namespace YARG.Song.Chart.ProGuitarTrack
             2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
             3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
         };
-        internal static readonly uint[] LANEVALUES = {
+        internal static readonly int[] LANEVALUES = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
@@ -61,8 +61,8 @@ namespace YARG.Song.Chart.ProGuitarTrack
         private class ProGuitar_MidiDiff
         {
             public bool Hopo { get; set; }
-            public readonly ulong[] notes = new ulong[6] { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue };
-            public ulong Arpeggio { get; set; }
+            public readonly long[] notes = new long[6] { -1, -1, -1, -1, -1, -1 };
+            public long Arpeggio { get; set; }
             public ProSlide Slide { get; set; }
             public EmphasisType Emphasis { get; set; }
             public ProGuitar_MidiDiff() { }
@@ -85,9 +85,9 @@ namespace YARG.Song.Chart.ProGuitarTrack
 
         protected override void ParseLaneColor(ref ProGuitarTrack<FretType> track)
         {
-            uint noteValue = note.value - 24;
+            int noteValue = note.value - 24;
             int diffIndex = DIFFVALUES[noteValue];
-            uint lane = LANEVALUES[noteValue];
+            int lane = LANEVALUES[noteValue];
             ref var midiDiff = ref difficulties[diffIndex];
             ref var diffTrack = ref track[diffIndex];
             if (lane < 6)
@@ -96,7 +96,7 @@ namespace YARG.Song.Chart.ProGuitarTrack
                     diffTrack.arpeggios.Get_Or_Add_Back(currEvent.position).strings[lane].Value = note.velocity - 100;
                 else
                 {
-                    Guitar_Pro_S<FretType> guitar;
+                    Guitar_Pro<FretType> guitar;
                     if (!track[diffIndex].notes.ValidateLastKey(currEvent.position))
                     {
                         guitar = track[diffIndex].notes.Add(currEvent.position);
@@ -155,18 +155,18 @@ namespace YARG.Song.Chart.ProGuitarTrack
 
         protected override void ParseLaneColor_Off(ref ProGuitarTrack<FretType> track)
         {
-            uint noteValue = note.value - 24;
+            int noteValue = note.value - 24;
             int diffIndex = DIFFVALUES[noteValue];
-            uint lane = LANEVALUES[noteValue];
+            int lane = LANEVALUES[noteValue];
             if (lane < 6)
             {
                 if (currEvent.channel != 1)
                 {
-                    ulong colorPosition = difficulties[diffIndex].notes[lane];
-                    if (colorPosition != ulong.MaxValue)
+                    long colorPosition = difficulties[diffIndex].notes[lane];
+                    if (colorPosition != -1)
                     {
-                        track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[(int)lane].Duration = currEvent.position - colorPosition;
-                        difficulties[diffIndex].notes[lane] = ulong.MaxValue;
+                        track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane].Duration = currEvent.position - colorPosition;
+                        difficulties[diffIndex].notes[lane] = -1;
                     }
                 }
             }
@@ -176,11 +176,11 @@ namespace YARG.Song.Chart.ProGuitarTrack
                 difficulties[diffIndex].Slide = ProSlide.None;
             else if (lane == 8)
             {
-                ulong arpeggioPosition = difficulties[diffIndex].Arpeggio;
-                if (arpeggioPosition != ulong.MaxValue)
+                long arpeggioPosition = difficulties[diffIndex].Arpeggio;
+                if (arpeggioPosition != -1)
                 {
                     track[diffIndex].arpeggios.Last().Length = currEvent.position - arpeggioPosition;
-                    difficulties[diffIndex].Arpeggio = ulong.MaxValue;
+                    difficulties[diffIndex].Arpeggio = -1;
                 }
             }
             else if (lane == 9)

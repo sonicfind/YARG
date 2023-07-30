@@ -62,11 +62,36 @@ namespace YARG.Song.Chart
 
         static YARGIniSong() { }
 
-        private ulong m_sustain_cutoff_threshold = 0;
+        private long m_sustain_cutoff_threshold = 0;
         private ushort m_hopofreq_old = ushort.MaxValue;
         private bool m_eighthnote_hopo = false;
         private byte m_multiplier_note = 116;
         private Dictionary<string, Modifier> m_modifiers = new();
+
+        public override long HopoFrequency
+        {
+            get
+            {
+                if (m_hopo_frequency > 0)
+                    return m_hopo_frequency;
+                else if (m_eighthnote_hopo)
+                    return m_sync.Tickrate / 2;
+                else if (m_hopofreq_old != ushort.MaxValue)
+                {
+                    return m_hopofreq_old switch
+                    {
+                        0 => m_sync.Tickrate / 24,
+                        1 => m_sync.Tickrate / 16,
+                        2 => m_sync.Tickrate / 12,
+                        3 => m_sync.Tickrate / 8,
+                        4 => m_sync.Tickrate / 6,
+                        _ => m_sync.Tickrate / 4,
+                    };
+                }
+                else
+                    return m_sync.Tickrate / 3;
+            }
+        }
 
         public YARGIniSong() { }
         public YARGIniSong(string directory) : base(directory) { }
@@ -85,7 +110,7 @@ namespace YARG.Song.Chart
             m_sync.Tickrate = reader.GetTickRate();
             SetSustainThreshold();
             Parse(reader, Encoding.UTF8);
-            FinalizeData();
+            FinalizeData(false);
         }
 
         public void Load_Chart(string path, bool fullLoad)
@@ -104,7 +129,7 @@ namespace YARG.Song.Chart
                     m_sync.AddFromDotChart(reader);
                 else if (reader.ValidateEventsTrack())
                 {
-                    ulong phrase = ulong.MaxValue;
+                    long phrase = -1;
                     while (reader.IsStillCurrentTrack())
                     {
                         var trackEvent = reader.ParseEvent();
@@ -115,16 +140,16 @@ namespace YARG.Song.Chart
                             else if (str.StartsWith(LYRIC)) m_tracks.leadVocals[0][trackEvent.Item1].lyric = Encoding.UTF8.GetString(str[6..]);
                             else if (str.SequenceEqual(PHRASE_START))
                             {
-                                if (phrase < ulong.MaxValue)
+                                if (phrase >= 0)
                                     m_tracks.leadVocals.specialPhrases[phrase].Add(new(SpecialPhraseType.LyricLine, trackEvent.Item1 - phrase));
                                 phrase = trackEvent.Item1;
                             }
                             else if (str.SequenceEqual(PHRASE_END))
                             {
-                                if (phrase < ulong.MaxValue)
+                                if (phrase >= 0)
                                 {
                                     m_tracks.leadVocals.specialPhrases[phrase].Add(new(SpecialPhraseType.LyricLine, trackEvent.Item1 - phrase));
-                                    phrase = ulong.MaxValue;
+                                    phrase = -1;
                                 }
                             }
                             else
@@ -145,7 +170,7 @@ namespace YARG.Song.Chart
                     legacy.Transfer(m_tracks.drums_4pro);
             }
 
-            FinalizeData();
+            FinalizeData(true);
         }
 
         public void Load_Ini()
@@ -218,7 +243,7 @@ namespace YARG.Song.Chart
                 m_baseDrumType = fivelanes[0].BOOL ? DrumType.FIVE_LANE : DrumType.FOUR_PRO;
 
             if (modifiers.Remove("hopo_frequency", out var hopo_freq))
-                m_hopo_frequency = hopo_freq[0].UINT64;
+                m_hopo_frequency = hopo_freq[0].INT64;
 
             if (modifiers.Remove("multiplier_note", out var multiplier))
                 if (multiplier[0].UINT16 == 103)
@@ -228,7 +253,7 @@ namespace YARG.Song.Chart
                 m_eighthnote_hopo = eighthnote[0].BOOL;
 
             if (modifiers.Remove("sustain_cutoff_threshold", out var threshold))
-                m_sustain_cutoff_threshold = threshold[0].UINT64;
+                m_sustain_cutoff_threshold = threshold[0].INT64;
 
             if (modifiers.Remove("hopofreq", out var hopofreq_old))
                 m_hopofreq_old = hopofreq_old[0].UINT16;
@@ -333,34 +358,6 @@ namespace YARG.Song.Chart
         private void SetSustainThreshold()
         {
 	        TruncatableSustain.MinDuration = m_sustain_cutoff_threshold > 0 ? m_sustain_cutoff_threshold : (m_sync.Tickrate / 3);
-        }
-
-        private ulong GetHopoThreshold()
-        {
-	        if (m_hopo_frequency > 0)
-		        return m_hopo_frequency;
-	        else if (m_eighthnote_hopo)
-		        return (m_sync.Tickrate / 2);
-	        else if (m_hopofreq_old != ushort.MaxValue)
-	        {
-		        switch (m_hopofreq_old)
-		        {
-		        case 0:
-			        return (m_sync.Tickrate / 24);
-		        case 1:
-			        return (m_sync.Tickrate / 16);
-		        case 2:
-			        return (m_sync.Tickrate / 12);
-		        case 3:
-			        return (m_sync.Tickrate / 8);
-		        case 4:
-			        return (m_sync.Tickrate / 6);
-		        default:
-			        return (m_sync.Tickrate / 4);
-		        }
-	        }
-	        else
-		        return (m_sync.Tickrate / 3);
         }
     }
 }

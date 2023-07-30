@@ -1,10 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using UnityEngine;
 using YARG.Song;
 
 namespace YARG.Types
@@ -25,9 +19,9 @@ namespace YARG.Types
             }
         }
 
-        public int Length { get { return _str.Length; } }
-        
-        public readonly string SortStr { get { return _sortStr; } }
+        public int Length => _str.Length;
+
+        public readonly string SortStr => _sortStr;
 
         public SortString(string str)
         {

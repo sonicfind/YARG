@@ -184,7 +184,6 @@ namespace YARG.Serialization
         }
 
         public ref MidiParseEvent GetParsedEvent() { return ref m_event; }
-
         public ushort GetTickRate() { return m_header.tickRate; }
         public ushort GetTrackNumber() { return m_trackCount; }
         public MidiParseEvent GetEvent() { return m_event; }
@@ -209,7 +208,7 @@ namespace YARG.Serialization
         }
         public ControlChange ExtractControlChange()
         {
-            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(2);
+            var bytes = m_reader.ReadSpan(2);
             return new ControlChange()
             {
                 Controller = bytes[0],
@@ -217,14 +216,14 @@ namespace YARG.Serialization
             };
         }
 
-        public uint ExtractMicrosPerQuarter()
+        public int ExtractMicrosPerQuarter()
         {
-            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(3);
-            return (uint)(bytes[0] << 16) | BinaryPrimitives.ReadUInt16BigEndian(bytes[1..]);
+            var bytes = m_reader.ReadSpan(3);
+            return (bytes[0] << 16) | BinaryPrimitives.ReadUInt16BigEndian(bytes[1..]);
         }
         public TimeSig ExtractTimeSig()
         {
-            ReadOnlySpan<byte> bytes = m_reader.ReadSpan(4);
+            var bytes = m_reader.ReadSpan(4);
             return new TimeSig(bytes[0], bytes[1], bytes[2], bytes[3]);
         }
         private void ProcessHeaderChunk()

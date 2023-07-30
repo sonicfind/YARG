@@ -8,6 +8,6 @@ namespace YARG.Song.Chart.Notes
 {
     public interface IReadableFromDotChart
     {
-        public bool Set_From_Chart(uint lane, ulong length);
+        public bool Set_From_Chart(uint lane, long length);
     }
 }

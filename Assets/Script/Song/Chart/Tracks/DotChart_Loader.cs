@@ -16,12 +16,12 @@ namespace YARG.Song.Chart
         internal static readonly byte[] SOLOEND = Encoding.ASCII.GetBytes("soloend");
 
         public static bool Load<T>(ref DifficultyTrack<T> diff, ChartFileReader reader)
-            where T : unmanaged, INote_S, IReadableFromDotChart
+            where T : class, INote, IReadableFromDotChart, new()
         {
             if (diff.IsOccupied())
                 return false;
 
-            ulong solo = 0;
+            long solo = 0;
             diff.notes.Capacity = 5000;
             while (reader.IsStillCurrentTrack())
             {
@@ -54,7 +54,7 @@ namespace YARG.Song.Chart
                 {
                     var str = reader.ExtractText();
                     if (str.StartsWith(SOLOEND))
-                        diff.specialPhrases[trackEvent.Item1].Add(new(SpecialPhraseType.Solo, trackEvent.Item1 - solo));
+                        diff.specialPhrases[solo].Add(new(SpecialPhraseType.Solo, trackEvent.Item1 - solo));
                     else if (str.StartsWith(SOLO))
                         solo = trackEvent.Item1;
                     else

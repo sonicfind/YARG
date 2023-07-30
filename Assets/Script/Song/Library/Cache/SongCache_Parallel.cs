@@ -13,8 +13,9 @@ namespace YARG.Song.Library
 {
     public class SongCache_Parallel : SongCache
     {
-        protected override void FindNewEntries()
+        public override void FindNewEntries()
         {
+            Progress = ScanProgress.LoadingSongs;
             Parallel.ForEach(baseDirectories, directory =>
             {
                 if ((File.GetAttributes(directory) & FileAttributes.Hidden) != FileAttributes.Hidden)
@@ -23,7 +24,7 @@ namespace YARG.Song.Library
             Task.WaitAll(Task.Run(LoadCONSongs), Task.Run(LoadExtractedCONSongs));
         }
 
-        protected override bool LoadCacheFile()
+        public override bool LoadCacheFile()
         {
             {
                 FileInfo info = new(CACHE_FILE);
@@ -118,7 +119,7 @@ namespace YARG.Song.Library
             return true;
         }
 
-        protected override bool LoadCacheFile_Quick()
+        public override bool LoadCacheFile_Quick()
         {
             {
                 FileInfo info = new(CACHE_FILE);
@@ -208,8 +209,9 @@ namespace YARG.Song.Library
             return true;
         }
 
-        protected override void MapCategories()
+        public override void MapCategories()
         {
+            Progress = ScanProgress.Sorting;
             Parallel.ForEach(entries, entryList =>
             {
                 foreach (var entry in entryList.Value)

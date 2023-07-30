@@ -8,19 +8,20 @@ using System.Text;
 using System.Threading.Tasks;
 using YARG.Types;
 using YARG.Assets.Script.Types;
+using UnityEngine;
 
 #nullable enable
 namespace YARG.Song.Chart
 {
     public interface IDifficultyTrack
     {
-        public Player[] SetupPlayers(InputHandler[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null);
+        public Player[] SetupPlayers((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null);
     }
 
     public class DifficultyTrack<T> : Track, IDifficultyTrack
-        where T : unmanaged, INote_S
+        where T : class, INote, new()
     {
-        public readonly TimedNativeFlatMap<T> notes = new();
+        public readonly TimedFlatMap<T> notes = new();
 
         public override bool IsOccupied() { return !notes.IsEmpty() || base.IsOccupied(); }
 
@@ -30,7 +31,7 @@ namespace YARG.Song.Chart
             notes.Clear();
         }
         public override void TrimExcess() => notes.TrimExcess();
-        public override ulong GetLastNoteTime()
+        public override long GetLastNoteTime()
         {
             if (notes.IsEmpty()) return 0;
 
@@ -38,12 +39,15 @@ namespace YARG.Song.Chart
             return note.key + note.obj.GetLongestSustain();
         }
 
-        public unsafe Player[] SetupPlayers(InputHandler[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
+        public unsafe Player[] SetupPlayers((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
         {
-            var players = new Player_Instrument_S<T>[handlers.Length];
-            float[] notePositions = new float[notes.Count];
-            for (int i = 0; i < notes.Count; ++i)
-                notePositions[i] = sync.ConvertToSeconds(notes.At_index(i).key);
+            var players = new Player_Instrument<T>[handlers.Length];
+            int count = notes.Count;
+            float[] notePositions = new float[count];
+
+            var notebuf = notes.Data;
+            for (int i = 0; i < count; ++i)
+                notePositions[i] = sync.ConvertToSeconds(notebuf[i].key);
 
             for (int i = 0; i < handlers.Length; i++)
             {
@@ -51,20 +55,20 @@ namespace YARG.Song.Chart
             }
 
             int noteIndex = 0;
-            foreach (FlatMapNode<ulong, List<SpecialPhrase>> node in phrases ?? specialPhrases)
+            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases ?? specialPhrases)
             {
-                while (noteIndex < notes.Count && notes.At_index(noteIndex).key < node.key)
+                while (noteIndex < count && notebuf[noteIndex].key < node.key)
                     ++noteIndex;
 
                 foreach (var phrase in node.obj)
                 {
-                    ulong endTick = node.key + phrase.Duration;
+                    long endTick = node.key + phrase.Duration;
                     int endIndex = noteIndex;
-                    while (endIndex < notes.Count && notes.At_index(endIndex).key < endTick)
+                    while (endIndex < count && notebuf[endIndex].key < endTick)
                         ++endIndex;
 
-                    float position = sync.ConvertToSeconds(node.key);
-                    float endPosition = sync.ConvertToSeconds(endTick);
+                    DualPosition position = new(node.key, sync);
+                    DualPosition endPosition = new(endTick, sync);
                     for (int p = 0; p < players.Length; ++p)
                     {
                         var player = players[p];
@@ -73,12 +77,12 @@ namespace YARG.Song.Chart
                             case SpecialPhraseType.StarPower:
                             case SpecialPhraseType.StarPower_Diff:
                                 {
-                                    player.AttachPhrase(position, endPosition, new OverdrivePhrase(player, endIndex - noteIndex));
+                                    player.AttachPhrase(new OverdrivePhrase(player, endIndex - noteIndex, ref position, ref endPosition));
                                     break;
                                 }
                             case SpecialPhraseType.Solo:
                                 {
-                                    player.AttachPhrase(position, endPosition, new SoloPhrase<T>(player, endIndex - noteIndex));
+                                    player.AttachPhrase(new SoloPhrase(endIndex - noteIndex, ref position, ref endPosition));
                                     break;
                                 }
 

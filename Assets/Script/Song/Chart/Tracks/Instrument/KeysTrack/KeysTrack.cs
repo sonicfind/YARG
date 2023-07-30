@@ -9,16 +9,16 @@ using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart.KeysTrack
 {
-    public class Midi_Keys_Loader : Midi_Instrument_Loader<Keys_S>
+    public class Midi_Keys_Loader : Midi_Instrument_Loader<Keys>
     {
-        private readonly ulong[,] notes = new ulong[4, 5] {
-            { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue },
-            { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue },
-            { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue },
-            { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue },
+        private readonly long[,] notes = new long[4, 5] {
+            { -1, -1, -1, -1, -1 },
+            { -1, -1, -1, -1, -1 },
+            { -1, -1, -1, -1, -1 },
+            { -1, -1, -1, -1, -1 },
         };
 
-        private readonly uint[] lanes = new uint[] {
+        private readonly int[] lanes = new int[] {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -36,10 +36,10 @@ namespace YARG.Song.Chart.KeysTrack
             }))
         { }
 
-        protected override void ParseLaneColor(ref InstrumentTrack<Keys_S> track)
+        protected override void ParseLaneColor(ref InstrumentTrack<Keys> track)
         {
-            uint noteValue = note.value - 60;
-            uint lane = lanes[noteValue];
+            int noteValue = note.value - 60;
+            int lane = lanes[noteValue];
             if (lane < 5)
             {
                 int diffIndex = DIFFVALUES[noteValue];
@@ -49,18 +49,18 @@ namespace YARG.Song.Chart.KeysTrack
             }
         }
 
-        protected override void ParseLaneColor_Off(ref InstrumentTrack<Keys_S> track)
+        protected override void ParseLaneColor_Off(ref InstrumentTrack<Keys> track)
         {
-            uint noteValue = note.value - 60;
-            uint lane = lanes[noteValue];
+            int noteValue = note.value - 60;
+            int lane = lanes[noteValue];
             if (lane < 5)
             {
                 int diffIndex = DIFFVALUES[noteValue];
-                ulong colorPosition = notes[diffIndex, lane];
-                if (colorPosition != ulong.MaxValue)
+                long colorPosition = notes[diffIndex, lane];
+                if (colorPosition != -1)
                 {
                     track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane] = currEvent.position - colorPosition;
-                    notes[diffIndex, lane] = ulong.MaxValue;
+                    notes[diffIndex, lane] = -1;
                 }
             }
         }

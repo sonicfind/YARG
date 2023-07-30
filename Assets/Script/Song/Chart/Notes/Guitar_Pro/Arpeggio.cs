@@ -13,7 +13,7 @@ namespace YARG.Song.Chart.Notes
         private NormalizedDuration _length = new(1);
         public readonly FretType[] strings = new FretType[6];
 
-        public ulong Length
+        public long Length
         {
             get { return _length; }
             set { _length = value; }

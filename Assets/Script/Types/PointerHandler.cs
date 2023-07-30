@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace YARG.Types
@@ -25,14 +26,14 @@ namespace YARG.Types
         {
             this.length = length;
             data = (byte*)Marshal.AllocHGlobal(length);
-            Copier.MemCpy(data, ptr, (nuint)length);
+            UnsafeUtility.MemCpy(data, ptr, length);
         }
 
         public PointerHandler(PointerHandler handler)
         {
             length = handler.length;
             data = (byte*)Marshal.AllocHGlobal(length);
-            Copier.MemCpy(data, handler.data, (nuint)length);
+            UnsafeUtility.MemCpy(data, handler.data, length);
         }
 
         public byte* Data => data;
@@ -56,8 +57,8 @@ namespace YARG.Types
             byte* newData = (byte*)Marshal.AllocHGlobal(newLength);
             unsafe
             {
-                Copier.MemCpy(newData, data, (nuint)this.length);
-                Copier.MemCpy(newData + this.length, ptr, (nuint)length);
+                UnsafeUtility.MemCpy(newData, data, this.length);
+                UnsafeUtility.MemCpy(newData + this.length, ptr, length);
             }
             Marshal.FreeHGlobal((IntPtr)data);
             this.length = newLength;

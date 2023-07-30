@@ -13,44 +13,13 @@ using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
 {
-    public interface INote_Base
+    public interface INote
     {
+        public int NumLanes { get; }
         public bool HasActiveNotes();
-        public ulong GetLongestSustain();
-    }
-    public interface INote : INote_Base
-    {
+        public long GetLongestSustain();
 #nullable enable
-        public IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote);
-    }
-
-    public unsafe interface INote_S : INote_Base
-    {
-        public uint NumLanes { get; }
-        public IPlayableNote ConvertToPlayable<T>(in ulong position, in SyncTrack sync, in ulong prevPosition, in T* prevNote)
-            where T : unmanaged, INote_S;
-    }
-
-    public class InputHandler
-    {
-        public readonly int laneCount;
-
-        private List<(float, object)> inputs;
-        private readonly object inputLock;
-
-        public InputHandler(int laneCount)
-        {
-            inputs = new();
-            inputLock = new();
-            this.laneCount = laneCount;
-        }
-
-        public List<(float, object)> GetInputs()
-        {
-            var inputs = this.inputs;
-            lock (inputLock) this.inputs = new();
-            return inputs;
-        }
+        public PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote);
     }
 
     public enum HitStatus
@@ -65,97 +34,115 @@ namespace YARG.Song.Chart.Notes
 
     public abstract class Player
     {
-        protected readonly List<(float, OverdrivePhrase)> overdrives = new();
+        protected readonly List<OverdrivePhrase> overdrives = new();
         protected int overdriveIndex = 0;
+        protected bool overdriveActive = false;
         protected float overdrive = 0;
         protected float overdriveOffset = 0;
 
-        protected readonly TimedSemiQueue<IPlayableNote> notesOnScreen = new();
-        protected (float, float) visibleNoteRange = new(1.5f, .5f);
+        protected readonly TimedSemiQueue<PlayableNote> notesOnScreen = new();
+        protected (float, float) visibleNoteRange = new(1.0f, .3f);
         protected int nextViewable = 0;
-        protected InputHandler inputHandler;
+        protected GameObject track;
+        protected PlayerManager.Player inputHandler;
         protected SyncTrack sync;
 
-        protected Player(InputHandler inputHandler, SyncTrack sync)
+        protected Player((GameObject, PlayerManager.Player) player, SyncTrack sync)
         {
-            this.inputHandler = inputHandler;
+            this.track = player.Item1;
+            this.inputHandler = player.Item2;
             this.sync = sync;
         }
 
-        public virtual void AttachPhrase(float position, float end, PlaytimePhrase phrase)
+        public virtual void AttachPhrase(PlayablePhrase phrase)
         {
             if (phrase is OverdrivePhrase overdrive)
-                overdrives.Add(new(position, overdrive));
+                overdrives.Add(overdrive);
         }
 
         public void AddOverdrive(float overdrive)
         {
+            Debug.Log($"Adding overdrive - {overdrive}");
             overdriveOffset += overdrive;
         }
 
         public void RemoveOverdrive(float overdrive)
         {
+            Debug.Log($"Removing overdrive - {overdrive}");
             overdriveOffset -= overdrive;
         }
 
         public void IncrementOverdrive()
         {
-            overdriveIndex++;
+            Debug.Log($"Incrementing overdrive index - {overdriveIndex++}");
+        }
+
+        protected void ApplyOverdriveOffset()
+        {
+            overdrive += overdriveOffset;
+            overdrive = Math.Clamp(overdrive, 0, 1);
+            if (overdriveOffset != 0)
+                Debug.Log($"Overdrive - {overdrive}");
+            overdriveOffset = 0;
         }
 
         public abstract void Update(float position);
+        public abstract void Render(float position);
 
-        protected abstract bool HandleStatus(HitStatus status, ref (float, IPlayableNote) hittable);
+        protected abstract bool HandleStatus(HitStatus status, ref (float, PlayableNote) hittable);
     }
 
-    public abstract class Player_Instrument_Base<T> : Player
-        where T : INote_Base
+    public class Player_Instrument<T> : Player
+        where T : class, INote, new()
     {
-        private List<(float, float, SoloPhrase<T>)> soloes = new();
+        private readonly TimedFlatMap<T> notes;
+        private readonly float[] notePositions;
+
+        private readonly TimedSemiQueue<PlayableNote> hittableQueue = new();
+        private readonly (float, float) hitWindow = new(.065f, .065f);
+        private int nextHittable = 0;
+        private Queue<float> viewableOverrides = new();
+
+        private List<SoloPhrase> soloes = new();
         private int soloIndex = 0;
-        private float soloPercentage = 0;
         private bool soloActive = false;
         private bool soloBoxUpdated = false;
 
-        protected readonly FlatMap_Base<ulong, T> notes;
-        protected readonly float[] notePositions;
-        private readonly TimedSemiQueue<IPlayableNote> hittableQueue = new();
-        private readonly (float, float) hitWindow = new(.065f, .065f);
-        private int nextHittable = 0;
-        private float priorHit = 0;
-
-        private readonly IPlayableNote[] sustainedNotes;
+        private readonly PlayableNote[] sustainedNotes;
         private readonly List<(float, object)> inputSnapshots = new(2);
         private int comboCount = 0;
 
-        protected Player_Instrument_Base(InputHandler inputHandler, FlatMap_Base<ulong, T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, sync)
+        private long positionTracker = 0;
+        private T? noteTracker = null;
+
+        public Player_Instrument((GameObject, PlayerManager.Player) player, TimedFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(player, sync)
         {
             this.notes = notes;
             this.notePositions = notePositions;
-            sustainedNotes = new IPlayableNote[inputHandler.laneCount];
+            sustainedNotes = new PlayableNote[5];
         }
 
-        public override void AttachPhrase(float position, float end, PlaytimePhrase phrase)
+        public override void AttachPhrase(PlayablePhrase phrase)
         {
-            if (phrase is SoloPhrase<T> solo)
-                soloes.Add(new(position, end, solo));
+            if (phrase is SoloPhrase solo)
+                soloes.Add(solo);
             else
-                base.AttachPhrase(position, end, phrase);
+                base.AttachPhrase(phrase);
         }
 
-        public void UpdateSolo(float percentage)
+        public void UpdateSoloBox()
         {
             soloBoxUpdated = true;
-            soloPercentage = percentage;
         }
 
         public override void Update(float position)
         {
             EnqueueHittables(position);
 
-            var inputs = inputHandler.GetInputs();
-            foreach (var input in inputs)
+            //var inputs = inputHandler.GetInputs();
+            //for (int i = 0; i < inputs.Count; ++i)
             {
+                (float, object) input = new(position, new());// inputs[i];
                 TestForPendingDrops(input);
                 if (hittableQueue.Count > 0)
                 {
@@ -165,42 +152,19 @@ namespace YARG.Song.Chart.Notes
                         ProcessInput(input);
                 }
                 ApplyPendingDrops(input);
+                CheckForOverhit(input);
             }
 
-            float endOfWindow = position - hitWindow.Item2;
-            while (hittableQueue.Count > 0 && hittableQueue.Peek().Item1 < endOfWindow)
-            {
-                if (comboCount > 0)
-                {
-                    // TODO process dropped combo
-                }
-                Debug.Log($"Position: {hittableQueue.Peek().Item1} - Note removed from queue");
-                hittableQueue.Dequeue();
-            }
+            DequeueMissedHittables(position);
+            ApplyOverdriveOffset();
 
+            ProcessSoloes(position);
+            AdjustViewables(position);
+        }
 
-            while (soloIndex < soloes.Count && soloes[soloIndex].Item1 <= position)
-            {
-                if (!soloActive)
-                {
-                    soloActive = true;
-                    soloPercentage = 0;
-                }
-
-                if (position < soloes[soloIndex].Item2)
-                    break;
-
-                // TODO - Add solo score
-                // Run "End of solo" action w/ result
-                soloActive = false;
-                soloIndex++;
-            }
-
-            if (overdriveIndex < overdrives.Count && position >= overdrives[overdriveIndex].Item1)
-
-
-                overdrive += overdriveOffset;
-            Math.Clamp(overdrive, 0, 1);
+        public override void Render(float position)
+        {
+            
         }
 
         private void TestForPendingDrops((float, object) input)
@@ -232,25 +196,6 @@ namespace YARG.Song.Chart.Notes
             }
         }
 
-        private void EnqueueViewables(ulong position)
-        {
-            float startOfWindow = position + visibleNoteRange.Item1;
-            while (nextViewable < notes.Count)
-            {
-                float notePosition = notePositions[nextViewable];
-                if (notePosition >= startOfWindow)
-                    break;
-
-                ref var node = ref notes.At_index(nextViewable);
-                int index = hittableQueue.Find(notePosition);
-                if (index >= 0)
-                    notesOnScreen.Enqueue(hittableQueue.At(index));
-                else
-                    AddToQueue(notesOnScreen, notePosition, ref node);
-                ++nextViewable;
-            }
-        }
-
         private void ProcessInput((float, object) input)
         {
             float endOfWindow = input.Item1 - hitWindow.Item2;
@@ -261,7 +206,7 @@ namespace YARG.Song.Chart.Notes
             while (noteIndex < hittableQueue.Count)
             {
                 ref var hittable = ref hittableQueue.At(noteIndex);
-                var result = hittable.Item2.TryHit(input.Item2, inputSnapshots);
+                var result = hittable.Item2.TryHit(input.Item2, false, inputSnapshots);
                 if (HandleStatus(result, ref hittable))
                 {
                     while (noteIndex >= 0)
@@ -285,14 +230,14 @@ namespace YARG.Song.Chart.Notes
             int nextIndex = nextHittable - hittableQueue.Count + 1;
             if (nextIndex < notes.Count)
             {
-                ulong nextNote = notes.At_index(nextIndex).key;
+                long nextNote = notes.At_index(nextIndex).key;
                 if (nextNote < lateHitLimit)
                     lateHitLimit = nextNote;
             }
 
             if (input.Item1 <= lateHitLimit)
             {
-                var result = hittable.Item2.TryHit_InCombo(input.Item2, inputSnapshots);
+                var result = hittable.Item2.TryHit(input.Item2, true, inputSnapshots);
                 if (HandleStatus(result, ref hittable))
                 {
                     hittableQueue.Dequeue();
@@ -305,19 +250,22 @@ namespace YARG.Song.Chart.Notes
             }
         }
 
-        protected override bool HandleStatus(HitStatus status, ref (float, IPlayableNote) hittable)
+        protected override bool HandleStatus(HitStatus status, ref (float, PlayableNote) hittable)
         {
             switch (status)
             {
                 case HitStatus.Sustained:
                 case HitStatus.Hit:
                     {
-                        priorHit = hittable.Item1;
                         int index = notesOnScreen.Find(hittable.Item1);
                         if (index == 0)
                             notesOnScreen.Dequeue();
                         else if (index > 0)
                             notesOnScreen.RemoveAt(index);
+                        else if (status == HitStatus.Hit)
+                            viewableOverrides.Enqueue(hittable.Item1);
+                        ++comboCount;
+                        Debug.Log("Test: Note hit");
                         return true;
                     }
                 case HitStatus.Missed:
@@ -334,62 +282,113 @@ namespace YARG.Song.Chart.Notes
             comboCount = 0;
         }
 
-        protected abstract void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node);
-    }
-
-    public class Player_Instrument<T> : Player_Instrument_Base<T>
-        where T : class, INote, new()
-    {
-        private ulong positionTracker = 0;
-        private T? noteTracker = null;
-        public Player_Instrument(InputHandler inputHandler, TimedFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, notes, notePositions, sync) { }
-
-        protected override void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node)
+        private void CheckForOverhit((float, object) input)
         {
-            queue.Enqueue(new(position, node.obj.ConvertToPlayable(node.key, sync, positionTracker, noteTracker)));
+            if (overdriveIndex < overdrives.Count && input.Item1 >= overdrives[overdriveIndex].start.seconds)
+            {
+
+            }
+        }
+
+        private void DequeueMissedHittables(float position)
+        {
+            float endOfWindow = position - hitWindow.Item2;
+            while (hittableQueue.Count > 0 && hittableQueue.Peek().Item1 < endOfWindow)
+            {
+                ref var hittable = ref hittableQueue.Peek();
+                if (hittable.Item1 >= endOfWindow)
+                    break;
+
+                if (comboCount > 0)
+                {
+                    // TODO process dropped combo
+                }
+
+                hittable.Item2.HandleMiss();
+                hittableQueue.Dequeue();
+            }
+        }
+
+        private void ProcessSoloes(float position)
+        {
+            while (soloIndex < soloes.Count)
+            {
+                var solo = soloes[soloIndex];
+                if (position < solo.start.seconds)
+                    break;
+
+                if (!soloActive)
+                {
+                    soloActive = true;
+                }
+
+                if (position < solo.end.seconds)
+                    break;
+
+                Debug.Log($"Solo #{soloIndex} Completed - {100 * solo.Percentage}% | {solo.NotesHit}/{solo.NotesInPhrase}");
+                // TODO - Add solo score
+                // Run "End of solo" action w/ result
+                soloActive = false;
+                soloIndex++;
+            }
+        }
+
+        private void AdjustViewables(float position)
+        {
+            float startOfWindow = position + visibleNoteRange.Item1;
+            float endOfWindow = position - visibleNoteRange.Item2;
+            while (notesOnScreen.Count > 0 && notesOnScreen.Peek().Item1 < endOfWindow)
+                notesOnScreen.Dequeue();
+
+            while (nextViewable < notes.Count)
+            {
+                float notePosition = notePositions[nextViewable];
+                if (notePosition >= startOfWindow)
+                    break;
+
+                if (notePosition >= endOfWindow)
+                {
+                    ref var node = ref notes.At_index(nextViewable);
+                    int index = hittableQueue.Find(notePosition);
+                    if (index >= 0)
+                        notesOnScreen.Enqueue(hittableQueue.At(index));
+                    else if (viewableOverrides.Count == 0 || viewableOverrides.Peek() != notePosition)
+                        AddToQueue(notesOnScreen, notePosition, ref node);
+                    else
+                        viewableOverrides.Dequeue();
+                }
+                ++nextViewable;
+            }
+        }
+
+        private void AddToQueue(TimedSemiQueue<PlayableNote> queue, float position, ref FlatMapNode<long, T> node)
+        {
+            var newNote = node.obj.ConvertToPlayable(node.key, sync, positionTracker, noteTracker);
+            AttachPhraseToNote(overdrives, overdriveIndex, node.key, newNote);
+            AttachPhraseToNote(soloes, soloIndex, node.key, newNote);
+            queue.Enqueue(new(position, newNote));
             positionTracker = node.key;
             noteTracker = node.obj;
-
-            Debug.Log($"Position: {position} - Note added to queue");
         }
-    }
 
-    public unsafe class Player_Instrument_S<T> : Player_Instrument_Base<T>
-        where T : unmanaged, INote_S
-    {
-        private ulong positionTracker = 0;
-        private T* noteTracker = null;
-        public Player_Instrument_S(InputHandler inputHandler, TimedNativeFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(inputHandler, notes, notePositions, sync) { }
-
-        protected override void AddToQueue(TimedSemiQueue<IPlayableNote> queue, float position, ref FlatMapNode<ulong, T> node)
+        private static void AttachPhraseToNote<PhraseType>(List<PhraseType> phrases, int index, long position, PlayableNote note)
+            where PhraseType : PlayablePhrase
         {
-            queue.Enqueue(new(position, node.obj.ConvertToPlayable(node.key, sync, positionTracker, noteTracker)));
-            positionTracker = node.key;
+            while (index < phrases.Count)
+            {
+                var phr = phrases[index];
+                if (position < phr.start.ticks)
+                    break;
 
-            // The node's array buffer is a fixed location, so this is safe
-            fixed (FlatMapNode<ulong, T>* ptr = &node)
-                noteTracker = &ptr->obj;
-            Debug.Log($"Position: {position} - Note added to queue");
+                if (position < phr.end.ticks)
+                {
+                    string attachment = note.AttachPhrase(phr);
+                    if (attachment.Length > 0)
+                        Debug.Log($"Position: {position} - Attached {attachment} to note");
+                    break;
+                }
+                ++index;
+            }
         }
-    }
-
-    public readonly struct SubNote
-    {
-        public readonly int index;
-        public readonly ulong endTick;
-        public SubNote(int index, ulong endTick)
-        {
-            this.index = index;
-            this.endTick = endTick;
-        }
-    }
-
-    public interface IPlayableNote
-    {
-        public void AttachPhrase(PlaytimePhrase phrase);
-        public HitStatus TryHit(object input, in List<(float, object)> inputSnapshots);
-        public HitStatus TryHit_InCombo(object input, in List<(float, object)> inputSnapshots);
-
-        public (HitStatus, int) UpdateSustain(object input, in List<(float, object)> inputSnapshots);
     }
 }

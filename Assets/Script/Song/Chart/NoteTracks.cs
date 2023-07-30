@@ -18,15 +18,15 @@ namespace YARG.Song.Chart
 {
     public class NoteTracks
     {
-        public readonly InstrumentTrack<FiveFret_S>               lead_5 = new();
-        public readonly InstrumentTrack<SixFret_S>                lead_6 = new();
-        public readonly InstrumentTrack<FiveFret_S>               bass_5 = new();
-        public readonly InstrumentTrack<SixFret_S>                bass_6 = new();
-        public readonly InstrumentTrack<FiveFret_S>               rhythm = new();
-        public readonly InstrumentTrack<FiveFret_S>               coop = new();
-        public readonly InstrumentTrack<Keys_S>                   keys = new();
-        public readonly InstrumentTrack<Drum_4ProS>               drums_4pro = new();
-        public readonly InstrumentTrack<Drum_5S>                  drums5 = new();
+        public readonly InstrumentTrack<FiveFret>               lead_5 = new();
+        public readonly InstrumentTrack<SixFret>                lead_6 = new();
+        public readonly InstrumentTrack<FiveFret>               bass_5 = new();
+        public readonly InstrumentTrack<SixFret>                bass_6 = new();
+        public readonly InstrumentTrack<FiveFret>               rhythm = new();
+        public readonly InstrumentTrack<FiveFret>               coop = new();
+        public readonly InstrumentTrack<Keys>                   keys = new();
+        public readonly InstrumentTrack<Drum_4Pro>               drums_4pro = new();
+        public readonly InstrumentTrack<Drum_5>                  drums5 = new();
         public readonly ProGuitarTrack<Fret_17>                   proguitar_17 = new();
         public readonly ProGuitarTrack<Fret_22>                   proguitar_22 = new();
         public readonly ProGuitarTrack<Fret_17>                   probass_17 = new();
@@ -120,7 +120,7 @@ namespace YARG.Song.Chart
             }
         }
 
-        public ulong GetLastNoteTime()
+        public long GetLastNoteTime()
         {
             Track[] tracks =
             {
@@ -142,10 +142,10 @@ namespace YARG.Song.Chart
                 harmonyVocals,
             };
 
-            ulong lastNoteTime = 0;
+            long lastNoteTime = 0;
             foreach (var track in tracks)
             {
-                ulong lastTime = track.GetLastNoteTime();
+                long lastTime = track.GetLastNoteTime();
                 if (lastTime > lastNoteTime)
                     lastNoteTime = lastTime;
             }

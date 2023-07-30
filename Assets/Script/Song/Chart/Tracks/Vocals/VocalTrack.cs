@@ -52,16 +52,16 @@ namespace YARG.Song.Chart.Vocals
                 percussion.TrimExcess();
         }
 
-        public override ulong GetLastNoteTime()
+        public override long GetLastNoteTime()
         {
-            ulong endTime = 0;
+            long endTime = 0;
             foreach (var track in vocals)
             {
                 if (track.IsEmpty())
                     continue;
 
                 ref var vocal = ref track.At_index(track.Count - 1);
-                ulong end = vocal.key + vocal.obj.duration;
+                long end = vocal.key + vocal.obj.duration;
                 if (end > endTime)
                     endTime = end;
             }

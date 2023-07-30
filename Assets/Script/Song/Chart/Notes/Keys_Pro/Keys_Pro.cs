@@ -13,9 +13,9 @@ namespace YARG.Song.Chart.Notes
         private TruncatableSustain _duration;
         private PitchName _note;
         private int _octave;
-        private uint _binary;
+        private int _binary;
 
-        public ulong Duration
+        public long Duration
         {
             get { return _duration; }
             set { _duration = value; }
@@ -29,9 +29,9 @@ namespace YARG.Song.Chart.Notes
             get { return _note; }
             set
             {
-                uint binaryNote = IPitched.ThrowIfInvalidPitch(this, value);
+                int binaryNote = IPitched.ThrowIfInvalidPitch(this, value);
                 _note = value;
-                _binary = (uint) (_octave + 1) * IPitched.OCTAVE_LENGTH + binaryNote;
+                _binary = (_octave + 1) * IPitched.OCTAVE_LENGTH + binaryNote;
             }
         }
         public int Octave
@@ -39,12 +39,12 @@ namespace YARG.Song.Chart.Notes
             get { return _octave; }
             set
             {
-                uint binaryOctave = IPitched.ThrowIfInvalidOctave(this, value);
+                int binaryOctave = IPitched.ThrowIfInvalidOctave(this, value);
                 _octave = value;
-                _binary = (uint) _note + binaryOctave;
+                _binary = (int) _note + binaryOctave;
             }
         }
-        public uint Binary
+        public int Binary
         {
             get { return _binary; }
             set
@@ -65,7 +65,7 @@ namespace YARG.Song.Chart.Notes
             _binary = 0;
         }
 
-        public Pitched_Key(ulong length)
+        public Pitched_Key(long length)
         {
             _duration = length;
             _note = PitchName.C;
@@ -73,12 +73,12 @@ namespace YARG.Song.Chart.Notes
             _binary = 0;
         }
 
-        public Pitched_Key(ulong length, uint binary) : this (length)
+        public Pitched_Key(long length, int binary) : this (length)
         {
             Binary = binary;
         }
 
-        public Pitched_Key(ulong length, PitchName note, int octave) : this(length)
+        public Pitched_Key(long length, PitchName note, int octave) : this(length)
         {
             Note = note;
             Octave = octave;
@@ -87,6 +87,10 @@ namespace YARG.Song.Chart.Notes
 
     public class Keys_Pro : Note<Pitched_Key>
     {
+        public override int NumLanes => 48;
+        public uint NumActive { get; private set; } = 0;
+        public Keys_Pro() : base(4) { }
+
         public Pitched_Key this[uint index]
         {
             get
@@ -118,10 +122,7 @@ namespace YARG.Song.Chart.Notes
             }
         }
 
-        public uint NumActive { get; private set; } = 0;
-        public Keys_Pro() : base(4) { }
-
-        public bool Add(uint binary, ulong length)
+        public bool Add(int binary, long length)
         {
             if (NumActive == 4)
                 return false;
@@ -131,7 +132,7 @@ namespace YARG.Song.Chart.Notes
             return true;
         }
 
-        public bool Add(PitchName note, int octave, ulong length)
+        public bool Add(PitchName note, int octave, long length)
         {
             if (NumActive == 4)
                 return false;
@@ -141,7 +142,7 @@ namespace YARG.Song.Chart.Notes
             return true;
         }
 
-        public void SetLength(uint index, ulong length)
+        public void SetLength(uint index, long length)
         {
             if (index >= NumActive)
                 throw new IndexOutOfRangeException();
@@ -161,19 +162,19 @@ namespace YARG.Song.Chart.Notes
                 throw new IndexOutOfRangeException();
             lanes[index].Octave = octave;
         }
-        public void SetBinary(uint index, uint binary)
+        public void SetBinary(uint index, int binary)
         {
             if (index >= NumActive)
                 throw new IndexOutOfRangeException();
             lanes[index].Binary = binary;
         }
 
-        private void AddNote(Pitched_Key key, uint binary)
+        private void AddNote(Pitched_Key key, int binary)
         {
             uint i = 0;
             while (i < NumActive)
             {
-                uint cmp = lanes[i].Binary;
+                int cmp = lanes[i].Binary;
                 if (cmp == binary)
                     throw new Exception("Duplicate pitches are not allowed");
 
@@ -199,12 +200,12 @@ namespace YARG.Song.Chart.Notes
             return NumActive > 0;
         }
 
-        public override ulong GetLongestSustain()
+        public override long GetLongestSustain()
         {
-            ulong sustain = 0;
+            long sustain = 0;
             for (int i = 0; i < NumActive; ++i)
             {
-                ulong end = lanes[i].Duration;
+                long end = lanes[i].Duration;
                 if (end > sustain)
                     sustain = end;
             }
@@ -212,147 +213,7 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        public override IPlayableNote ConvertToPlayable(in ulong position, in SyncTrack sync, in ulong prevPosition, in INote? prevNote)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public unsafe struct Keys_Pro_S : INote_S
-    {
-        public uint NumLanes => 4;
-        public uint NumActive { get; private set; }
-        private Pitched_Key lane_0;
-        private Pitched_Key lane_1;
-        private Pitched_Key lane_2;
-        private Pitched_Key lane_3;
-        public Pitched_Key this[uint index]
-        {
-            get
-            {
-                if (index >= NumActive)
-                    throw new IndexOutOfRangeException();
-                fixed (Pitched_Key* lanes = &lane_0) return lanes[index];
-            }
-            set
-            {
-                if (index < NumActive)
-                {
-                    fixed (Pitched_Key* lanes = &lane_0)
-                    {
-                        if (!value.IsActive())
-                        {
-                            --NumActive;
-                            for (uint i = index; i < NumActive; ++i)
-                                lanes[i] = lanes[i + 1];
-                        }
-                        else
-                            lanes[index] = value;
-                    }
-                }
-                else if (value.IsActive())
-                {
-                    if (index == NumActive && NumActive < 4)
-                        AddNote(value, value.Binary);
-                    else
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public bool Add(uint binary, ulong length)
-        {
-            if (NumActive == 4)
-                return false;
-
-            Pitched_Key key = new(length, binary);
-            AddNote(key, binary);
-            return true;
-        }
-
-        public bool Add(PitchName note, int octave, ulong length)
-        {
-            if (NumActive == 4)
-                return false;
-
-            Pitched_Key key = new(length, note, octave);
-            AddNote(key, key.Binary);
-            return true;
-        }
-
-        public void SetLength(uint index, ulong length)
-        {
-            if (index >= NumActive)
-                throw new IndexOutOfRangeException();
-            fixed (Pitched_Key* lanes = &lane_0) lanes[index].Duration = length;
-        }
-
-        public void SetPitch(uint index, PitchName note)
-        {
-            if (index >= NumActive)
-                throw new IndexOutOfRangeException();
-            fixed (Pitched_Key* lanes = &lane_0) lanes[index].Note = note;
-        }
-
-        public void SetOctave(uint index, int octave)
-        {
-            if (index >= NumActive)
-                throw new IndexOutOfRangeException();
-            fixed (Pitched_Key* lanes = &lane_0) lanes[index].Octave = octave;
-        }
-        public void SetBinary(uint index, uint binary)
-        {
-            if (index >= NumActive)
-                throw new IndexOutOfRangeException();
-            fixed (Pitched_Key* lanes = &lane_0) lanes[index].Binary = binary;
-        }
-
-        private void AddNote(Pitched_Key key, uint binary)
-        {
-            uint i = 0;
-            fixed (Pitched_Key* lanes = &lane_0)
-            {
-                while (i < NumActive)
-                {
-                    uint cmp = lanes[i].Binary;
-                    if (cmp == binary)
-                        throw new Exception("Duplicate pitches are not allowed");
-
-                    if (cmp > binary)
-                    {
-                        for (uint j = NumActive; j > i; --j)
-                            lanes[j] = lanes[j - 1];
-                        break;
-                    }
-                    ++i;
-                }
-                lanes[i] = key;
-            }
-            NumActive++;
-        }
-
-        public bool HasActiveNotes()
-        {
-            return NumActive > 0;
-        }
-
-        public ulong GetLongestSustain()
-        {
-            ulong sustain = 0;
-            fixed (Pitched_Key* lanes = &lane_0)
-            {
-                for (int i = 0; i < NumActive; ++i)
-                {
-                    ulong end = lanes[i].Duration;
-                    if (end > sustain)
-                        sustain = end;
-                }
-            }
-            return sustain;
-        }
-
-        public IPlayableNote ConvertToPlayable<T>(in ulong position, in SyncTrack sync, in ulong prevPosition, in T* prevNote)
-            where T : unmanaged, INote_S
+        public override PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote)
         {
             throw new NotImplementedException();
         }

@@ -221,9 +221,6 @@ namespace YARG.Serialization.Parser
                                 }
 
                                 break;
-                            case "BEAT":
-                                ParseBeats(eventIR, trackChunk);
-                                break;
                             case "VENUE":
                                 ParseVenue(eventIR, trackChunk);
                                 break;
@@ -286,12 +283,6 @@ namespace YARG.Serialization.Parser
                 }
             }
 
-            // Generate beat line events if there aren't any
-
-            if (!eventIR.Any(i => i.name == "beatLine_minor" || i.name == "beatLine_major"))
-            {
-                GenerateBeats(eventIR, tempo, lastNoteTime);
-            }
 
             // Convert event IR into real
 
@@ -322,27 +313,6 @@ namespace YARG.Serialization.Parser
             {
                 ev.time += songEntry.Delay;
             }
-
-            // Add beats to chart
-
-            //chart.beats = new();
-            //foreach (var ev in chart.events)
-            //{
-            //    if (ev.name is "beatLine_minor")
-            //    {
-            //        chart.beats.Add(new Beat
-            //        {
-            //            Time = ev.time, Style = BeatStyle.STRONG,
-            //        });
-            //    }
-            //    else if (ev.name is "beatLine_major")
-            //    {
-            //        chart.beats.Add(new Beat
-            //        {
-            //            Time = ev.time, Style = BeatStyle.MEASURE,
-            //        });
-            //    }
-            //}
 
             // Look for bonus star power
 

@@ -10,7 +10,7 @@ using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart.GuitarTrack
 {
-    public class Midi_FiveFret_Loader : Midi_Instrument_Loader<FiveFret_S>
+    public class Midi_FiveFret_Loader : Midi_Instrument_Loader<FiveFret>
     {
         internal static readonly byte[][] ENHANCED_STRINGS = new byte[][] { Encoding.ASCII.GetBytes("[ENHANCED_OPENS]"), Encoding.ASCII.GetBytes("ENHANCED_OPENS") };
         private class FiveFret_MidiDiff
@@ -20,7 +20,7 @@ namespace YARG.Song.Chart.GuitarTrack
             public bool SliderNotes { get; set; }
             public bool HopoOn { get; set; }
             public bool HopoOff { get; set; }
-            public readonly ulong[] notes = new ulong[6] { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue };
+            public readonly long[] notes = new long[6] { -1, -1, -1, -1, -1, -1 };
             public readonly Midi_PhraseList phrases;
 
             public FiveFret_MidiDiff()
@@ -36,7 +36,7 @@ namespace YARG.Song.Chart.GuitarTrack
         }
 
         private readonly FiveFret_MidiDiff[] difficulties = new FiveFret_MidiDiff[4] { new(), new(), new(), new(), };
-        private readonly uint[] lanes = new uint[] {
+        private readonly int[] lanes = new int[] {
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -56,10 +56,10 @@ namespace YARG.Song.Chart.GuitarTrack
 
         protected override bool IsNote() { return 59 <= note.value && note.value <= 107; }
 
-        protected override void ParseLaneColor(ref InstrumentTrack<FiveFret_S> track)
+        protected override void ParseLaneColor(ref InstrumentTrack<FiveFret> track)
         {
-            uint noteValue = note.value - 59;
-            uint lane = lanes[noteValue];
+            int noteValue = note.value - 59;
+            int lane = lanes[noteValue];
             int diffIndex = DIFFVALUES[noteValue];
             
             if (lane < 6)
@@ -138,18 +138,18 @@ namespace YARG.Song.Chart.GuitarTrack
                 difficulties[diffIndex].phrases.AddPhrase(ref track[diffIndex].specialPhrases, currEvent.position, SpecialPhraseType.StarPower_Diff, 100);
         }
 
-        protected override void ParseLaneColor_Off(ref InstrumentTrack<FiveFret_S> track)
+        protected override void ParseLaneColor_Off(ref InstrumentTrack<FiveFret> track)
         {
-            uint noteValue = note.value - 59;
-            uint lane = lanes[noteValue];
+            int noteValue = note.value - 59;
+            int lane = lanes[noteValue];
             int diffIndex = DIFFVALUES[noteValue];
             if (lane < 6)
             {
-                ulong colorPosition = difficulties[diffIndex].notes[lane];
-                if (colorPosition != ulong.MaxValue)
+                long colorPosition = difficulties[diffIndex].notes[lane];
+                if (colorPosition != -1)
                 {
-                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane] = currEvent.position - colorPosition;
-                    difficulties[diffIndex].notes[lane] = ulong.MaxValue;
+                    track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[(int)lane] = currEvent.position - colorPosition;
+                    difficulties[diffIndex].notes[lane] = -1;
                 }
             }
             else if (lane == 6)
@@ -176,7 +176,7 @@ namespace YARG.Song.Chart.GuitarTrack
                 difficulties[diffIndex].phrases.AddPhrase_Off(ref track[diffIndex].specialPhrases, currEvent.position, SpecialPhraseType.StarPower_Diff);
         }
 
-        protected override void ParseSysEx(ReadOnlySpan<byte> str, ref InstrumentTrack<FiveFret_S> track)
+        protected override void ParseSysEx(ReadOnlySpan<byte> str, ref InstrumentTrack<FiveFret> track)
         {
             if (str.StartsWith(SYSEXTAG))
             {
@@ -189,8 +189,8 @@ namespace YARG.Song.Chart.GuitarTrack
                     {
                         case 1:
                             {
-                                uint status = str[6] == 0 ? (uint)1 : 0;
-                                for (uint diff = 0; diff < 4; ++diff)
+                                int status = str[6] == 0 ? 1 : 0;
+                                for (int diff = 0; diff < 4; ++diff)
                                     lanes[12 * diff + 1] = status;
                                 break;
                             }
@@ -212,7 +212,7 @@ namespace YARG.Song.Chart.GuitarTrack
                     switch (str[5])
                     {
                         case 1:
-                            lanes[12 * diff + 1] = str[6] == 0 ? (uint)1 : 0;
+                            lanes[12 * diff + 1] = str[6] == 0 ? 1 : 0;
                             break;
                         case 4:
                             {
@@ -227,7 +227,7 @@ namespace YARG.Song.Chart.GuitarTrack
             }
         }
 
-        protected override void ParseText(ReadOnlySpan<byte> str, ref InstrumentTrack<FiveFret_S> track)
+        protected override void ParseText(ReadOnlySpan<byte> str, ref InstrumentTrack<FiveFret> track)
         {
             if (lanes[0] == 13 && (str.SequenceEqual(ENHANCED_STRINGS[0]) || str.SequenceEqual(ENHANCED_STRINGS[1])))
             {

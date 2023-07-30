@@ -15,13 +15,13 @@ namespace YARG.Song.Chart.ProKeysTrack
         internal static readonly byte[] TREMOLO = { 126 };
         internal static readonly byte[] TRILL = { 127 };
         
-        private readonly ulong[] lanes = new ulong[25]
+        private readonly long[] lanes = new long[25]
         {
-            ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue,
-            ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue,
-            ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue,
-            ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue,
-            ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue,
+            -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1,
         };
 
         public Midi_ProKeys_Loader(byte multiplierNote) : base(
@@ -45,11 +45,11 @@ namespace YARG.Song.Chart.ProKeysTrack
 
         protected override void ParseLaneColor_Off(ref ProKeysDifficulty track)
         {
-            ulong colorPosition = lanes[note.value - 48];
-            if (colorPosition != ulong.MaxValue)
+            long colorPosition = lanes[note.value - 48];
+            if (colorPosition != -1)
             {
                 track.notes.Traverse_Backwards_Until(colorPosition)!.Add(note.value, currEvent.position - colorPosition);
-                lanes[note.value - 48] = ulong.MaxValue;
+                lanes[note.value - 48] = -1;
             }
         }
 

@@ -15,31 +15,12 @@ using YARG.Chart;
 using UnityEngine.Rendering.Universal;
 using TagLib.Mpeg;
 using UnityEngine.UIElements;
+using YARG.Assets.Script.Types;
+using YARG.Song.Chart.Notes;
+using YARG.Data;
 
 namespace YARG.Song.Chart
 {
-    public readonly struct BeatPosition : IEquatable<BeatPosition>, IComparable<BeatPosition>
-    {
-        public readonly ulong ticks;
-        public readonly float seconds;
-
-        public BeatPosition(ulong ticks, float seconds)
-        {
-            this.ticks = ticks;
-            this.seconds = seconds;
-        }
-
-        public int CompareTo(BeatPosition other)
-        {
-            return ticks.CompareTo(other.ticks);
-        }
-
-        public bool Equals(BeatPosition other)
-        {
-            return ticks.Equals(other.ticks);
-        }
-    }
-
     public abstract class YARGSong
     {
         protected string m_directory = string.Empty;
@@ -51,15 +32,17 @@ namespace YARG.Song.Chart
         protected string m_charter = string.Empty;
         protected string m_playlist = string.Empty;
         protected DrumType m_baseDrumType = DrumType.UNKNOWN;
-        protected ulong m_hopo_frequency = 0;
+        protected long m_hopo_frequency = 0;
         
         public string m_midiSequenceName = string.Empty;
 
-        public ulong EndTick { get; private set; }
-        public ulong LastNoteTick { get; private set; }
+        public long EndTick { get; private set; }
+        public long LastNoteTick { get; private set; }
+
+        public virtual long HopoFrequency => m_hopo_frequency;
 
         public readonly SyncTrack                        m_sync = new();
-        public readonly FlatMap<BeatPosition, BeatStyle> m_beatMap = new();
+        public readonly FlatMap<DualPosition, BeatStyle> m_beatMap = new();
         public readonly SongEvents                       m_events = new();
         public readonly NoteTracks                       m_tracks = new();
 
@@ -80,6 +63,50 @@ namespace YARG.Song.Chart
             m_playlist = entry.Playlist;
             m_hopo_frequency = entry.HopoFrequency;
             m_baseDrumType = entry.GetDrumType();
+        }
+
+        public Player[] SetupPlayers(Dictionary<Instrument, Dictionary<int, List<(GameObject, PlayerManager.Player)>>> instruemntMap)
+        {
+            List<Player> players = new();
+            foreach (var dict in instruemntMap)
+            {
+                switch (dict.Key)
+                {
+                    case Instrument.INVALID:
+                        break;
+                    case Instrument.GUITAR:
+                        players.AddRange(m_tracks.lead_5.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        break;
+                    case Instrument.BASS:
+                        players.AddRange(m_tracks.bass_5.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        break;
+                    case Instrument.DRUMS:
+                        break;
+                    case Instrument.KEYS:
+                        break;
+                    case Instrument.VOCALS:
+                        break;
+                    case Instrument.REAL_GUITAR:
+                        break;
+                    case Instrument.REAL_BASS:
+                        break;
+                    case Instrument.REAL_DRUMS:
+                        break;
+                    case Instrument.REAL_KEYS:
+                        break;
+                    case Instrument.HARMONY:
+                        break;
+                    case Instrument.GH_DRUMS:
+                        break;
+                    case Instrument.RHYTHM:
+                        players.AddRange(m_tracks.rhythm.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        break;
+                    case Instrument.GUITAR_COOP:
+                        players.AddRange(m_tracks.coop.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        break;
+                }
+            }
+            return players.ToArray();
         }
 
         protected void Parse(MidiFileReader reader, Encoding encoding)
@@ -116,7 +143,7 @@ namespace YARG.Song.Chart
             m_tracks.FinalizeProKeys();
         }
 
-        protected void FinalizeData()
+        protected void FinalizeData(bool finalizeSync)
         {
             LastNoteTick = m_tracks.GetLastNoteTime();
             if (!m_events.globals.IsEmpty())
@@ -126,7 +153,9 @@ namespace YARG.Song.Chart
                     EndTick = node.key;
             }
 
-            m_sync.FinalizeTempoMap();
+            if (finalizeSync)
+                m_sync.FinalizeTempoMap();
+
             if (m_beatMap.IsEmpty())
                 GenerateAllBeats();
             else
@@ -144,10 +173,10 @@ namespace YARG.Song.Chart
                 if (node.obj.Denominator != 255)
                     denominator = 1u << node.obj.Denominator;
 
-                ulong ticksPerMarker = multipliedTickrate / denominator;
-                ulong ticksPerMeasure = (multipliedTickrate * node.obj.Numerator) / denominator;
+                long ticksPerMarker = multipliedTickrate / denominator;
+                long ticksPerMeasure = (multipliedTickrate * node.obj.Numerator) / denominator;
 
-                ulong endTime;
+                long endTime;
                 if (i + 1 < m_sync.timeSigs.Count)
                     endTime = m_sync.timeSigs.At_index(i + 1).key;
                 else
@@ -155,10 +184,10 @@ namespace YARG.Song.Chart
 
                 while (node.key < endTime)
                 {
-                    ulong position = node.key;
+                    long position = node.key;
                     for (uint n = 0; n < node.obj.Numerator && position < endTime; ++n, position += ticksPerMarker, ++searchIndex)
                     {
-                        var beat = new BeatPosition(position, m_sync.ConvertToSeconds(position));
+                        var beat = new DualPosition(position, m_sync);
                         if (!m_beatMap.Contains(searchIndex, beat))
                             m_beatMap[beat] = BeatStyle.WEAK;
                     }
@@ -170,27 +199,23 @@ namespace YARG.Song.Chart
         private void GenerateAllBeats()
         {
             uint multipliedTickrate = 4u * m_sync.Tickrate;
-            uint denominator = 0;
-            uint metronome = 24;
-            uint numerator = 4;
+            int metronome = 24;
             for (int i = 0; i < m_sync.timeSigs.Count; ++i)
             {
                 var node = m_sync.timeSigs.At_index(i);
-                if (node.obj.Numerator > 0)
-                    numerator = node.obj.Numerator;
 
-                if (node.obj.Denominator != 255)
-                    denominator = 1u << node.obj.Denominator;
+                int numerator = node.obj.Numerator > 0 ? node.obj.Numerator : 4;
+                int denominator = node.obj.Denominator != 255 ? 1 << node.obj.Denominator : 4;
 
                 if (node.obj.Metronome != 0)
                     metronome = node.obj.Metronome;
 
-                uint markersPerClick = 6 * denominator / metronome;
-                ulong ticksPerMarker = multipliedTickrate / denominator;
-                ulong ticksPerMeasure = (multipliedTickrate * numerator) / denominator;
+                int markersPerClick = 6 * denominator / metronome;
+                long ticksPerMarker = multipliedTickrate / denominator;
+                long ticksPerMeasure = (multipliedTickrate * numerator) / denominator;
                 bool isIrregular = numerator > 4 || (numerator & 1) == 1;
 
-                ulong endTime;
+                long endTime;
                 if (i + 1 < m_sync.timeSigs.Count)
                     endTime = m_sync.timeSigs.At_index(i + 1).key;
                 else
@@ -198,16 +223,16 @@ namespace YARG.Song.Chart
 
                 while (node.key < endTime)
                 {
-                    ulong position = node.key;
+                    long position = node.key;
                     var style = BeatStyle.MEASURE;
-                    int clickSpacing = (int)markersPerClick;
-                    int triplSpacing = 3 * (int)markersPerClick;
-                    for (int leftover = (int)numerator; leftover > 0 && position < endTime;)
+                    int clickSpacing = markersPerClick;
+                    int triplSpacing = 3 * markersPerClick;
+                    for (int leftover = numerator; leftover > 0 && position < endTime;)
                     {
                         int clicksLeft = clickSpacing;
                         do
                         {
-                            var beat = new BeatPosition(position, m_sync.ConvertToSeconds(position));
+                            var beat = new DualPosition(position, m_sync);
                             m_beatMap.Add_NoReturn(beat, style);
                             position += ticksPerMarker;
                             style = BeatStyle.WEAK;
@@ -240,8 +265,8 @@ namespace YARG.Song.Chart
                 if (midiEvent.type == MidiEventType.Note_On)
                 {
                     reader.ExtractMidiNote(ref note);
-                    var beat = new BeatPosition(midiEvent.position, m_sync.ConvertToSeconds(midiEvent.position));
-                    m_beatMap.Get_Or_Add_Back(beat) = note.value == 13 ? BeatStyle.MEASURE : BeatStyle.STRONG;
+                    var beat = new DualPosition(midiEvent.position, m_sync);
+                    m_beatMap.Get_Or_Add_Back(beat) = note.value == 12 ? BeatStyle.MEASURE : BeatStyle.STRONG;
                 }
             }
             return true;

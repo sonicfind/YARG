@@ -9,7 +9,7 @@ using YARG.Song.Chart.Notes;
 
 namespace YARG.Song.Chart.DrumTrack
 {
-    public class LegacyDrumTrack : InstrumentTrack<Drum_LegacyS>
+    public class LegacyDrumTrack : InstrumentTrack<Drum_Legacy>
     {
         private DrumType _type;
         public DrumType Type { get { return _type; } }
@@ -31,7 +31,7 @@ namespace YARG.Song.Chart.DrumTrack
 
         public bool LoadDotChart(ChartFileReader reader)
         {
-            ref DifficultyTrack<Drum_LegacyS> diff = ref difficulties[reader.Difficulty];
+            ref DifficultyTrack<Drum_Legacy> diff = ref difficulties[reader.Difficulty];
             if (!DotChart_Loader.Load(ref diff, reader))
                 return false;
 
@@ -39,7 +39,7 @@ namespace YARG.Song.Chart.DrumTrack
             return true;
         }
 
-        private void ParseDrumType(ref DifficultyTrack<Drum_LegacyS> diff)
+        private void ParseDrumType(ref DifficultyTrack<Drum_Legacy> diff)
         {
             for (int i = 0; i < diff.notes.Count; ++i)
             {
@@ -49,7 +49,7 @@ namespace YARG.Song.Chart.DrumTrack
             }
         }
 
-        public void Transfer(InstrumentTrack<Drum_4ProS> to)
+        public void Transfer(InstrumentTrack<Drum_4Pro> to)
         {
             to.specialPhrases = specialPhrases;
             to.events = events;
@@ -65,13 +65,13 @@ namespace YARG.Song.Chart.DrumTrack
                     for (int n = 0; n < diff_leg.notes.Count; ++n)
                     {
                         ref var note = ref diff_leg.notes.At_index(n);
-                        diff_4pro.notes.Add(note.key, new(ref note.obj));
+                        diff_4pro.notes.Add(note.key, new(note.obj));
                     }
                 }
             }
         }
 
-        public void Transfer(InstrumentTrack<Drum_5S> to)
+        public void Transfer(InstrumentTrack<Drum_5> to)
         {
             to.specialPhrases = specialPhrases;
             to.events = events;
@@ -87,23 +87,23 @@ namespace YARG.Song.Chart.DrumTrack
                     for (int n = 0; n < diff_leg.notes.Count; ++n)
                     {
                         ref var note = ref diff_leg.notes.At_index(n);
-                        diff_5.notes.Add(note.key, new(ref note.obj));
+                        diff_5.notes.Add(note.key, new(note.obj));
                     }
                 }
             }
         }
     }
 
-    public class Midi_DrumsLegacy_Loader : Midi_Drum_Loader_Base<Drum_LegacyS>
+    public class Midi_DrumsLegacy_Loader : Midi_Drum_Loader_Base<Drum_Legacy>
     {
         public Midi_DrumsLegacy_Loader(byte multiplierNote) : base(multiplierNote) { }
 
         protected override bool IsNote() { return 60 <= note.value && note.value <= 101; }
 
-        protected override void ParseLaneColor(ref InstrumentTrack<Drum_LegacyS> track)
+        protected override void ParseLaneColor(ref InstrumentTrack<Drum_Legacy> track)
         {
-            uint noteValue = note.value - 60;
-            uint lane = LANEVALUES[noteValue];
+            int noteValue = note.value - 60;
+            int lane = LANEVALUES[noteValue];
             int diffIndex = DIFFVALUES[noteValue];
             if (lane < 7)
             {
@@ -116,7 +116,7 @@ namespace YARG.Song.Chart.DrumTrack
                 {
                     if (enableDynamics)
                     {
-                        ref var pad = ref drum.Pads(lane - 2);
+                        ref var pad = ref drum.pads[lane - 2];
                         if (note.velocity > 100)
                             pad.Dynamics = DrumDynamics.Accent;
                         else if (note.velocity < 100)
@@ -124,29 +124,29 @@ namespace YARG.Song.Chart.DrumTrack
                     }
 
                     if (3 <= lane && lane <= 5)
-                        drum.Cymbals(lane - 3) = !toms[lane - 3];
+                        drum.cymbals[lane - 3] = !toms[lane - 3];
                 }
             }
         }
 
-        protected override void ParseLaneColor_Off(ref InstrumentTrack<Drum_LegacyS> track)
+        protected override void ParseLaneColor_Off(ref InstrumentTrack<Drum_Legacy> track)
         {
-            uint noteValue = note.value - 60;
-            uint lane = LANEVALUES[noteValue];
+            int noteValue = note.value - 60;
+            int lane = LANEVALUES[noteValue];
             int diffIndex = DIFFVALUES[noteValue];
 
             if (lane < 7)
             {
-                ulong colorPosition = difficulties[diffIndex].notes[lane];
-                if (colorPosition != ulong.MaxValue)
+                long colorPosition = difficulties[diffIndex].notes[lane];
+                if (colorPosition != -1)
                 {
                     track[diffIndex].notes.Traverse_Backwards_Until(colorPosition)[lane] = currEvent.position - colorPosition;
-                    difficulties[diffIndex].notes[lane] = ulong.MaxValue;
+                    difficulties[diffIndex].notes[lane] = -1;
                 }
             }
         }
 
-        protected override void ToggleExtraValues(ref InstrumentTrack<Drum_LegacyS> track)
+        protected override void ToggleExtraValues(ref InstrumentTrack<Drum_Legacy> track)
         {
             if (note.value == 109)
             {
@@ -161,7 +161,7 @@ namespace YARG.Song.Chart.DrumTrack
                 toms[note.value - 110] = true;
         }
 
-        protected override void ToggleExtraValues_Off(ref InstrumentTrack<Drum_LegacyS> track)
+        protected override void ToggleExtraValues_Off(ref InstrumentTrack<Drum_Legacy> track)
         {
             if (note.value == 109)
             {

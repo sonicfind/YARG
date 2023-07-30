@@ -2,8 +2,10 @@
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
+using YARG.Assets.Script.Types;
 using YARG.Audio;
 using YARG.Chart;
+using YARG.Song.Chart;
 using YARG.Types;
 
 namespace YARG.PlayMode
@@ -45,11 +47,11 @@ namespace YARG.PlayMode
         private void Start()
         {
             var beats = Play.Instance.chartNew.m_beatMap;
-            foreach (FlatMapNode<ulong, BeatStyle> ev in beats)
+            foreach (FlatMapNode<DualPosition, BeatStyle> ev in beats)
             {
                 if (ev.obj == BeatStyle.MEASURE)
                 {
-                    bars.Add(ev.key);
+                    bars.Add(ev.key.seconds);
                 }
             }
 

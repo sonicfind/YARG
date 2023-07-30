@@ -18,7 +18,7 @@ namespace YARG.Song.Chart.Notes
     {
         private TruncatableSustain _duration;
 
-        public ulong Duration
+        public long Duration
         {
             get { return _duration; }
             set { _duration = value; }
@@ -44,7 +44,7 @@ namespace YARG.Song.Chart.Notes
         protected TruncatableSustain _doubleBass;
         public readonly DrumPad[] pads;
 
-        public ulong Bass
+        public long Bass
         {
             get { return _bass; }
             set
@@ -53,7 +53,7 @@ namespace YARG.Song.Chart.Notes
                 _doubleBass.Disable();
             }
         }
-        public ulong DoubleBass
+        public long DoubleBass
         {
             get { return _doubleBass; }
             set
@@ -65,7 +65,7 @@ namespace YARG.Song.Chart.Notes
 
         public bool IsFlammed { get; set; }
 
-        public ulong this[uint lane]
+        public long this[int lane]
         {
             get
             {
@@ -123,21 +123,5 @@ namespace YARG.Song.Chart.Notes
         {
             cymbals = other.cymbals;
         }
-    }
-
-    public interface IDrumNote : INote_S
-    {
-        public ulong Bass { get; set; }
-        public ulong DoubleBass { get; set; }
-        public ref DrumPad Pads(uint index);
-        public bool IsFlammed { get; set; }
-
-        public ulong this[uint lane] { get; set; }
-        public void Disable(uint lane);
-    }
-
-    public interface IDrumNote_Pro : IDrumNote
-    {
-        public ref bool Cymbals(uint index);
     }
 }

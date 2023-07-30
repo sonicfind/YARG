@@ -28,9 +28,7 @@ namespace YARG.Serialization
         }
 
         public Hash128 CalcHash128() {
-            var ptr = Ptr;
-            var length = (ulong) Length;
-            return Hash128.Compute(ptr, (ulong) Length); }
+            return Hash128.Compute(Ptr, (ulong) Length); }
 
         protected virtual void Dispose(bool disposing) { }
 

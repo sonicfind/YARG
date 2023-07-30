@@ -83,7 +83,7 @@ namespace YARG.Ini
                 { "genre",                                new("genre", ModifierNodeType.SORTSTRING) },
                 { "guitar_type",                          new("guitar_type", ModifierNodeType.UINT32) },
 
-                { "hopo_frequency",                       new("hopo_frequency", ModifierNodeType.UINT64) },
+                { "hopo_frequency",                       new("hopo_frequency", ModifierNodeType.INT64) },
 
                 { "icon",                                 new("icon", ModifierNodeType.STRING) },
 
@@ -123,7 +123,7 @@ namespace YARG.Ini
                 { "star_power_note",                      new("multiplier_note", ModifierNodeType.UINT16) },
                 { "sub_genre",                            new("sub_genre", ModifierNodeType.SORTSTRING) },
                 { "sub_playlist",                         new("sub_playlist", ModifierNodeType.SORTSTRING) },
-                { "sustain_cutoff_threshold",             new("sustain_cutoff_threshold", ModifierNodeType.UINT64) },
+                { "sustain_cutoff_threshold",             new("sustain_cutoff_threshold", ModifierNodeType.INT64) },
                 { "sysex_high_hat_ctrl",                  new("sysex_high_hat_ctrl", ModifierNodeType.BOOL) },
                 { "sysex_open_bass",                      new("sysex_open_bass", ModifierNodeType.BOOL) },
                 { "sysex_pro_slide",                      new("sysex_pro_slide", ModifierNodeType.BOOL) },

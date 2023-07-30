@@ -16,26 +16,26 @@ namespace YARG.Song.Chart.Notes
 
         public PitchName Note { get; set; }
         public int Octave { get; set; }
-        public uint Binary { get; set; }
+        public int Binary { get; set; }
 
-        public static uint ThrowIfInvalidPitch(IPitched pitched, PitchName pitch)
+        public static int ThrowIfInvalidPitch(IPitched pitched, PitchName pitch)
         {
             if (pitched.Octave == pitched.OCTAVE_MAX && pitch != PitchName.C)
                 throw new Exception("Pitch out of range");
-            return (uint) pitch;
+            return (int) pitch;
         }
 
-        public static uint ThrowIfInvalidOctave(IPitched pitched, int octave)
+        public static int ThrowIfInvalidOctave(IPitched pitched, int octave)
         {
             if (octave < pitched.OCTAVE_MIN || pitched.OCTAVE_MAX < octave || (octave == pitched.OCTAVE_MAX && pitched.Note != PitchName.C))
                 throw new Exception("Octave out of range");
-            return (uint) (octave + 1) * OCTAVE_LENGTH;
+            return (octave + 1) * OCTAVE_LENGTH;
         }
 
-        public static (int, PitchName) SplitBinary(IPitched pitched, uint binary)
+        public static (int, PitchName) SplitBinary(IPitched pitched, int binary)
         {
-            int octave = (int) binary / OCTAVE_LENGTH - 1;
-            PitchName note = (PitchName) (binary % OCTAVE_LENGTH);
+            int octave = binary / OCTAVE_LENGTH - 1;
+            var note = (PitchName) (binary % OCTAVE_LENGTH);
             if (octave < pitched.OCTAVE_MIN || pitched.OCTAVE_MAX < octave || (octave == pitched.OCTAVE_MAX && note != PitchName.C))
                 throw new Exception("Binary pitch value out of range");
             return (octave, note);

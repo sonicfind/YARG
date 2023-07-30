@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace YARG.Serialization
 {
@@ -404,7 +405,7 @@ namespace YARG.Serialization
             if (endPos > currentBoundary)
                 throw new Exception("Failed to copy data");
 
-            Copier.MemCpy(data, ptr + _position, (nuint)length);
+            UnsafeUtility.MemCpy(data, ptr + _position, length);
             _position = endPos;
         }
 

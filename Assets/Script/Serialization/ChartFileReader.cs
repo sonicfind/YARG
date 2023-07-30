@@ -105,7 +105,7 @@ namespace YARG.Serialization
         private bool disposeReader = false;
 
         private EventCombo[] eventSet = Array.Empty<EventCombo>();
-        private ulong tickPosition = 0;
+        private long tickPosition = 0;
         public NoteTracks_Chart Instrument { get; private set; }
         public int Difficulty { get; private set; }
 
@@ -221,7 +221,7 @@ namespace YARG.Serialization
             return true;
         }
 
-        public (ulong, ChartEvent) ParseEvent()
+        public (long, ChartEvent) ParseEvent()
         {
             static bool EqualSequences(byte* curr, int length, byte[] descriptor)
             {
@@ -231,7 +231,7 @@ namespace YARG.Serialization
                 return true;
             }
 
-            ulong position = reader.ReadUInt64();
+            long position = reader.ReadInt64();
             if (position < tickPosition)
                 throw new Exception($".Cht/.Chart position out of order (previous: {tickPosition})");
 
@@ -273,28 +273,28 @@ namespace YARG.Serialization
             return reader.ExtractTextSpan();
         }
 
-        public (uint, ulong) ExtractLaneAndSustain()
+        public (uint, long) ExtractLaneAndSustain()
         {
             uint lane = reader.ReadUInt32();
-            ulong sustain = reader.ReadUInt64();
+            long sustain = reader.ReadInt64();
             return new(lane, sustain);
         }
 
         public SpecialPhrase ExtractSpecialPhrase()
         {
             nuint type = reader.ReadUInt32();
-            ulong duration = reader.ReadUInt64();
+            long duration = reader.ReadInt64();
             return new((SpecialPhraseType)type, duration);
         }
 
-        public uint ExtractMicrosPerQuarter()
+        public int ExtractMicrosPerQuarter()
         {
-            return (uint)Math.Round(TEMPO_FACTOR / reader.ReadUInt32());
+            return (int)Math.Round(TEMPO_FACTOR / reader.ReadUInt32());
         }
 
-        public ulong ExtractAnchor()
+        public long ExtractAnchor()
         {
-            return reader.ReadUInt64();
+            return reader.ReadInt64();
         }
 
         public TimeSig ExtractTimeSig()

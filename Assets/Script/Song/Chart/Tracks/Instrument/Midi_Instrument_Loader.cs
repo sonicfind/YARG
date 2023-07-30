@@ -14,8 +14,8 @@ namespace YARG.Song.Chart
     {
         internal static readonly byte[] SYSEXTAG = Encoding.ASCII.GetBytes("PS");
         public MidiParseEvent currEvent;
-        private ulong lastOn = 0;
-        private readonly ulong[] notes_BRE = { ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue, ulong.MaxValue };
+        private long lastOn = 0;
+        private readonly long[] notes_BRE = { -1, -1, -1, -1, -1 };
         private bool doBRE = false;
         protected MidiNote note;
         protected readonly Midi_PhraseList phrases;
@@ -88,7 +88,7 @@ namespace YARG.Song.Chart
             else if (!AddPhrase_Off(ref track.specialPhrases, note))
             {
                 if (120 <= note.value && note.value <= 124)
-                    ParseBRE_Off(note.value, ref track);
+                    ParseBRE_Off(ref track);
                 else
                     ToggleExtraValues_Off(ref track);
             }
@@ -125,13 +125,13 @@ namespace YARG.Song.Chart
             return this.phrases.AddPhrase_Off(ref phrases, currEvent.position, note);
         }
 
-        private void ParseBRE(uint midiValue)
+        private void ParseBRE(int midiValue)
         {
             notes_BRE[midiValue - 120] = currEvent.position;
             doBRE = notes_BRE[0] == notes_BRE[1] && notes_BRE[1] == notes_BRE[2] && notes_BRE[2] == notes_BRE[3];
         }
 
-        private void ParseBRE_Off(uint midiValue, ref TrackType track)
+        private void ParseBRE_Off(ref TrackType track)
         {
             if (doBRE)
             {
@@ -139,14 +139,14 @@ namespace YARG.Song.Chart
                 phrasesList.Add(new(SpecialPhraseType.BRE, currEvent.position - notes_BRE[0]));
 
                 for (int i = 0; i < 5; i++)
-                    notes_BRE[0] = ulong.MaxValue;
+                    notes_BRE[0] = -1;
                 doBRE = false;
             }
         }
     }
 
     public abstract class Midi_Instrument_Loader<T> : Midi_Loader_Base<InstrumentTrack<T>>
-        where T : unmanaged, INote_S
+        where T : class, INote, new()
     {
         internal static readonly byte[] SOLO = { 103 };
         internal static readonly byte[] TREMOLO = { 126 };

@@ -104,6 +104,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -138,6 +139,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -184,6 +186,7 @@ namespace YARG.Serialization
             if (b < '0' || b > '9')
                 return false;
 
+            value = 0;
             while (true)
             {
                 _position++;
@@ -230,6 +233,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -264,6 +268,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -309,6 +314,7 @@ namespace YARG.Serialization
             if (b < '0' || b > '9')
                 return false;
 
+            value = 0;
             while (true)
             {
                 _position++;
@@ -355,6 +361,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -389,6 +396,7 @@ namespace YARG.Serialization
                 if (b < '0' || b > '9')
                     return false;
 
+                value = 0;
                 while (true)
                 {
                     _position++;
@@ -434,6 +442,7 @@ namespace YARG.Serialization
             if (b < '0' || b > '9')
                 return false;
 
+            value = 0;
             while (true)
             {
                 _position++;
@@ -491,6 +500,7 @@ namespace YARG.Serialization
             if (b < '0' && b != '.')
                 return false;
 
+            value = 0;
             if (b != '.')
             {
                 while (true)
@@ -577,6 +587,7 @@ namespace YARG.Serialization
             if (b < '0' && b != '.')
                 return false;
 
+            value = 0;
             if (b != '.')
             {
                 while (true)

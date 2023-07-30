@@ -17,11 +17,11 @@ namespace YARG.Song.Chart.Vocals
         internal static readonly byte[] RANGESHIFT = { 0 };
         internal static readonly byte[] LYRICSHIFT = { 1 };
 
-        public ulong position;
-        private ulong percussion = ulong.MaxValue;
-        private ulong vocal = ulong.MaxValue;
+        public long position;
+        private long percussion = -1;
+        private long vocal = -1;
         private readonly Midi_PhraseList phrases;
-        private (ulong, byte[]) lyric = new(ulong.MaxValue, Array.Empty<byte>());
+        private (long, byte[]) lyric = new(-1, Array.Empty<byte>());
         private readonly int index;
 
         public Midi_Vocal_Loader(byte multiplierNote, int index)
@@ -109,20 +109,20 @@ namespace YARG.Song.Chart.Vocals
 
             if (str[0] != '[')
             {
-                if (lyric.Item1 != ulong.MaxValue)
+                if (lyric.Item1 != -1)
                     AddVocal(lyric.Item1, ref track);
-                lyric.Item1 = vocal != ulong.MaxValue ? vocal : position;
+                lyric.Item1 = vocal != -1 ? vocal : position;
                 lyric.Item2 = str.ToArray();
             }
             else if (index == 0)
                 track.events.Get_Or_Add_Back(position).Add(encoding.GetString(str));
         }
 
-        private void ParseVocal(uint pitch, ref VocalTrack track)
+        private void ParseVocal(int pitch, ref VocalTrack track)
         {
-            if (vocal != ulong.MaxValue && lyric.Item1 != ulong.MaxValue)
+            if (vocal != -1 && lyric.Item1 != -1)
             {
-                ulong duration = position - vocal;
+                long duration = position - vocal;
                 if (duration > 240)
                     duration -= 120;
                 else
@@ -131,29 +131,29 @@ namespace YARG.Song.Chart.Vocals
                 ref Vocal note = ref AddVocal(vocal, ref track);
                 note.Binary = pitch;
                 note.duration = duration;
-                lyric.Item1 = ulong.MaxValue;
+                lyric.Item1 = -1;
                 lyric.Item2 = Array.Empty<byte>();
             }
 
             vocal = position;
-            if (lyric.Item1 != ulong.MaxValue)
+            if (lyric.Item1 != -1)
                 lyric.Item1 = position;
         }
 
-        private void ParseVocal_Off(uint pitch, ref VocalTrack track)
+        private void ParseVocal_Off(int pitch, ref VocalTrack track)
         {
-            if (vocal != ulong.MaxValue && lyric.Item1 != ulong.MaxValue)
+            if (vocal != -1 && lyric.Item1 != -1)
             {
                 ref Vocal note = ref AddVocal(vocal, ref track);
                 note.Binary = pitch;
                 note.duration = position - vocal;
-                lyric.Item1 = ulong.MaxValue;
+                lyric.Item1 = -1;
                 lyric.Item2 = Array.Empty<byte>();
             }
-            vocal = ulong.MaxValue;
+            vocal = -1;
         }
 
-        private ref Vocal AddVocal(ulong vocalPos, ref VocalTrack track)
+        private ref Vocal AddVocal(long vocalPos, ref VocalTrack track)
         {
             var vocals = track[index];
             if (vocals.Capacity == 0)
@@ -169,10 +169,10 @@ namespace YARG.Song.Chart.Vocals
 
         private void AddPercussion_Off(bool playable, ref VocalTrack track)
         {
-            if (percussion != ulong.MaxValue)
+            if (percussion != -1)
             {
                 track.percussion.Get_Or_Add_Back(percussion).IsPlayable = playable;
-                percussion = ulong.MaxValue;
+                percussion = -1;
             }
         }
 
@@ -196,6 +196,6 @@ namespace YARG.Song.Chart.Vocals
             this.phrases.AddPhrase_Off(ref phrases, position, SpecialPhraseType.HarmonyLine);
         }
 
-        private static bool IsNote(uint value) { return 36 <= value && value <= 84; }
+        private static bool IsNote(int value) { return 36 <= value && value <= 84; }
     }
 }

@@ -80,7 +80,7 @@ namespace YARG
         private async UniTask ScanSongFolders(bool fast)
         {
             SetLoadingText("Loading songs...");
-            await SongContainer.Scan(fast, UpdateSongUi);
+            await SongContainer.Scan(fast, true, UpdateSongUi);
         }
 
         private void SetLoadingText(string phrase, string sub = null)

@@ -10,6 +10,7 @@ using YARG.Settings;
 using YARG.Song.Entries;
 using YARG.Song.Library;
 using YARG.Types;
+using YARG.UI;
 using YARG.Util;
 
 namespace YARG.Song
@@ -56,15 +57,15 @@ namespace YARG.Song
             SongLengths = new();
         }
 
-        public static async UniTask Scan(bool quick, Action<SongCache> updateUi = null, bool multithreaded = false)
+        public static async UniTask Scan(bool quick, bool multithreaded, Action<SongCache> updateUi = null)
         {
             using SongCache cache = multithreaded ? new SongCache_Parallel() : new SongCache_Serial();
             var scanTask = Task.Run(() =>
             {
                 try
                 {
-                    if (!quick || !cache.QuickScan())
-                        cache.FullScan(!quick);
+                    if (!quick || !QuickScan(cache))
+                        FullScan(cache, !quick);
                 }
                 catch (Exception ex)
                 {
@@ -85,6 +86,50 @@ namespace YARG.Song
                 Debug.Log("Finished writing badsongs.txt");
             }
             Set(cache);
+        }
+
+        private static bool QuickScan(SongCache cache)
+        {
+            Debug.Log("Performing quick scan");
+            if (!cache.LoadCacheFile_Quick())
+            {
+                ToastManager.ToastWarning("Song cache is not present or outdated - rescan required");
+                Debug.Log("Cache file unavailable or outdated");
+                return false;
+            }
+            Debug.Log($"Cache load successful");
+            cache.MapCategories();
+            Debug.Log("Finished quick scan");
+            return true;
+        }
+
+        private static void FullScan(SongCache cache, bool loadCache = true)
+        {
+            Debug.Log("Performing full scan");
+            if (loadCache)
+            {
+                if (cache.LoadCacheFile())
+                    Debug.Log($"Cache load successful");
+                else
+                    Debug.Log($"Cache load failed - Unavailable or outdated");
+            }
+
+            Debug.Log($"Traversing song directories");
+            cache.FindNewEntries();
+            cache.FinalizeIniEntries();
+            cache.MapCategories();
+
+            try
+            {
+                cache.SaveToFile();
+                Debug.Log($"Cache file write successful");
+            }
+            catch (Exception ex)
+            {
+                Debug.Log($"Cache file write unsuccessful");
+                Debug.LogError(ex);
+            }
+            Debug.Log("Full scan complete");
         }
 
         private static void Set(SongCache cache)

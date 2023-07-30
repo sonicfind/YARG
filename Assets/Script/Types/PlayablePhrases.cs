@@ -3,63 +3,88 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 using YARG.Song.Chart.Notes;
 
 namespace YARG.Types
 {
-    public abstract class PlaytimePhrase
+    public abstract class PlayablePhrase
     {
-        protected readonly int numNotesInPhrase;
+        public readonly DualPosition start;
+        public readonly DualPosition end;
 
-        protected PlaytimePhrase(int numNotesInPhrase)
+        protected PlayablePhrase(ref DualPosition start, ref DualPosition end)
         {
-            this.numNotesInPhrase = numNotesInPhrase;
+            this.start = start;
+            this.end = end;
         }
     }
 
-    public class OverdrivePhrase : PlaytimePhrase
+    public abstract class HittablePhrase : PlayablePhrase
     {
-        private readonly Player player;
-        private int numNotesHit;
-        public bool ValidStatus { get; private set; }
+        protected readonly int numNotesInPhrase;
+        protected int numNotesHit;
 
-        public OverdrivePhrase(Player player, int numNotesInPhrase) : base(numNotesInPhrase)
+        public int NotesInPhrase => numNotesInPhrase;
+        public int NotesHit => numNotesHit;
+
+        protected HittablePhrase(int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(ref start, ref end)
         {
-            this.player = player;
+            this.numNotesInPhrase = numNotesInPhrase;
             numNotesHit = 0;
-            ValidStatus = true;
         }
 
-        public void AddHits(int hits)
+        public abstract void AddHits(int hits);
+    }
+
+    public class OverdrivePhrase : HittablePhrase
+    {
+        private readonly Player player;
+        private bool isValid;
+
+        public OverdrivePhrase(Player player, int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(numNotesInPhrase, ref start, ref end)
         {
-            numNotesHit += hits;
-            if (numNotesHit == numNotesInPhrase)
-                player.AddOverdrive(.25f);
+            this.player = player;
+            isValid = true;
+        }
+
+        public override void AddHits(int hits)
+        {
+            if (isValid)
+            {
+                numNotesHit += hits;
+                if (numNotesHit == numNotesInPhrase)
+                {
+                    Debug.Log($"Overdrive complete: {numNotesHit}");
+                    player.AddOverdrive(.25f);
+                }
+            }
         }
 
         public void Invalidate()
         {
-            ValidStatus = false;
-            player.IncrementOverdrive();
+            if (isValid)
+            {
+                isValid = false;
+                player.IncrementOverdrive();
+            }
         }
     }
 
-    public class SoloPhrase<T> : PlaytimePhrase
-        where T : INote_Base
+    public class SoloPhrase : HittablePhrase
     {
-        private readonly Player_Instrument_Base<T> player;
-        private int numNotesHit;
+        private float _percentage;
+        public float Percentage => _percentage;
 
-        public SoloPhrase(Player_Instrument_Base<T> player, int numNotesInPhrase) : base(numNotesInPhrase)
+        public SoloPhrase(int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(numNotesInPhrase, ref start, ref end)
         {
-            this.player = player;
-            numNotesHit = 0;
+            _percentage = 0f;
         }
 
-        public void AddHits(int hits)
+        public override void AddHits(int hits)
         {
             numNotesHit += hits;
-            player.UpdateSolo(numNotesHit / (float) numNotesInPhrase);
+            _percentage = numNotesHit / (float) numNotesInPhrase;
         }
     }
 }

@@ -31,7 +31,6 @@ namespace YARG.UI.MusicLibrary
 
         private static SongAttribute _sort = SongAttribute.TITLE;
         private string _nextSortCriteria = "Order by artist";
-        private string _nextFilter = "Search artist";
 
         [SerializeField]
         private GameObject _songViewPrefab;
@@ -511,7 +510,6 @@ namespace YARG.UI.MusicLibrary
             {
                 ClearSearchBox();
                 UpdateSearch();
-                ResetSearchButton();
                 UpdateNavigationScheme();
             }
             SelectedIndex = 2;
@@ -525,7 +523,6 @@ namespace YARG.UI.MusicLibrary
             {
                 ClearSearchBox();
                 UpdateSearch();
-                ResetSearchButton();
                 UpdateNavigationScheme();
             }
             else
@@ -536,11 +533,6 @@ namespace YARG.UI.MusicLibrary
         {
             _searchField.text = "";
             _searchField.ActivateInputField();
-        }
-
-        private void ResetSearchButton()
-        {
-            _nextFilter = "Search artist";
         }
 
         private void SelectRandomSong()
