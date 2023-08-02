@@ -40,6 +40,7 @@ namespace YARG.Song.Chart.Notes
 
     public abstract class DrumNote : Note<DrumPad>
     {
+        public override int NumLanes { get; }
         protected TruncatableSustain _bass;
         protected TruncatableSustain _doubleBass;
         public readonly DrumPad[] pads;
@@ -98,6 +99,7 @@ namespace YARG.Song.Chart.Notes
         protected DrumNote(int numPads) : base(numPads)
         {
             pads = lanes;
+            NumLanes = numPads;
         }
 
         protected DrumNote(int numPads, DrumNote other) : this(numPads)

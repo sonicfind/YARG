@@ -9,7 +9,6 @@ namespace YARG.Song.Chart.Notes
 {
     public class Drum_4Pro : DrumNote_Pro, IReadableFromDotChart
     {
-        public override int NumLanes => 4;
         public Drum_4Pro() : base(4) { }
         public Drum_4Pro(Drum_Legacy drum) : base(4, drum) { }
 

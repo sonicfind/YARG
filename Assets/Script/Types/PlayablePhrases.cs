@@ -88,20 +88,46 @@ namespace YARG.Types
         }
     }
 
-    public class OverdriveActivationPhrase : HittablePhrase
+    public class OverdriveActivationPhrase : PlayablePhrase
     {
-        private float _percentage;
-        public float Percentage => _percentage;
-
-        public OverdriveActivationPhrase(ref DualPosition start, ref DualPosition end) : base(1, ref start, ref end)
+        private readonly Player player;
+        private int _activationLane;
+        private bool _isEnabled;
+        public int ActivationLane => _activationLane;
+        public bool IsEnabled
         {
-            _percentage = 0f;
+            get { return _isEnabled; }
+            set { _isEnabled = value; }
         }
 
-        public override void AddHits(int hits)
+        public OverdriveActivationPhrase(int lane, ref DualPosition start, ref DualPosition end) : base(ref start, ref end)
         {
-            numNotesHit += hits;
-            _percentage = numNotesHit / (float) numNotesInPhrase;
+            _activationLane = lane;
+            _isEnabled = false;
+        }
+
+        public void Activate()
+        {
+            if (_isEnabled)
+            {
+                player.ActivateOverdrive();
+            }
+        }
+    }
+
+    public class BREPhrase : PlayablePhrase
+    {
+        private long _score;
+        public long Score => _score;
+
+        public BREPhrase(ref DualPosition start, ref DualPosition end) : base(ref start, ref end)
+        {
+            _score = 0;
+        }
+
+        public void TryHit(object input)
+        {
+            _score += 0;
         }
     }
 }

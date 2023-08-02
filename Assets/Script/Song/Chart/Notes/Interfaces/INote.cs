@@ -71,13 +71,12 @@ namespace YARG.Song.Chart.Notes
         protected GameObject track;
         protected PlayerManager.Player inputHandler;
 
-        protected int tempoIndex;
+        protected int tempoIndex = 0;
 
         protected Player((GameObject, PlayerManager.Player) player)
         {
             track = player.Item1;
             inputHandler = player.Item2;
-            tempoIndex = 0;
         }
 
         public virtual void AttachPhrase(PlayablePhrase phrase)
@@ -106,6 +105,11 @@ namespace YARG.Song.Chart.Notes
         public void IncrementOverdrive()
         {
             Debug.Log($"Incrementing overdrive index - {overdriveIndex++}");
+        }
+
+        public virtual void ActivateOverdrive()
+        {
+
         }
 
         protected void ApplyOverdriveOffset()
@@ -151,9 +155,9 @@ namespace YARG.Song.Chart.Notes
     public class Player_Instrument<T> : Player
         where T : class, INote, new()
     {
-        private readonly (FlatMapNode<long, T>[], int) notes;
-        private readonly float[] notePositions;
-        private readonly bool useShrinkingHitWindow = true;
+        private (FlatMapNode<long, T>[], int) notes;
+        private float[] notePositions;
+        private bool useShrinkingHitWindow = true;
 
         private readonly PlayableSemiQueue hittableQueue = new();
         private readonly (float, float) hitWindow = new(.065f, .065f);
@@ -1014,6 +1018,19 @@ namespace YARG.Song.Chart.Notes
                 }
                 ++index;
             }
+        }
+    }
+
+    public class Player_Drums<T> : Player_Instrument<T>
+        where T : DrumNote
+    {
+        public Player_Drums((GameObject, PlayerManager.Player) player, TimedFlatMap<T> notes, float[] notePositions, SyncTrack sync) : base(player, notes, notePositions, sync)
+        {
+        }
+
+        public override void ActivateOverdrive()
+        {
+
         }
     }
 }

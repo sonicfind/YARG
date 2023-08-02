@@ -11,21 +11,29 @@ namespace YARG.Song.Chart
 {
     public static class Player_Loader
     {
-        public static Player[] SetupPlayers<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track)
+        public static Player[] Setup<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track, long codaPosition)
             where T : class, INote, new()
         {
             var result = new List<Player>();
             var phrases = !track.specialPhrases.IsEmpty() ? track.specialPhrases : null;
             foreach ((int diffIndex, var handlers) in playerMapping)
-                result.AddRange(SetupPlayers(handlers.ToArray(), sync, track[diffIndex], phrases));
+                result.AddRange(Setup(handlers.ToArray(), sync, track[diffIndex], phrases, codaPosition));
             return result.ToArray();
         }
 
-        private static Player[] SetupPlayers<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
+        public static Player[] SetupDrums<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track, long codaPosition)
+            where T : DrumNote, new()
+        {
+            var result = new List<Player>();
+            var phrases = !track.specialPhrases.IsEmpty() ? track.specialPhrases : null;
+            foreach ((int diffIndex, var handlers) in playerMapping)
+                result.AddRange(SetupDrums(handlers.ToArray(), sync, track[diffIndex], phrases, codaPosition));
+            return result.ToArray();
+        }
+
+        private static Player[] Setup<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>>? phrases, long codaPosition)
             where T : class, INote, new()
         {
-            var players = new Player_Instrument<T>[handlers.Length];
-
             (var notebuf, int count) = track.notes.Data;
             float[] notePositions = new float[count];
 
@@ -33,14 +41,13 @@ namespace YARG.Song.Chart
             for (int i = 0; i < count; ++i)
                 notePositions[i] = sync.ConvertToSeconds(notebuf[i].key, ref tempoIndex);
 
+            var players = new Player_Instrument<T>[handlers.Length];
             for (int i = 0; i < handlers.Length; i++)
-            {
                 players[i] = new(handlers[i], (notebuf, count), notePositions);
-            }
 
             int noteIndex = 0;
             tempoIndex = 0;
-            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases ?? track.specialPhrases)
+            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases)
             {
                 while (noteIndex < count && notebuf[noteIndex].key < node.key)
                     ++noteIndex;
@@ -72,13 +79,13 @@ namespace YARG.Song.Chart
                                     player.AttachPhrase(new SoloPhrase(endIndex - noteIndex, ref position, ref endPosition));
                                     break;
                                 }
-
                             case SpecialPhraseType.FaceOff_Player1:
                             case SpecialPhraseType.FaceOff_Player2:
-                            case SpecialPhraseType.LyricLine:
-                            case SpecialPhraseType.RangeShift:
-                            case SpecialPhraseType.HarmonyLine:
+                                break;
                             case SpecialPhraseType.BRE:
+                                if (node.key >= codaPosition)
+                                    players[p].AttachPhrase(new BREPhrase(ref position, ref endPosition));
+                                break;
                             case SpecialPhraseType.Tremolo:
                             case SpecialPhraseType.Trill:
                                 break;
@@ -91,21 +98,9 @@ namespace YARG.Song.Chart
             return players;
         }
 
-        public static Player[] SetupDrumPlayers<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track)
+        private static Player[] SetupDrums<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>>? phrases, long codaPosition)
             where T : DrumNote, new()
         {
-            var result = new List<Player>();
-            var phrases = !track.specialPhrases.IsEmpty() ? track.specialPhrases : null;
-            foreach ((int diffIndex, var handlers) in playerMapping)
-                result.AddRange(SetupPlayers(handlers.ToArray(), sync, track[diffIndex], phrases));
-            return result.ToArray();
-        }
-
-        private static Player[] SetupDrumPlayers<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
-            where T : DrumNote, new()
-        {
-            var players = new Player_Instrument<T>[handlers.Length];
-
             (var notebuf, int count) = track.notes.Data;
             float[] notePositions = new float[count];
 
@@ -113,14 +108,13 @@ namespace YARG.Song.Chart
             for (int i = 0; i < count; ++i)
                 notePositions[i] = sync.ConvertToSeconds(notebuf[i].key, ref tempoIndex);
 
+            var players = new Player_Drums<T>[handlers.Length];
             for (int i = 0; i < handlers.Length; i++)
-            {
                 players[i] = new(handlers[i], (notebuf, count), notePositions);
-            }
 
             int noteIndex = 0;
             tempoIndex = 0;
-            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases ?? track.specialPhrases)
+            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases)
             {
                 while (noteIndex < count && notebuf[noteIndex].key < node.key)
                     ++noteIndex;
@@ -136,6 +130,24 @@ namespace YARG.Song.Chart
 
                     DualPosition position = new(node.key, sync.ConvertToSeconds(node.key, ref index));
                     DualPosition endPosition = new(endTick, sync.ConvertToSeconds(endTick, ref index));
+                    if (phrase.Type == SpecialPhraseType.BRE && node.key < codaPosition)
+                    {
+                        if (endIndex < count && notebuf[endIndex].key == endTick && notebuf[endIndex].obj is DrumNote drum)
+                        {
+                            var pads = drum.pads;
+                            for (int i = pads.Length - 1; i >= 0; --i)
+                            {
+                                if (pads[i].IsActive())
+                                {
+                                    for (int p = 0; p < players.Length; ++p)
+                                        players[p].AttachPhrase(new OverdriveActivationPhrase(i, ref position, ref endPosition));
+                                    break;
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
                     for (int p = 0; p < players.Length; ++p)
                     {
                         var player = players[p];
@@ -152,13 +164,13 @@ namespace YARG.Song.Chart
                                     player.AttachPhrase(new SoloPhrase(endIndex - noteIndex, ref position, ref endPosition));
                                     break;
                                 }
-
                             case SpecialPhraseType.FaceOff_Player1:
                             case SpecialPhraseType.FaceOff_Player2:
-                            case SpecialPhraseType.LyricLine:
-                            case SpecialPhraseType.RangeShift:
-                            case SpecialPhraseType.HarmonyLine:
+                                break;
                             case SpecialPhraseType.BRE:
+                                if (node.key >= codaPosition)
+                                    players[p].AttachPhrase(new BREPhrase(ref position, ref endPosition));
+                                break;
                             case SpecialPhraseType.Tremolo:
                             case SpecialPhraseType.Trill:
                                 break;

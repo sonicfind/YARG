@@ -13,12 +13,7 @@ using UnityEngine;
 #nullable enable
 namespace YARG.Song.Chart
 {
-    public interface IDifficultyTrack
-    {
-        public Player[] SetupPlayers((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null);
-    }
-
-    public class DifficultyTrack<T> : Track, IDifficultyTrack
+    public class DifficultyTrack<T> : Track
         where T : class, INote, new()
     {
         public readonly TimedFlatMap<T> notes = new();
@@ -37,75 +32,6 @@ namespace YARG.Song.Chart
 
             var note = notes.At_index(notes.Count - 1);
             return note.key + note.obj.GetLongestSustain();
-        }
-
-        public unsafe Player[] SetupPlayers((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
-        {
-            var players = new Player_Instrument<T>[handlers.Length];
-
-            (var notebuf, int count) = notes.Data;
-            float[] notePositions = new float[count];
-
-            int tempoIndex = 0;
-            for (int i = 0; i < count; ++i)
-                notePositions[i] = sync.ConvertToSeconds(notebuf[i].key, ref tempoIndex);
-
-            for (int i = 0; i < handlers.Length; i++)
-            {
-                players[i] = new(handlers[i], (notebuf, count), notePositions);
-            }
-
-            int noteIndex = 0;
-            tempoIndex = 0;
-            foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases ?? specialPhrases)
-            {
-                while (noteIndex < count && notebuf[noteIndex].key < node.key)
-                    ++noteIndex;
-
-                int index = tempoIndex;
-                foreach (var phrase in node.obj)
-                {
-                    index = tempoIndex;
-                    long endTick = node.key + phrase.Duration;
-                    int endIndex = noteIndex;
-                    while (endIndex < count && notebuf[endIndex].key < endTick)
-                        ++endIndex;
-
-                    DualPosition position = new(node.key, sync.ConvertToSeconds(node.key, ref index));
-                    DualPosition endPosition = new(endTick, sync.ConvertToSeconds(endTick, ref index));
-                    for (int p = 0; p < players.Length; ++p)
-                    {
-                        var player = players[p];
-                        switch (phrase.Type)
-                        {
-                            case SpecialPhraseType.StarPower:
-                            case SpecialPhraseType.StarPower_Diff:
-                                {
-                                    player.AttachPhrase(new OverdrivePhrase(player, endIndex - noteIndex, ref position, ref endPosition));
-                                    break;
-                                }
-                            case SpecialPhraseType.Solo:
-                                {
-                                    player.AttachPhrase(new SoloPhrase(endIndex - noteIndex, ref position, ref endPosition));
-                                    break;
-                                }
-
-                            case SpecialPhraseType.FaceOff_Player1:
-                            case SpecialPhraseType.FaceOff_Player2:
-                            case SpecialPhraseType.LyricLine:
-                            case SpecialPhraseType.RangeShift:
-                            case SpecialPhraseType.HarmonyLine:
-                            case SpecialPhraseType.BRE:
-                            case SpecialPhraseType.Tremolo:
-                            case SpecialPhraseType.Trill:
-                                break;
-                        }
-                    }
-                }
-
-                tempoIndex = index;
-            }
-            return players;
         }
     }
 }
