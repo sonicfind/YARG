@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
 {
@@ -15,9 +16,9 @@ namespace YARG.Song.Chart.Notes
         public FiveFret() : base(6) { }
 
 #nullable enable
-        public override PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote)
+        public override PlayableNote ConvertToPlayable(DualPosition position, in SyncTrack sync, int syncIndex, in long prevPosition, in INote? prevNote)
         {
-            return new Playable_FiveFret(position, this, sync, prevPosition, prevNote as FiveFret);
+            return new Playable_FiveFret(ref position, this, sync, syncIndex, prevPosition, prevNote as FiveFret);
         }
 
         public bool Set_From_Chart(uint lane, long length)
@@ -45,8 +46,8 @@ namespace YARG.Song.Chart.Notes
 
     public class Playable_FiveFret : Playable_Guitar
     {
-        public Playable_FiveFret(in long position, in FiveFret note, in SyncTrack sync, in long prevPosition, in FiveFret? prevNote)
-            : base(position, note, sync, prevPosition, prevNote) { }
+        public Playable_FiveFret(ref DualPosition position, in FiveFret note, in SyncTrack sync, int syncIndex, in long prevPosition, in FiveFret? prevNote)
+            : base(ref position, note, sync, syncIndex, prevPosition, prevNote) { }
 
         public override void Draw(float trackPosition)
         {

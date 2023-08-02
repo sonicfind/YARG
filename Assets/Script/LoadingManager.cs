@@ -4,10 +4,13 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.PlayerLoop;
 using YARG.Data;
 using YARG.Input;
+using YARG.Settings;
 using YARG.Song;
 using YARG.Song.Library;
+using YARG.UI;
 
 namespace YARG
 {
@@ -22,6 +25,9 @@ namespace YARG
         private TextMeshProUGUI subPhrase;
 
         private readonly Queue<Func<UniTask>> _loadQueue = new();
+
+        public SongContainer Container { get; private set; }
+        public SongSorting SortedSongs { get; private set; }
 
         private void Awake()
         {
@@ -79,8 +85,43 @@ namespace YARG
 
         private async UniTask ScanSongFolders(bool fast)
         {
+            if (SettingsManager.Settings.SongFolders.Count == 0)
+            {
+                ToastManager.ToastWarning("Add a song directory to scan in file manager settings");
+                Container = new();
+                SortedSongs = new();
+                return;
+            }
+
             SetLoadingText("Loading songs...");
-            await SongContainer.Scan(fast, true, UpdateSongUi);
+
+            SongCache cache = new();
+            CacheHandler_Parallel handler = new(cache);
+            var scanTask = Task.Run(() =>
+            {
+                CacheConstants.baseDirectories = SettingsManager.Settings.SongFolders.ToArray();
+                try
+                {
+                    if (!fast || !handler.QuickScan())
+                        handler.FullScan(!fast);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError(ex);
+                }
+
+                foreach (object err in handler.errorList)
+                    Debug.LogError(err);
+            });
+
+            while (!scanTask.IsCompleted)
+            {
+                UpdateSongUi(handler);
+                await UniTask.NextFrame();
+            }
+
+            Container = new(cache);
+            SortedSongs = new(Container);
         }
 
         private void SetLoadingText(string phrase, string sub = null)
@@ -89,7 +130,7 @@ namespace YARG
             subPhrase.text = sub;
         }
 
-        private void UpdateSongUi(SongCache cache)
+        private void UpdateSongUi(CacheHandler cache)
         {
             string phrase = string.Empty;
             string subText = null;
@@ -106,6 +147,9 @@ namespace YARG
                     break;
                 case ScanProgress.WritingCache:
                     phrase = "Writing song cache...";
+                    break;
+                case ScanProgress.WritingBadSongs:
+                    phrase = "Writing bad songs...";
                     break;
             }
 
@@ -168,7 +212,7 @@ namespace YARG
             }
 
             // Get the Test Play song by hash, and play it
-            if (SongContainer.SongsByHash.TryGetValue(info.TestPlaySongHash, out var song))
+            if (Container.SongsByHash.TryGetValue(info.TestPlaySongHash, out var song))
             {
                 GameManager.Instance.SelectedSong = song[0];
                 GameManager.Instance.LoadScene(SceneIndex.PLAY);

@@ -17,9 +17,9 @@ namespace YARG.PlayMode
         private FlatMap<DualPosition, BeatStyle> _beats;
         private Dictionary<AbstractInfo, double> noteProgress = new();
 
-        public SustainTracker(FlatMap<DualPosition, BeatStyle> beats)
+        public SustainTracker()
         {
-            _beats = beats;
+            _beats = Play.Instance.chartNew.BeatMap;
         }
 
         /// <summary>

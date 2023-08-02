@@ -103,6 +103,8 @@ namespace YARG.Song.Entries
             m_chartFile = new(chartFile);
             Directory = Path.GetDirectoryName(chartFile);
             m_directory_playlist.Str = Path.GetFileName(Path.GetDirectoryName(Directory));
+
+            MapModifierVariables();
             m_hash = file.CalcHash128();
         }
 
@@ -129,10 +131,26 @@ namespace YARG.Song.Entries
             return null;
         }
 
-        public void FinishScan()
+        public override long GetHopoFrequency(uint tickrate)
         {
-            if (m_modifiers.Count > 0)
-                MapModifierVariables();
+            if (m_hopo_frequency >= 0)
+                return m_hopo_frequency;
+            else if (m_eighthnote_hopo)
+                return tickrate / 2;
+            else if (m_hopofreq_Old != ushort.MaxValue)
+            {
+                return m_hopofreq_Old switch
+                {
+                    0 => tickrate / 24,
+                    1 => tickrate / 16,
+                    2 => tickrate / 12,
+                    3 => tickrate / 8,
+                    4 => tickrate / 6,
+                    _ => tickrate / 4,
+                };
+            }
+            else
+                return tickrate / 3;
         }
 
         private bool Scan_Chart(FrameworkFile file, bool cymbals)

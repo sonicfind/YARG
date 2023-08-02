@@ -12,31 +12,29 @@ using YARG.Util;
 #nullable enable
 namespace YARG.Song.Library
 {
-    public class SongCache_Serial : SongCache
+    public class CacheHandler_Serial : CacheHandler
     {
-        public override void FindNewEntries()
+        public CacheHandler_Serial(SongCache cache) : base(cache) { }
+
+        protected override void FindNewEntries()
         {
             Progress = ScanProgress.LoadingSongs;
-            foreach (string directory in baseDirectories)
-            {
-                if ((File.GetAttributes(directory) & FileAttributes.Hidden) != FileAttributes.Hidden)
-                    ScanDirectory(directory);
-            }
+            foreach (string directory in CacheConstants.baseDirectories) { ScanDirectory(directory); }
             LoadCONSongs();
             LoadExtractedCONSongs();
         }
 
-        public override bool LoadCacheFile()
+        protected override bool LoadCacheFile()
         {
-            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+            Progress = ScanProgress.LoadingCache;
             {
-                FileInfo info = new(CACHE_FILE);
+                FileInfo info = new(CacheConstants.FILE);
                 if (!info.Exists || info.Length < 28)
                     return false;
             }
 
-            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
-            if (fs.ReadInt32LE() != CACHE_VERSION)
+            using FileStream fs = new(CacheConstants.FILE, FileMode.Open, FileAccess.Read);
+            if (fs.ReadInt32LE() != CacheConstants.VERSION)
                 return false;
 
             using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
@@ -95,21 +93,20 @@ namespace YARG.Song.Library
                 ReadExtractedCONGroup(reader, strings);
                 reader.ExitSection();
             }
-            Debug.Log($"Cache load successful");
             return true;
         }
 
-        public override bool LoadCacheFile_Quick()
+        protected override bool LoadCacheFile_Quick()
         {
-            Debug.Log($"Attempting to load cache file '{CACHE_FILE}'");
+            Progress = ScanProgress.LoadingCache;
             {
-                FileInfo info = new(CACHE_FILE);
+                FileInfo info = new(CacheConstants.FILE);
                 if (!info.Exists || info.Length < 28)
                     return false;
             }
 
-            using FileStream fs = new(CACHE_FILE, FileMode.Open, FileAccess.Read);
-            if (fs.ReadInt32LE() != CACHE_VERSION)
+            using FileStream fs = new(CacheConstants.FILE, FileMode.Open, FileAccess.Read);
+            if (fs.ReadInt32LE() != CacheConstants.VERSION)
                 return false;
 
             using BinaryFileReader reader = new(fs.ReadBytes((int) fs.Length - 4));
@@ -166,27 +163,26 @@ namespace YARG.Song.Library
                 QuickReadExtractedCONGroup(reader, strings);
                 reader.ExitSection();
             }
-            Debug.Log($"Cache load successful");
             return true;
         }
 
-        public override void MapCategories()
+        protected override void SortCategories()
         {
             Progress = ScanProgress.Sorting;
-            foreach (var entryList in entries)
+            foreach (var entryList in cache.entries)
             {
                 foreach (var entry in entryList.Value)
                 {
-                    titles.Add(entry);
-                    artists.Add(entry);
-                    albums.Add(entry);
-                    genres.Add(entry);
-                    years.Add(entry);
-                    charters.Add(entry);
-                    playlists.Add(entry);
-                    sources.Add(entry);
-                    artistAlbums.Add(entry);
-                    songLengths.Add(entry);
+                    cache.titles.Add(entry);
+                    cache.artists.Add(entry);
+                    cache.albums.Add(entry);
+                    cache.genres.Add(entry);
+                    cache.years.Add(entry);
+                    cache.charters.Add(entry);
+                    cache.playlists.Add(entry);
+                    cache.sources.Add(entry);
+                    cache.artistAlbums.Add(entry);
+                    cache.songLengths.Add(entry);
                 }
             }
         }
@@ -196,75 +192,43 @@ namespace YARG.Song.Library
             if (!TraversalPreTest(directory))
                 return;
 
-            var charts = new string?[3];
-            string? ini = null;
-            List<string> subfiles = new();
-
             try
             {
-                foreach (var subFile in Directory.EnumerateFileSystemEntries(directory))
+                DirectorySearcher result = new(directory);
+                if (ScanIniEntry(result))
+                    return;
+
+                foreach (string file in result.subfiles)
                 {
-                    string lowercase = Path.GetFileName(subFile).ToLower();
-                    if (lowercase == "song.ini")
-                    {
-                        ini = subFile;
-                        continue;
-                    }
-
-                    bool found = false;
-                    for (int i = 0; i < 3; ++i)
-                    {
-                        if (lowercase == CHARTTYPES[i].Item1)
-                        {
-                            charts[i] = subFile;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found)
-                        subfiles.Add(subFile);
+                    var attributes = File.GetAttributes(file);
+                    if ((attributes & FileAttributes.Directory) != 0)
+                        ScanDirectory(file);
+                    else
+                        AddPossibleCON(file);
                 }
             }
             catch (Exception e)
             {
-                Debug.Log(e.Message);
-                Debug.Log(directory);
-                return;
-            }
-
-            if (ScanIniEntry(charts, ini))
-                return;
-
-            foreach (string file in subfiles)
-            {
-                var attributes = File.GetAttributes(file);
-                if ((attributes & FileAttributes.Directory) == FileAttributes.Directory)
-                {
-                    if ((attributes & FileAttributes.Hidden) != FileAttributes.Hidden)
-                        ScanDirectory(file);
-                }
-                else
-                    AddPossibleCON(file);
+                AddErrors(directory + ": " + e.Message);
             }
         }
 
         private void LoadCONSongs()
         {
-            foreach (var node in conGroups)
+            foreach (var node in cache.conGroups)
                 loadCONGroup(node);
         }
 
         private void LoadExtractedCONSongs()
         {
-            foreach (var node in extractedConGroups)
+            foreach (var node in cache.extractedConGroups)
                 loadExtractedCONGroup(node);
         }
 
         private void ReadIniGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
             string directory = reader.ReadLEBString();
-            if (!StartsWithBaseDirectory(directory))
+            if (!CacheConstants.StartsWithBaseDirectory(directory))
                 return;
 
             int count = reader.ReadInt32();
@@ -330,7 +294,7 @@ namespace YARG.Song.Library
         private void QuickReadIniGroup(BinaryFileReader reader, CategoryCacheStrings strings)
         {
             string directory = reader.ReadLEBString();
-            if (!StartsWithBaseDirectory(directory))
+            if (!CacheConstants.StartsWithBaseDirectory(directory))
                 return;
 
             int count = reader.ReadInt32();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
 {
@@ -46,6 +47,6 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        public abstract PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote);
+        public abstract PlayableNote ConvertToPlayable(DualPosition position, in SyncTrack sync, int syncIndex, in long prevPosition, in INote? prevNote);
     }
 }

@@ -51,7 +51,7 @@ namespace YARG.Song.Chart.Notes
         }
 
 #nullable enable
-        public override PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote)
+        public override PlayableNote ConvertToPlayable(DualPosition position, in SyncTrack sync, int syncIndex, in long prevPosition, in INote? prevNote)
         {
             throw new NotImplementedException();
         }

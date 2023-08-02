@@ -268,7 +268,7 @@ namespace YARG.Serialization
             reader.GotoNextLine();
         }
 
-        public ReadOnlySpan<byte> ExtractText()
+        public ReadOnlySpan<byte> ExtractTextAsBytes()
         {
             return reader.ExtractTextSpan();
         }

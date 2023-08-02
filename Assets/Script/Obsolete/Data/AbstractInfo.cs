@@ -19,7 +19,7 @@ namespace YARG.Data
             {
                 if (_lengthInBeats == null)
                 {
-                    _lengthInBeats = Utils.InfoLengthInBeats(this, Play.Instance.chartNew.m_beatMap);
+                    _lengthInBeats = Utils.InfoLengthInBeats(this);
                 }
 
                 return (float) _lengthInBeats;

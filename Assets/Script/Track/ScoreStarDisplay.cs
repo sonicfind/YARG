@@ -46,13 +46,14 @@ namespace YARG.PlayMode
 
         private void Start()
         {
-            var beats = Play.Instance.chartNew.m_beatMap;
-            foreach (FlatMapNode<DualPosition, BeatStyle> ev in beats)
+            (var beats, int count) = Play.Instance.chartNew.BeatMap.Data;
+            for (int i = 0; i < count; ++i)
             {
-                if (ev.obj == BeatStyle.MEASURE)
+                if (beats[i].obj == BeatStyle.MEASURE)
                 {
-                    bars.Add(ev.key.seconds);
+                    bars.Add(beats[i].key.seconds);
                 }
+
             }
 
             height = GetComponent<RectTransform>().rect.height;

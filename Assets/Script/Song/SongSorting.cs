@@ -4,37 +4,77 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using YARG.Song.Entries;
+using YARG.Types;
+using TagLib;
+using UnityEngine;
 
 namespace YARG.Song
 {
-    public static class SongSorting
+    public class SongSorting
     {
-        private static readonly string[] Articles =
+        private FlatMap<string, List<SongEntry>> Titles;
+        private FlatMap<string, List<SongEntry>> Years;
+        private FlatMap<string, List<SongEntry>> ArtistAlbums;
+        private FlatMap<string, List<SongEntry>> SongLengths;
+        private FlatMap<string, List<SongEntry>> Artists;
+        private FlatMap<string, List<SongEntry>> Albums;
+        private FlatMap<string, List<SongEntry>> Genres;
+        private FlatMap<string, List<SongEntry>> Charters;
+        private FlatMap<string, List<SongEntry>> Playlists;
+        private FlatMap<string, List<SongEntry>> Sources;
+
+        public SongSorting()
         {
-            "The ", // The beatles, The day that never comes
-            "El ",  // El final, El sol no regresa
-            "La ",  // La quinta estacion, La bamba, La muralla verde
-            "Le ",  // Le temps de la rentrée
-            "Les ", // Les Rita Mitsouko, Les Wampas
-            "Los ", // Los fabulosos cadillacs, Los enanitos verdes,
-        };
+            Titles = new();
+            Years = new();
+            ArtistAlbums = new();
+            SongLengths = new();
+            Artists = new();
+            Albums = new();
+            Genres = new();
+            Charters = new();
+            Playlists = new();
+            Sources = new();
+        }
 
-        public static string RemoveArticle(string name)
+        public SongSorting(SongContainer container)
         {
-            if (string.IsNullOrEmpty(name))
-            {
-                return name;
-            }
+            Titles = container.Titles;
+            Years = container.Years;
+            ArtistAlbums = container.ArtistAlbums;
+            SongLengths = container.SongLengths;
+            Artists = Convert(container.Artists);
+            Albums = Convert(container.Albums);
+            Genres = Convert(container.Genres);
+            Charters = Convert(container.Charters);
+            Playlists = Convert(container.Playlists);
+            Sources = Convert(container.Sources);
 
-            foreach (var article in Articles)
+            static FlatMap<string, List<SongEntry>> Convert(FlatMap<SortString, List<SongEntry>> list)
             {
-                if (name.StartsWith(article, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    return name[article.Length..];
-                }
+                FlatMap<string, List<SongEntry>> map = new();
+                foreach (FlatMapNode<SortString, List<SongEntry>> node in list)
+                    map.Add(node.key, node.obj);
+                return map;
             }
+        }
 
-            return name;
+        public FlatMap<string, List<SongEntry>> GetSongList(SongAttribute sort)
+        {
+            return sort switch
+            {
+                SongAttribute.TITLE => Titles,
+                SongAttribute.ARTIST => Artists,
+                SongAttribute.ALBUM => Albums,
+                SongAttribute.GENRE => Genres,
+                SongAttribute.YEAR => Years,
+                SongAttribute.CHARTER => Charters,
+                SongAttribute.PLAYLIST => Playlists,
+                SongAttribute.SOURCE => Sources,
+                SongAttribute.ARTIST_ALBUM => ArtistAlbums,
+                SongAttribute.SONG_LENGTH => SongLengths,
+                _ => throw new Exception("stoopid"),
+            };
         }
     }
 }

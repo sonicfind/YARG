@@ -2,6 +2,7 @@
 using UnityEngine;
 using YARG.Assets.Script.Types;
 using YARG.Chart;
+using YARG.PlayMode;
 using YARG.Song.Chart;
 using YARG.Types;
 
@@ -14,8 +15,9 @@ namespace YARG.Util
         /// </summary>
         /// <param name="beatTimes">List of beat times associated with the Info object.</param>
         /// <returns>Length of the Info object in beats.</returns>
-        public static float InfoLengthInBeats(Data.AbstractInfo info, FlatMap<DualPosition, BeatStyle> beatTimes)
+        public static float InfoLengthInBeats(Data.AbstractInfo info)
         {
+            var beatTimes = Play.Instance.chartNew.m_sync.beatMap;
             if (beatTimes.Count == 1)
                 return 0;
 

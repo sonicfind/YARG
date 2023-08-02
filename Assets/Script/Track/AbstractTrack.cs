@@ -224,7 +224,7 @@ namespace YARG.PlayMode
             commonTrack.TrackCamera.targetTexture = renderTexture;
 
             // AMONG US
-            susTracker = new(Play.Instance.chartNew.m_beatMap);
+            susTracker = new();
         }
 
         private void Start()
@@ -415,7 +415,7 @@ namespace YARG.PlayMode
 
         private void UpdateBeats()
         {
-            var beats = Play.Instance.chartNew.m_beatMap;
+            var beats = Play.Instance.chartNew.BeatMap;
             while (beats.Count > currentBeatIndex)
             {
                 ref var beatInfo = ref beats.At_index(currentBeatIndex);

@@ -337,14 +337,17 @@ namespace YARG.PlayMode
 
         private void LoadChart()
         {
-            chart = Song.LoadChart_Original();
             chartNew = Song.LoadChart();
+            Player.SetSync(chartNew.m_sync, OverdriveStyle.GuitarHero);
             Playable_Guitar.HopoFrequency = chartNew.HopoFrequency;
 
+            chart = Song.LoadChart_Original();
+
+
             // initialize current tempo
-            if (chartNew.m_beatMap.Count > 2)
+            if (chartNew.BeatMap.Count > 2)
             {
-                CurrentBeatsPerSecond = chartNew.m_beatMap.At_index(1).key.seconds - chartNew.m_beatMap.At_index(0).key.seconds;
+                CurrentBeatsPerSecond = chartNew.BeatMap.At_index(1).key.seconds - chartNew.BeatMap.At_index(0).key.seconds;
             }
         }
 
@@ -431,7 +434,8 @@ namespace YARG.PlayMode
             UpdateWhammyPitch();
 
             // Update beats
-            while (chartNew.m_beatMap.Count > beatIndex && chartNew.m_beatMap.At_index(beatIndex).key.seconds <= realSongTime)
+            (var beats, int beatCount) = chartNew.BeatMap.Data;
+            while (beatIndex < beatCount && beats[beatIndex].key.seconds <= realSongTime)
             {
                 foreach (var track in _tracks)
                 {
@@ -445,9 +449,9 @@ namespace YARG.PlayMode
                 BeatEvent?.Invoke();
                 beatIndex++;
 
-                if (beatIndex < chartNew.m_beatMap.Count)
+                if (beatIndex < beatCount)
                 {
-                    CurrentBeatsPerSecond = 1 / (chartNew.m_beatMap.At_index(beatIndex).key.seconds - chartNew.m_beatMap.At_index(beatIndex - 1).key.seconds);
+                    CurrentBeatsPerSecond = 1 / (beats[beatIndex].key.seconds - beats[beatIndex - 1].key.seconds);
                 }
             }
 

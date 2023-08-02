@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine.SocialPlatforms;
+using YARG.Types;
 
 namespace YARG.Song.Chart.Notes
 {
@@ -13,9 +14,9 @@ namespace YARG.Song.Chart.Notes
         public SixFret() : base(7) { }
 
 #nullable enable
-        public override PlayableNote ConvertToPlayable(in long position, in SyncTrack sync, in long prevPosition, in INote? prevNote)
+        public override PlayableNote ConvertToPlayable(DualPosition position, in SyncTrack sync, int syncIndex, in long prevPosition, in INote? prevNote)
         {
-            return new Playable_SixFret(position, this, sync, prevPosition, prevNote as SixFret);
+            return new Playable_SixFret(ref position, this, sync, syncIndex, prevPosition, prevNote as SixFret);
         }
 
         internal static readonly uint[] SIXFRETLANES = new uint[5] { 4, 5, 6, 1, 2 };
@@ -49,8 +50,8 @@ namespace YARG.Song.Chart.Notes
 
     public class Playable_SixFret : Playable_Guitar
     {
-        public Playable_SixFret(in long position, in SixFret note, in SyncTrack sync, in long prevPosition, in SixFret? prevNote)
-            : base(position, note, sync, prevPosition, prevNote) { }
+        public Playable_SixFret(ref DualPosition position, in SixFret note, in SyncTrack sync, int syncIndex, in long prevPosition, in SixFret? prevNote)
+            : base(ref position, note, sync, syncIndex, prevPosition, prevNote) { }
 
         public override void Draw(float trackPosition)
         {

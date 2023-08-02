@@ -14,9 +14,7 @@ using YARG.Data;
 using YARG.Input;
 using YARG.Song.Entries;
 using YARG.UI.MusicLibrary.ViewTypes;
-using Random = UnityEngine.Random;
 using YARG.Types;
-using static YARG.Song.SongSorting;
 
 namespace YARG.Song
 {
@@ -76,7 +74,7 @@ namespace YARG.Song
             if (currentFilters.Count == 0)
             {
                 filters.Clear();
-                return SongContainer.GetSongList(sort);
+                return LoadingManager.Instance.SortedSongs.GetSongList(sort);
             }
 
             int currFilterIndex = 0;
@@ -201,7 +199,7 @@ namespace YARG.Song
         {
             if (arg.attribute == SongAttribute.UNSPECIFIED)
             {
-                var results = SongContainer.Songs.Select(i => new
+                var results = LoadingManager.Instance.Container.Songs.Select(i => new
                 {
                     score = Search(arg.argument, i),
                     songInfo = i
@@ -212,7 +210,7 @@ namespace YARG.Song
                 return new() { { "Search Results" , results } };
             }
 
-            return SongContainer.Search(arg.attribute, arg.argument);
+            return SearchByFilter(arg.attribute, arg.argument);
         }
 
         private static FlatMap<string, List<SongEntry>> SearchSongs(FilterNode arg, FlatMap<string, List<SongEntry>> searchList)
@@ -261,6 +259,34 @@ namespace YARG.Song
             return searchList;
         }
 
+        private static readonly string[] Articles =
+        {
+            "The ", // The beatles, The day that never comes
+            "El ",  // El final, El sol no regresa
+            "La ",  // La quinta estacion, La bamba, La muralla verde
+            "Le ",  // Le temps de la rentrée
+            "Les ", // Les Rita Mitsouko, Les Wampas
+            "Los ", // Los fabulosos cadillacs, Los enanitos verdes,
+        };
+
+        public static string RemoveArticle(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return name;
+            }
+
+            foreach (var article in Articles)
+            {
+                if (name.StartsWith(article, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return name[article.Length..];
+                }
+            }
+
+            return name;
+        }
+
         public static string RemoveDiacritics(string text)
         {
             if (text == null)
@@ -293,7 +319,7 @@ namespace YARG.Song
         public static string RemoveDiacriticsAndArticle(string text)
         {
             var textWithoutDiacritics = RemoveDiacritics(text);
-            return SongSorting.RemoveArticle(textWithoutDiacritics);
+            return RemoveArticle(textWithoutDiacritics);
         }
 
         private static int Search(string input, SongEntry songInfo)
@@ -323,6 +349,73 @@ namespace YARG.Song
             }
 
             return Mathf.Min(nameIndex, artistIndex);
+        }
+
+        private static FlatMap<string, List<SongEntry>> SearchByFilter(SongAttribute sort, string arg)
+        {
+            if (sort == SongAttribute.TITLE)
+            {
+                if (arg.Length == 0)
+                {
+                    FlatMap<string, List<SongEntry>> titleMap = new();
+                    foreach (FlatMapNode<string, List<SongEntry>> element in LoadingManager.Instance.Container.Titles)
+                        titleMap.Add(element.key, new(element.obj));
+                    return titleMap;
+                }
+
+                int i = 0;
+                while (i + 1 < arg.Length && !char.IsLetterOrDigit(arg[i]))
+                    ++i;
+
+                char character = arg[i];
+                string key = char.IsDigit(character) ? "0-9" : char.ToUpper(character).ToString();
+                var search = LoadingManager.Instance.Container.Titles[key];
+
+                List<SongEntry> result = new(search.Count);
+                foreach (var element in search)
+                    if (element.Name.SortStr.Contains(arg))
+                        result.Add(element);
+                return new() { { key, result } };
+            }
+
+            FlatMap<string, List<SongEntry>> map = new();
+            if (sort == SongAttribute.YEAR)
+            {
+                List<SongEntry> entries = new();
+                foreach (FlatMapNode<string, List<SongEntry>> element in LoadingManager.Instance.Container.Years)
+                    foreach (var entry in element.obj)
+                        if (entry.Year.Contains(arg))
+                            entries.Add(entry);
+                return new() { { arg, entries } };
+            }
+
+            var elements = sort switch
+            {
+                SongAttribute.ARTIST => LoadingManager.Instance.Container.Artists,
+                SongAttribute.ALBUM => LoadingManager.Instance.Container.Albums,
+                SongAttribute.SOURCE => LoadingManager.Instance.Container.Sources,
+                SongAttribute.GENRE => LoadingManager.Instance.Container.Genres,
+                SongAttribute.CHARTER => LoadingManager.Instance.Container.Charters,
+                SongAttribute.PLAYLIST => LoadingManager.Instance.Container.Playlists,
+                _ => throw new Exception("stoopid"),
+            };
+
+            foreach (FlatMapNode<SortString, List<SongEntry>> element in elements)
+            {
+                if (arg.Length == 0)
+                {
+                    map.Add(element.key, new(element.obj));
+                    continue;
+                }
+
+                string key = element.key.SortStr;
+                if (sort == SongAttribute.ARTIST)
+                    key = RemoveArticle(key);
+
+                if (key.Contains(arg))
+                    map.Add(element.key, new(element.obj));
+            }
+            return map;
         }
     }
 }

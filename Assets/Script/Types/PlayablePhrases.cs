@@ -56,7 +56,7 @@ namespace YARG.Types
                 if (numNotesHit == numNotesInPhrase)
                 {
                     Debug.Log($"Overdrive complete: {numNotesHit}");
-                    player.AddOverdrive(.25f);
+                    player.CompleteOverdrivePhrase();
                 }
             }
         }
@@ -77,6 +77,23 @@ namespace YARG.Types
         public float Percentage => _percentage;
 
         public SoloPhrase(int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(numNotesInPhrase, ref start, ref end)
+        {
+            _percentage = 0f;
+        }
+
+        public override void AddHits(int hits)
+        {
+            numNotesHit += hits;
+            _percentage = numNotesHit / (float) numNotesInPhrase;
+        }
+    }
+
+    public class OverdriveActivationPhrase : HittablePhrase
+    {
+        private float _percentage;
+        public float Percentage => _percentage;
+
+        public OverdriveActivationPhrase(ref DualPosition start, ref DualPosition end) : base(1, ref start, ref end)
         {
             _percentage = 0f;
         }

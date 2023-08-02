@@ -216,6 +216,14 @@ namespace YARG.Song.Entries
             };
         }
 
+        public virtual long GetHopoFrequency(uint tickrate)
+        {
+            if (m_hopo_frequency >= 0)
+                return m_hopo_frequency;
+            else
+                return tickrate / 3;
+        }
+
         protected SongEntry() { m_scans = new(); }
 
         protected SongEntry(BinaryFileReader reader, CategoryCacheStrings strings)

@@ -20,19 +20,35 @@ namespace YARG.Song.Chart.Notes
     {
         public static long HopoFrequency { get; set; }
         protected readonly PlayableGuitarType type;
+        protected readonly bool disjointed;
 
-        protected Playable_Guitar(in long position, in GuitarNote note, SyncTrack sync, in long prevPosition, in GuitarNote? prevNote)
+        protected Playable_Guitar(ref DualPosition position, in GuitarNote note, SyncTrack sync, int syncIndex, in long prevPosition, in GuitarNote? prevNote) : base(ref position)
         {
-            type = GetGuitarType(position, note, prevPosition, prevNote);
+            type = GetGuitarType(note, prevPosition, prevNote);
+
+            List<SubNote> subBuf = new();
+            long farthestEnd = position.ticks;
+            long prevDuration = 0;
             for (int i = 0; i < note.NumLanes; i++)
             {
                 long duration = note[i];
                 if (duration > 0)
-                    lanes.Add(new(i, new(position + duration, sync)));
+                {
+                    long end = position.ticks + duration;
+                    subBuf.Add(new(i, ref position, duration, new(end, sync.ConvertToSeconds(end, syncIndex))));
+                    if (end > farthestEnd)
+                        farthestEnd = end;
+
+                    if (prevDuration != 0 && duration != end)
+                        disjointed = true;
+                    prevDuration = duration;
+                }
             }
+            lanes = subBuf.ToArray();
+            End = new(farthestEnd, sync.ConvertToSeconds(farthestEnd, syncIndex));
         }
 
-        public override HitStatus TryHit(object input, in bool combo, in List<(float, object)> inputSnapshots)
+        public override HitStatus TryHit(ref object input, in bool combo)
         {
             if (overdrive != null)
             {
@@ -43,7 +59,17 @@ namespace YARG.Song.Chart.Notes
             {
                 solo.AddHits(1);
             }
-            return HitStatus.Hit;
+
+            var status = HitStatus.Hit;
+            for (int i = 0; i < lanes.Length; i++)
+            {
+                ref var lane = ref lanes[i];
+                if (lane.duration > 1)
+                    status = lane.status = HitStatus.Sustained;
+                else
+                    lane.status = HitStatus.Hit;
+            }
+            return status;
         }
 
         public override void HandleMiss()
@@ -52,14 +78,50 @@ namespace YARG.Song.Chart.Notes
                 overdrive.Invalidate();
         }
 
-        public override (HitStatus, int) UpdateSustain(object input, in List<(float, object)> inputSnapshots)
+        public override HitStatus OnDequeueFromMiss()
         {
-            return new(HitStatus.Hit, 20);
+            HandleMiss();
+
+            var status = HitStatus.Missed;
+            for (int i = 0; i < lanes.Length; i++)
+            {
+                ref var lane = ref lanes[i];
+                if (lane.duration > 1)
+                    status = lane.status = HitStatus.Dropped;
+            }
+            return status;
+        }
+
+        public override HitStatus UpdateSustain(DualPosition position, ref object input)
+        {
+            var status = HitStatus.Dropped;
+            for (int i = 0; i < lanes.Length; i++)
+            {
+                ref var lane = ref lanes[i];
+                if (lane.status == HitStatus.Sustained)
+                {
+                    long sustain = position.ticks - lane.position.ticks;
+                    if (sustain >= lane.duration)
+                    {
+                        lane.status = HitStatus.Hit;
+                        if (status != HitStatus.Sustained)
+                            status = HitStatus.Hit;
+                    }
+                    else if (true)
+                        status = HitStatus.Sustained;
+                    else
+                    {
+                        lane.status = HitStatus.Dropped;
+                        lane.position = position;
+                    }
+                }
+            }
+            return status;
         }
 
         public abstract override void Draw(float trackPosition);
 
-        private static PlayableGuitarType GetGuitarType(in long position, in GuitarNote note, in long prevPosition, in GuitarNote? prevNote)
+        private PlayableGuitarType GetGuitarType(in GuitarNote note, in long prevPosition, in GuitarNote? prevNote)
         {
             if (note.IsTap)
                 return PlayableGuitarType.TAP;
@@ -72,7 +134,7 @@ namespace YARG.Song.Chart.Notes
                 return PlayableGuitarType.HOPO;
 
 
-            bool isStrum = note.IsChorded() || prevNote == null || note.IsContainedIn(prevNote) || position > prevPosition + HopoFrequency;
+            bool isStrum = note.IsChorded() || prevNote == null || note.IsContainedIn(prevNote) || position.ticks > prevPosition + HopoFrequency;
             return isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
         }
     }

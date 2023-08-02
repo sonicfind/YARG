@@ -124,7 +124,7 @@ namespace YARG.UI.MusicLibrary
 
         private static List<SongEntry> GetAllSongsFromArtist(string artist)
         {
-            return SongContainer.Songs
+            return LoadingManager.Instance.Container.Songs
                 .Where(i => RemoveDiacriticsAndArticle(i.Artist) == RemoveDiacriticsAndArticle(artist))
                 .ToList();
         }
@@ -139,7 +139,7 @@ namespace YARG.UI.MusicLibrary
             // Try to add a YARG setlist song (we love bias!)
             if (Random.value <= 0.6f)
             {
-                var yargSongs = SongContainer.Songs
+                var yargSongs = LoadingManager.Instance.Container.Songs
                     .Where(i => i.Source.SortStr == "yarg").ToList();
 
                 // Skip if the user has no YARG songs :(
@@ -167,7 +167,7 @@ namespace YARG.UI.MusicLibrary
             // Add a completely random song (ten tries)
             for (int t = 0; t < TRIES; t++)
             {
-                var song = SongContainer.Songs[Random.Range(0, SongContainer.Count)];
+                var song = LoadingManager.Instance.Container.Songs[Random.Range(0, LoadingManager.Instance.Container.Count)];
                 if (_recommendedSongs.Contains(song))
                 {
                     continue;

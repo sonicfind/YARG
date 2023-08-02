@@ -410,7 +410,7 @@ namespace YARG.Types
             return arr;
         }
 
-        public FlatMapNode<Key, T>[] Data => _buffer;
+        public (FlatMapNode<Key, T>[], int) Data => new(_buffer, _count);
     }
 
     public unsafe class NativeFlatMap<Key, T> : FlatMap_Base<Key, T>
@@ -563,7 +563,17 @@ namespace YARG.Types
             return arr;
         }
 
-        public FlatMapNode<Key, T>* Data => _buffer;
+        public readonly struct FlatMapData
+        {
+            readonly FlatMapNode<Key, T>* data;
+            readonly int count;
+            public FlatMapData(FlatMapNode<Key, T>* data, int count)
+            {
+                this.data = data;
+                this.count = count;
+            }
+        }
+        public FlatMapData Data => new(_buffer, _count);
     }
 
 

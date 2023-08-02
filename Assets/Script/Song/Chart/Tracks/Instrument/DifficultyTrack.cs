@@ -42,33 +42,37 @@ namespace YARG.Song.Chart
         public unsafe Player[] SetupPlayers((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, TimedFlatMap<List<SpecialPhrase>>? phrases = null)
         {
             var players = new Player_Instrument<T>[handlers.Length];
-            int count = notes.Count;
+
+            (var notebuf, int count) = notes.Data;
             float[] notePositions = new float[count];
 
-            var notebuf = notes.Data;
+            int tempoIndex = 0;
             for (int i = 0; i < count; ++i)
-                notePositions[i] = sync.ConvertToSeconds(notebuf[i].key);
+                notePositions[i] = sync.ConvertToSeconds(notebuf[i].key, ref tempoIndex);
 
             for (int i = 0; i < handlers.Length; i++)
             {
-                players[i] = new(handlers[i], notes, notePositions, sync);
+                players[i] = new(handlers[i], (notebuf, count), notePositions);
             }
 
             int noteIndex = 0;
+            tempoIndex = 0;
             foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases ?? specialPhrases)
             {
                 while (noteIndex < count && notebuf[noteIndex].key < node.key)
                     ++noteIndex;
 
+                int index = tempoIndex;
                 foreach (var phrase in node.obj)
                 {
+                    index = tempoIndex;
                     long endTick = node.key + phrase.Duration;
                     int endIndex = noteIndex;
                     while (endIndex < count && notebuf[endIndex].key < endTick)
                         ++endIndex;
 
-                    DualPosition position = new(node.key, sync);
-                    DualPosition endPosition = new(endTick, sync);
+                    DualPosition position = new(node.key, sync.ConvertToSeconds(node.key, ref index));
+                    DualPosition endPosition = new(endTick, sync.ConvertToSeconds(endTick, ref index));
                     for (int p = 0; p < players.Length; ++p)
                     {
                         var player = players[p];
@@ -97,8 +101,9 @@ namespace YARG.Song.Chart
                                 break;
                         }
                     }
-                    
                 }
+
+                tempoIndex = index;
             }
             return players;
         }

@@ -39,7 +39,7 @@ namespace YARG.Settings
                 pathText.text = SongFolders[_index];
 
                 int songCount = 0;
-                foreach (var song in SongContainer.Songs)
+                foreach (var song in LoadingManager.Instance.Container.Songs)
                     if (song.Directory.StartsWith(SongFolders[_index]))
                         ++songCount;
 

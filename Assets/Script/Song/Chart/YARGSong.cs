@@ -18,6 +18,7 @@ using UnityEngine.UIElements;
 using YARG.Assets.Script.Types;
 using YARG.Song.Chart.Notes;
 using YARG.Data;
+using UnityEditor.Experimental.GraphView;
 
 namespace YARG.Song.Chart
 {
@@ -32,7 +33,7 @@ namespace YARG.Song.Chart
         protected string m_charter = string.Empty;
         protected string m_playlist = string.Empty;
         protected DrumType m_baseDrumType = DrumType.UNKNOWN;
-        protected long m_hopo_frequency = 0;
+        protected long m_hopo_frequency = 170;
         
         public string m_midiSequenceName = string.Empty;
 
@@ -42,9 +43,10 @@ namespace YARG.Song.Chart
         public virtual long HopoFrequency => m_hopo_frequency;
 
         public readonly SyncTrack                        m_sync = new();
-        public readonly FlatMap<DualPosition, BeatStyle> m_beatMap = new();
         public readonly SongEvents                       m_events = new();
         public readonly NoteTracks                       m_tracks = new();
+
+        public FlatMap<DualPosition, BeatStyle> BeatMap => m_sync.beatMap;
 
         public YARGSong() { }
         public YARGSong(string directory)
@@ -132,7 +134,7 @@ namespace YARG.Song.Chart
                         }
                         else if (type == MidiTrackType.Beat)
                         {
-                            if (!ParseBeats(reader))
+                            if (!m_sync.ParseBeats(reader))
                                 Debug.Log("BEAT track appeared previously");
                         }
                         else if (!m_tracks.LoadFromMidi(type, m_baseDrumType, reader))
@@ -145,131 +147,32 @@ namespace YARG.Song.Chart
 
         protected void FinalizeData(bool finalizeSync)
         {
-            LastNoteTick = m_tracks.GetLastNoteTime();
+            EndTick = LastNoteTick = m_tracks.GetLastNoteTime();
+            var globals = m_events.globals.Data;
+            for (int i = globals.Item2 - 1; i >= 0; --i)
+            {
+                foreach (var ev in globals.Item1[i].obj)
+                {
+                    if (ev == "[end]")
+                    {
+                        if (LastNoteTick < globals.Item1[i].key)
+                            EndTick = globals.Item1[i].key;
+                        goto SYNCFinalization;
+                    }
+                }
+            }
+
             if (!m_events.globals.IsEmpty())
             {
                 var node = m_events.globals.At_index(m_events.globals.Count - 1);
-                if (node.obj.Last() == "[end]" && LastNoteTick < node.key)
+                if (LastNoteTick < node.key)
                     EndTick = node.key;
             }
 
+        SYNCFinalization:
             if (finalizeSync)
                 m_sync.FinalizeTempoMap();
-
-            if (m_beatMap.IsEmpty())
-                GenerateAllBeats();
-            else
-                GenerateLeftoverBeats();
-        }
-
-        private void GenerateLeftoverBeats()
-        {
-            uint multipliedTickrate = 4u * m_sync.Tickrate;
-            uint denominator = 0;
-            int searchIndex = 0;
-            for (int i = 0; i < m_sync.timeSigs.Count; ++i)
-            {
-                var node = m_sync.timeSigs.At_index(i);
-                if (node.obj.Denominator != 255)
-                    denominator = 1u << node.obj.Denominator;
-
-                long ticksPerMarker = multipliedTickrate / denominator;
-                long ticksPerMeasure = (multipliedTickrate * node.obj.Numerator) / denominator;
-
-                long endTime;
-                if (i + 1 < m_sync.timeSigs.Count)
-                    endTime = m_sync.timeSigs.At_index(i + 1).key;
-                else
-                    endTime = LastNoteTick;
-
-                while (node.key < endTime)
-                {
-                    long position = node.key;
-                    for (uint n = 0; n < node.obj.Numerator && position < endTime; ++n, position += ticksPerMarker, ++searchIndex)
-                    {
-                        var beat = new DualPosition(position, m_sync);
-                        if (!m_beatMap.Contains(searchIndex, beat))
-                            m_beatMap[beat] = BeatStyle.WEAK;
-                    }
-                    node.key += ticksPerMeasure;
-                }
-            }
-        }
-
-        private void GenerateAllBeats()
-        {
-            uint multipliedTickrate = 4u * m_sync.Tickrate;
-            int metronome = 24;
-            for (int i = 0; i < m_sync.timeSigs.Count; ++i)
-            {
-                var node = m_sync.timeSigs.At_index(i);
-
-                int numerator = node.obj.Numerator > 0 ? node.obj.Numerator : 4;
-                int denominator = node.obj.Denominator != 255 ? 1 << node.obj.Denominator : 4;
-
-                if (node.obj.Metronome != 0)
-                    metronome = node.obj.Metronome;
-
-                int markersPerClick = 6 * denominator / metronome;
-                long ticksPerMarker = multipliedTickrate / denominator;
-                long ticksPerMeasure = (multipliedTickrate * numerator) / denominator;
-                bool isIrregular = numerator > 4 || (numerator & 1) == 1;
-
-                long endTime;
-                if (i + 1 < m_sync.timeSigs.Count)
-                    endTime = m_sync.timeSigs.At_index(i + 1).key;
-                else
-                    endTime = LastNoteTick;
-
-                while (node.key < endTime)
-                {
-                    long position = node.key;
-                    var style = BeatStyle.MEASURE;
-                    int clickSpacing = markersPerClick;
-                    int triplSpacing = 3 * markersPerClick;
-                    for (int leftover = numerator; leftover > 0 && position < endTime;)
-                    {
-                        int clicksLeft = clickSpacing;
-                        do
-                        {
-                            var beat = new DualPosition(position, m_sync);
-                            m_beatMap.Add_NoReturn(beat, style);
-                            position += ticksPerMarker;
-                            style = BeatStyle.WEAK;
-                            --clicksLeft;
-                            --leftover;
-                        } while (clicksLeft > 0 && leftover > 0 && position < endTime);
-                        style = BeatStyle.STRONG;
-
-                        if (isIrregular && leftover > 0 && position < endTime && markersPerClick < leftover && 2 * leftover < triplSpacing)
-                        {
-                            // leftover < 1.5 * spacing
-                            clickSpacing = leftover;
-                        }
-                        
-                    }
-                    node.key += ticksPerMeasure;
-                }
-            }
-        }
-
-        private bool ParseBeats(MidiFileReader reader)
-        {
-            if (!m_beatMap.IsEmpty())
-                return false;
-
-            MidiNote note = new();
-            while (reader.TryParseEvent())
-            {
-                var midiEvent = reader.GetEvent();
-                if (midiEvent.type == MidiEventType.Note_On)
-                {
-                    reader.ExtractMidiNote(ref note);
-                    var beat = new DualPosition(midiEvent.position, m_sync);
-                    m_beatMap.Get_Or_Add_Back(beat) = note.value == 12 ? BeatStyle.MEASURE : BeatStyle.STRONG;
-                }
-            }
-            return true;
+            m_sync.FinalizeBeats(EndTick);
         }
     }
 }

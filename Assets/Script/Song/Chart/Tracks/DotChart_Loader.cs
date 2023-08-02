@@ -52,7 +52,7 @@ namespace YARG.Song.Chart
                 }
                 case ChartEvent.EVENT:
                 {
-                    var str = reader.ExtractText();
+                    var str = reader.ExtractTextAsBytes();
                     if (str.StartsWith(SOLOEND))
                         diff.specialPhrases[solo].Add(new(SpecialPhraseType.Solo, trackEvent.Item1 - solo));
                     else if (str.StartsWith(SOLO))

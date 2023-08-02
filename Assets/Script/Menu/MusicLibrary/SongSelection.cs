@@ -356,7 +356,7 @@ namespace YARG.UI.MusicLibrary
                     _viewList.Insert(0, categoryView);
                 }
             }
-            else if (SongContainer.Count > 0)
+            else if (LoadingManager.Instance.Container.Count > 0)
             {
                 AddSongsCount();
                 AddAllRecommendedSongs();
@@ -405,7 +405,7 @@ namespace YARG.UI.MusicLibrary
 
             _recommendedSongs = new();
 
-            if (SongContainer.Count > 0)
+            if (LoadingManager.Instance.Container.Count > 0)
             {
                 FillRecommendedSongs();
             }
@@ -413,11 +413,11 @@ namespace YARG.UI.MusicLibrary
 
         private void AddSongsCount()
         {
-            var count = SongContainer.Count;
+            var count = LoadingManager.Instance.Container.Count;
             _viewList.Insert(0, new CategoryViewType(
                 "ALL SONGS",
                 $"<#00B6F5><b>{count}</b> <#006488>{(count == 1 ? "SONG" : "SONGS")}",
-                SongContainer.Songs
+                LoadingManager.Instance.Container.Songs
             ));
         }
 
@@ -540,7 +540,7 @@ namespace YARG.UI.MusicLibrary
             int skip = GetSkip();
 
             // Select random between all of the songs
-            SelectedIndex = Random.Range(skip, SongContainer.Count);
+            SelectedIndex = Random.Range(skip, LoadingManager.Instance.Container.Count);
         }
 
         public void SelectPreviousSection()
@@ -568,7 +568,7 @@ namespace YARG.UI.MusicLibrary
         private int GetSkip()
         {
             // Get how many non-song things there are
-            return Mathf.Max(1, _viewList.Count - SongContainer.Count);
+            return Mathf.Max(1, _viewList.Count - LoadingManager.Instance.Container.Count);
         }
 
 #if UNITY_EDITOR

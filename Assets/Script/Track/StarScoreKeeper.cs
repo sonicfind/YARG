@@ -136,7 +136,7 @@ namespace YARG.PlayMode
                 BaseScore += ptPerNote;
                 if (note.length > .2f)
                 {
-                    BaseScore += ptSusPerBeat * Utils.InfoLengthInBeats(note, Play.Instance.chartNew.m_beatMap);
+                    BaseScore += ptSusPerBeat * Utils.InfoLengthInBeats(note);
                 }
 
                 // check if note is in a solo section

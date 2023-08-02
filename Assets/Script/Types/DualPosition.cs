@@ -14,8 +14,6 @@ namespace YARG.Types
             this.seconds = seconds;
         }
 
-        public DualPosition(long ticks, SyncTrack sync) : this(ticks, sync.ConvertToSeconds(ticks)) { }
-
         public int CompareTo(DualPosition other)
         {
             return ticks.CompareTo(other.ticks);

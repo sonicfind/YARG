@@ -37,7 +37,7 @@ namespace YARG.Serialization
             var songs = new List<SongData>();
 
             // Convert SongInfo to SongData
-            foreach (var song in SongContainer.Songs)
+            foreach (var song in LoadingManager.Instance.Container.Songs)
             {
                 songs.Add(new SongData
                 {

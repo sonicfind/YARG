@@ -72,7 +72,7 @@ namespace YARG.Song.Chart
         {
             get
             {
-                if (m_hopo_frequency > 0)
+                if (m_hopo_frequency >= 0)
                     return m_hopo_frequency;
                 else if (m_eighthnote_hopo)
                     return m_sync.Tickrate / 2;
@@ -135,7 +135,7 @@ namespace YARG.Song.Chart
                         var trackEvent = reader.ParseEvent();
                         if (trackEvent.Item2 == ChartEvent.EVENT)
                         {
-                            var str = reader.ExtractText();
+                            var str = reader.ExtractTextAsBytes();
                             if (str.StartsWith(SECTION)) m_events.sections.Get_Or_Add_Back(trackEvent.Item1) = Encoding.UTF8.GetString(str[8..]);
                             else if (str.StartsWith(LYRIC)) m_tracks.leadVocals[0][trackEvent.Item1].lyric = Encoding.UTF8.GetString(str[6..]);
                             else if (str.SequenceEqual(PHRASE_START))
