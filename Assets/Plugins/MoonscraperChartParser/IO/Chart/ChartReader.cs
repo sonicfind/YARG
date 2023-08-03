@@ -811,7 +811,7 @@ namespace MoonscraperChartEditor.Song.IO
                     }
                     catch (System.Exception e)
                     {
-                        Debug.LogError("Error parsing chart reader line \"" + line);
+                        Debug.LogError(e);
                     }
                 }
                 moonChart.UpdateCache();

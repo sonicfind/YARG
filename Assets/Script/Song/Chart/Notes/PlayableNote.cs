@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using YARG.Player;
 using YARG.Song.Chart.Notes;
 using YARG.Types;
 
@@ -57,10 +58,15 @@ namespace YARG.Song.Chart.Notes
             return string.Empty;
         }
 
-        public abstract HitStatus TryHit(ref object input, in bool combo);
+        public abstract HitStatus TryHit(object input, in bool combo);
         public abstract void HandleMiss();
         public abstract HitStatus OnDequeueFromMiss();
-        public abstract HitStatus UpdateSustain(DualPosition position, ref object input);
         public abstract void Draw(float trackPosition);
+    }
+
+    public abstract class Sustained_Playable : PlayableNote
+    {
+        protected Sustained_Playable(ref DualPosition position) : base(ref position) { }
+        public abstract HitStatus UpdateSustain(DualPosition position, object input);
     }
 }

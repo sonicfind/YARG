@@ -31,8 +31,8 @@ namespace YARG.Song.Chart.DrumTrack
 
         public bool LoadDotChart(ChartFileReader reader)
         {
-            ref DifficultyTrack<Drum_Legacy> diff = ref difficulties[reader.Difficulty];
-            if (!DotChart_Loader.Load(ref diff, reader))
+            ref var diff = ref difficulties[reader.Difficulty];
+            if (!DotChart_Loader.Load(diff, reader))
                 return false;
 
             ParseDrumType(ref diff);
@@ -55,8 +55,8 @@ namespace YARG.Song.Chart.DrumTrack
             to.events = events;
             for (int i = 0; i < 4; ++i)
             {
-                ref var diff_leg = ref difficulties[i];
-                ref var diff_4pro = ref to[i];
+                var diff_leg = difficulties[i];
+                var diff_4pro = to[i];
                 if (!diff_4pro.IsOccupied() && diff_leg.IsOccupied())
                 {
                     diff_4pro.specialPhrases = diff_leg.specialPhrases;
@@ -77,8 +77,8 @@ namespace YARG.Song.Chart.DrumTrack
             to.events = events;
             for (int i = 0; i < 4; ++i)
             {
-                ref var diff_leg = ref difficulties[i];
-                ref var diff_5 = ref to[i];
+                var diff_leg = difficulties[i];
+                var diff_5 = to[i];
                 if (!diff_5.IsOccupied() && diff_leg.IsOccupied())
                 {
                     diff_5.specialPhrases = diff_leg.specialPhrases;

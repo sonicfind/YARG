@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 using YARG.Audio;
 using YARG.Chart;
 using YARG.Data;
@@ -84,7 +85,7 @@ namespace YARG.PlayMode
 
         public YargChart chart;
         public YARGSong chartNew;
-        public Player[] players = Array.Empty<Player>();
+        public Player.Player[] players = Array.Empty<Player.Player>();
 
         [Space]
         [SerializeField]
@@ -338,7 +339,7 @@ namespace YARG.PlayMode
         private void LoadChart()
         {
             chartNew = Song.LoadChart();
-            Player.SetSync(chartNew.m_sync, OverdriveStyle.GuitarHero);
+            Player.Player.SetSync(chartNew.m_sync, Player.OverdriveStyle.GuitarHero);
             Playable_Guitar.HopoFrequency = chartNew.HopoFrequency;
 
             chart = Song.LoadChart_Original();
@@ -428,7 +429,19 @@ namespace YARG.PlayMode
             UpdateAudio();
 
             foreach (var player in players)
-                player.Update(SongTime);
+            {
+                var position = SongTime;
+                player.EnqueueHittables(position);
+                for (int i = 0; i < 1; i++)
+                {
+                    player.SetInput(new(position, new()));
+                    player.RunInput();
+                }
+
+                player.PostLoopCleanup(position);
+                player.UpdateNotesOnScreen(position);
+                player.UpdateBeatsOnScreen(position);
+            }
 
             // Update whammy pitch state
             UpdateWhammyPitch();

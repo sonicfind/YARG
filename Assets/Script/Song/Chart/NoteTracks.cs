@@ -83,23 +83,23 @@ namespace YARG.Song.Chart
         {
             switch (reader.Instrument)
             {
-                case NoteTracks_Chart.Single:       return DotChart_Loader.Load(ref lead_5[reader.Difficulty], reader);
-                case NoteTracks_Chart.DoubleGuitar: return DotChart_Loader.Load(ref coop[reader.Difficulty], reader);
-                case NoteTracks_Chart.DoubleBass:   return DotChart_Loader.Load(ref bass_5[reader.Difficulty], reader);
-                case NoteTracks_Chart.DoubleRhythm: return DotChart_Loader.Load(ref rhythm[reader.Difficulty], reader);
+                case NoteTracks_Chart.Single:       return DotChart_Loader.Load(lead_5[reader.Difficulty], reader);
+                case NoteTracks_Chart.DoubleGuitar: return DotChart_Loader.Load(coop[reader.Difficulty], reader);
+                case NoteTracks_Chart.DoubleBass:   return DotChart_Loader.Load(bass_5[reader.Difficulty], reader);
+                case NoteTracks_Chart.DoubleRhythm: return DotChart_Loader.Load(rhythm[reader.Difficulty], reader);
                 case NoteTracks_Chart.Drums:
                     {
                         switch (legacy.Type)
                         {
-                            case DrumType.FOUR_PRO:  return DotChart_Loader.Load(ref drums_4pro[reader.Difficulty], reader);
-                            case DrumType.FIVE_LANE: return DotChart_Loader.Load(ref drums5[reader.Difficulty], reader);
+                            case DrumType.FOUR_PRO:  return DotChart_Loader.Load(drums_4pro[reader.Difficulty], reader);
+                            case DrumType.FIVE_LANE: return DotChart_Loader.Load(drums5[reader.Difficulty], reader);
                             case DrumType.UNKNOWN:   return legacy.LoadDotChart(reader);
                         }
                         break;
                     }
-                case NoteTracks_Chart.Keys:      return DotChart_Loader.Load(ref keys[reader.Difficulty], reader);
-                case NoteTracks_Chart.GHLGuitar: return DotChart_Loader.Load(ref lead_6[reader.Difficulty], reader);
-                case NoteTracks_Chart.GHLBass:   return DotChart_Loader.Load(ref bass_6[reader.Difficulty], reader);
+                case NoteTracks_Chart.Keys:      return DotChart_Loader.Load(keys[reader.Difficulty], reader);
+                case NoteTracks_Chart.GHLGuitar: return DotChart_Loader.Load(lead_6[reader.Difficulty], reader);
+                case NoteTracks_Chart.GHLBass:   return DotChart_Loader.Load(bass_6[reader.Difficulty], reader);
             }
             return true;
         }

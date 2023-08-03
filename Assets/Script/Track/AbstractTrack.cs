@@ -8,6 +8,7 @@ using YARG.Audio;
 using YARG.Chart;
 using YARG.Data;
 using YARG.Input;
+using YARG.Player;
 using YARG.Pools;
 using YARG.Settings;
 using YARG.Song.Chart.Notes;
@@ -28,7 +29,7 @@ namespace YARG.PlayMode
         protected Pool genericPool;
 
         public PlayerManager.Player player;
-        public Player playerNew;
+        public Player.Player playerNew;
 
         // Time values
 

@@ -67,9 +67,9 @@ namespace YARG.Song.Chart
             m_baseDrumType = entry.GetDrumType();
         }
 
-        public Player[] SetupPlayers(Dictionary<Instrument, Dictionary<int, List<(GameObject, PlayerManager.Player)>>> instruemntMap)
+        public Player.Player[] SetupPlayers(Dictionary<Instrument, Dictionary<int, List<(GameObject, PlayerManager.Player)>>> instruemntMap)
         {
-            List<Player> players = new();
+            List<Player.Player> players = new();
             foreach (var dict in instruemntMap)
             {
                 switch (dict.Key)
@@ -77,10 +77,10 @@ namespace YARG.Song.Chart
                     case Instrument.INVALID:
                         break;
                     case Instrument.GUITAR:
-                        players.AddRange(m_tracks.lead_5.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        players.AddRange(Player_Loader.Setup(dict.Value.ToArray(), m_sync, m_tracks.lead_5, long.MaxValue));
                         break;
                     case Instrument.BASS:
-                        players.AddRange(m_tracks.bass_5.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        players.AddRange(Player_Loader.Setup(dict.Value.ToArray(), m_sync, m_tracks.bass_5, long.MaxValue));
                         break;
                     case Instrument.DRUMS:
                         break;
@@ -101,10 +101,10 @@ namespace YARG.Song.Chart
                     case Instrument.GH_DRUMS:
                         break;
                     case Instrument.RHYTHM:
-                        players.AddRange(m_tracks.rhythm.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        players.AddRange(Player_Loader.Setup(dict.Value.ToArray(), m_sync, m_tracks.rhythm, long.MaxValue));
                         break;
                     case Instrument.GUITAR_COOP:
-                        players.AddRange(m_tracks.coop.SetupPlayers(dict.Value.ToArray(), m_sync));
+                        players.AddRange(Player_Loader.Setup(dict.Value.ToArray(), m_sync, m_tracks.coop, long.MaxValue));
                         break;
                 }
             }

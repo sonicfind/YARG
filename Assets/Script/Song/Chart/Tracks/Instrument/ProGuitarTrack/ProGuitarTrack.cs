@@ -88,8 +88,8 @@ namespace YARG.Song.Chart.ProGuitarTrack
             int noteValue = note.value - 24;
             int diffIndex = DIFFVALUES[noteValue];
             int lane = LANEVALUES[noteValue];
-            ref var midiDiff = ref difficulties[diffIndex];
-            ref var diffTrack = ref track[diffIndex];
+            var midiDiff = difficulties[diffIndex];
+            var diffTrack = track[diffIndex];
             if (lane < 6)
             {
                 if (currEvent.channel == 1)

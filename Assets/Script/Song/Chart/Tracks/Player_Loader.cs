@@ -11,10 +11,10 @@ namespace YARG.Song.Chart
 {
     public static class Player_Loader
     {
-        public static Player[] Setup<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track, long codaPosition)
+        public static Player.Player[] Setup<T>(KeyValuePair<int, List<(GameObject track, PlayerManager.Player)>>[] playerMapping, SyncTrack sync, InstrumentTrack<T> track, long codaPosition)
             where T : class, INote, new()
         {
-            var result = new List<Player>();
+            var result = new List<Player.Player>();
             foreach ((int diffIndex, var handlers) in playerMapping)
                 result.AddRange(Setup(handlers.ToArray(), sync, track[diffIndex], !track.specialPhrases.IsEmpty() ? track.specialPhrases : track[diffIndex].specialPhrases, codaPosition));
             return result.ToArray();
@@ -30,7 +30,7 @@ namespace YARG.Song.Chart
         //    return result.ToArray();
         //}
 
-        private static Player[] Setup<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>> phrases, long codaPosition)
+        private static Player.Player[] Setup<T>((GameObject track, PlayerManager.Player)[] handlers, SyncTrack sync, DifficultyTrack<T> track, TimedFlatMap<List<SpecialPhrase>> phrases, long codaPosition)
             where T : class, INote, new()
         {
             (var notebuf, int count) = track.notes.Data;
@@ -40,7 +40,7 @@ namespace YARG.Song.Chart
             for (int i = 0; i < count; ++i)
                 notePositions[i] = sync.ConvertToSeconds(notebuf[i].key, ref tempoIndex);
 
-            var players = new Player_Instrument<T>[handlers.Length];
+            var players = new Player.Player_Sustained<T>[handlers.Length];
             for (int i = 0; i < handlers.Length; i++)
                 players[i] = new(handlers[i], (notebuf, count), notePositions);
 

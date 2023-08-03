@@ -39,10 +39,10 @@ namespace YARG.Types
 
     public class OverdrivePhrase : HittablePhrase
     {
-        private readonly Player player;
+        private readonly Player.Player player;
         private bool isValid;
 
-        public OverdrivePhrase(Player player, int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(numNotesInPhrase, ref start, ref end)
+        public OverdrivePhrase(Player.Player player, int numNotesInPhrase, ref DualPosition start, ref DualPosition end) : base(numNotesInPhrase, ref start, ref end)
         {
             this.player = player;
             isValid = true;
@@ -90,7 +90,7 @@ namespace YARG.Types
 
     public class OverdriveActivationPhrase : PlayablePhrase
     {
-        private readonly Player player;
+        private readonly Player.Player player;
         private int _activationLane;
         private bool _isEnabled;
         public int ActivationLane => _activationLane;
@@ -100,17 +100,18 @@ namespace YARG.Types
             set { _isEnabled = value; }
         }
 
-        public OverdriveActivationPhrase(int lane, ref DualPosition start, ref DualPosition end) : base(ref start, ref end)
+        public OverdriveActivationPhrase(Player.Player player, int lane, ref DualPosition start, ref DualPosition end) : base(ref start, ref end)
         {
+            this.player = player;
             _activationLane = lane;
             _isEnabled = false;
         }
 
-        public void Activate()
+        public void Activate(long tickPosition)
         {
             if (_isEnabled)
             {
-                player.ActivateOverdrive();
+                player.ActivateOverdrive(tickPosition);
             }
         }
     }

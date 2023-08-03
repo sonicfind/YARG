@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using YARG.Player;
 using YARG.Song.Chart.Notes;
 using YARG.Types;
 
@@ -16,7 +17,7 @@ namespace YARG.Song.Chart.Notes
         TAP
     }
 
-    public abstract class Playable_Guitar : PlayableNote
+    public abstract class Playable_Guitar : Sustained_Playable
     {
         public static long HopoFrequency { get; set; }
         protected readonly PlayableGuitarType type;
@@ -48,7 +49,7 @@ namespace YARG.Song.Chart.Notes
             End = new(farthestEnd, sync.ConvertToSeconds(farthestEnd, syncIndex));
         }
 
-        public override HitStatus TryHit(ref object input, in bool combo)
+        public override HitStatus TryHit(object input, in bool combo)
         {
             if (overdrive != null)
             {
@@ -92,7 +93,7 @@ namespace YARG.Song.Chart.Notes
             return status;
         }
 
-        public override HitStatus UpdateSustain(DualPosition position, ref object input)
+        public override HitStatus UpdateSustain(DualPosition position, object input)
         {
             var status = HitStatus.Dropped;
             for (int i = 0; i < lanes.Length; i++)
