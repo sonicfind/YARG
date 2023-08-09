@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace YARG.Song.Entries.TrackScan.Instrument.Drums
 {
-    public struct LegacyDrumScan
+    public class LegacyDrumScan
     {
         private byte _validations;
         private DrumType _type;
@@ -44,7 +44,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Drums
             {
                 if (reader.ParseEvent().Item2 == ChartEvent.NOTE)
                 {
-                    nuint lane = reader.ExtractLaneAndSustain().Item1;
+                    int lane = reader.ExtractLaneAndSustain().Item1;
                     if (lane <= 5)
                     {
                         if (!found)

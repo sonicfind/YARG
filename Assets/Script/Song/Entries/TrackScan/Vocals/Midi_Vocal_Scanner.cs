@@ -27,9 +27,9 @@ namespace YARG.Song.Entries.TrackScan.Vocals
 
         public bool Scan(MidiFileReader reader)
         {
-            while (reader.TryParseEvent())
+            MidiParseEvent ev = default;
+            while (reader.TryParseEvent(ref ev))
             {
-                var ev = reader.GetEvent();
                 if (ev.type == MidiEventType.Note_On)
                 {
                     reader.ExtractMidiNote(ref note);

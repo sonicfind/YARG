@@ -51,6 +51,14 @@ namespace YARG.Song.Chart.Notes
             lanes[lane].Disable();
         }
 
+        public override int GetNumActive()
+        {
+            for (int i = 0; i < lanes.Length; ++i)
+                if (lanes[i].IsActive())
+                    return 1;
+            return 0;
+        }
+
         public bool IsChorded()
         {
             if (lanes[0].IsActive())

@@ -26,9 +26,9 @@ namespace YARG.Song.Chart
 
         public void AddFromMidi(MidiFileReader reader)
         {
-            while (reader.TryParseEvent())
+            MidiParseEvent midiEvent = default;
+            while (reader.TryParseEvent(ref midiEvent))
             {
-                var midiEvent = reader.GetEvent();
                 switch (midiEvent.type)
                 {
                     case MidiEventType.Tempo:
@@ -47,11 +47,11 @@ namespace YARG.Song.Chart
             if (!beatMap.IsEmpty())
                 return false;
 
+            MidiParseEvent midiEvent = default;
             MidiNote note = new();
             int tempoIndex = 0;
-            while (reader.TryParseEvent())
+            while (reader.TryParseEvent(ref midiEvent))
             {
-                var midiEvent = reader.GetEvent();
                 if (midiEvent.type == MidiEventType.Note_On)
                 {
                     reader.ExtractMidiNote(ref note);

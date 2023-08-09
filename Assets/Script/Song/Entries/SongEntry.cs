@@ -416,7 +416,7 @@ namespace YARG.Song.Entries
             if (intensity_y < intensity_x)
                 return 1;
 
-            return x!.IsBelow(y!, SongAttribute.UNSPECIFIED) ? -1 : 1;
+            return x.IsBelow(y, SongAttribute.UNSPECIFIED) ? -1 : 1;
         }
     }
 }

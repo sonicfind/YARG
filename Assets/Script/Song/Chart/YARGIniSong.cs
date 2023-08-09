@@ -68,31 +68,6 @@ namespace YARG.Song.Chart
         private byte m_multiplier_note = 116;
         private Dictionary<string, Modifier> m_modifiers = new();
 
-        public override long HopoFrequency
-        {
-            get
-            {
-                if (m_hopo_frequency >= 0)
-                    return m_hopo_frequency;
-                else if (m_eighthnote_hopo)
-                    return m_sync.Tickrate / 2;
-                else if (m_hopofreq_old != ushort.MaxValue)
-                {
-                    return m_hopofreq_old switch
-                    {
-                        0 => m_sync.Tickrate / 24,
-                        1 => m_sync.Tickrate / 16,
-                        2 => m_sync.Tickrate / 12,
-                        3 => m_sync.Tickrate / 8,
-                        4 => m_sync.Tickrate / 6,
-                        _ => m_sync.Tickrate / 4,
-                    };
-                }
-                else
-                    return m_sync.Tickrate / 3;
-            }
-        }
-
         public YARGIniSong() { }
         public YARGIniSong(string directory) : base(directory) { }
         public YARGIniSong(IniSongEntry entry) : base(entry)

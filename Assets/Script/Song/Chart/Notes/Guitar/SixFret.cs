@@ -20,7 +20,7 @@ namespace YARG.Song.Chart.Notes
         }
 
         internal static readonly uint[] SIXFRETLANES = new uint[5] { 4, 5, 6, 1, 2 };
-        public bool Set_From_Chart(uint lane, long length)
+        public bool Set_From_Chart(int lane, long length)
         {
             if (lane < 5)
             {

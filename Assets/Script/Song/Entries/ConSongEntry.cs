@@ -75,7 +75,6 @@ namespace YARG.Song.Entries
 #nullable enable
     public class ConSongEntry : SongEntry
     {
-        internal static readonly float[,] emptyRatios = new float[0, 0];
         internal static readonly Encoding Latin1 = Encoding.GetEncoding("ISO-8859-1");
         static ConSongEntry() { }
 

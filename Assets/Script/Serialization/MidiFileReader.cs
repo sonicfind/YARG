@@ -119,14 +119,23 @@ namespace YARG.Serialization
             return true;
         }
 
-        public bool TryParseEvent()
+        public bool TryParseEvent(ref MidiParseEvent ev)
+        {
+            if (!TryParseEvent())
+                return false;
+
+            ev = m_event;
+            return true;
+        }
+
+        private bool TryParseEvent()
         {
             if (m_event.type != MidiEventType.Reset_Or_Meta)
                 m_reader.ExitSection();
 
             m_event.position += m_reader.ReadVLQ();
             byte tmp = m_reader.PeekByte();
-            MidiEventType type = (MidiEventType)tmp;
+            MidiEventType type = (MidiEventType) tmp;
             if (type < MidiEventType.Note_Off)
             {
                 if (m_midiEvent == MidiEventType.Reset_Or_Meta)
@@ -139,8 +148,8 @@ namespace YARG.Serialization
                 m_reader.Move_Unsafe(1);
                 if (type < MidiEventType.SysEx)
                 {
-                    m_event.channel = (byte)(tmp & 15);
-                    m_midiEvent = (MidiEventType)(tmp & 240);
+                    m_event.channel = (byte) (tmp & 15);
+                    m_midiEvent = (MidiEventType) (tmp & 240);
                     m_runningOffset = m_midiEvent switch
                     {
                         MidiEventType.Note_On => 2,
@@ -158,11 +167,11 @@ namespace YARG.Serialization
                     switch (type)
                     {
                         case MidiEventType.Reset_Or_Meta:
-                            type = (MidiEventType)m_reader.ReadByte();
+                            type = (MidiEventType) m_reader.ReadByte();
                             goto case MidiEventType.SysEx_End;
                         case MidiEventType.SysEx:
                         case MidiEventType.SysEx_End:
-                            m_reader.EnterSection((int)m_reader.ReadVLQ());
+                            m_reader.EnterSection((int) m_reader.ReadVLQ());
                             break;
                         case MidiEventType.Song_Position:
                             m_reader.EnterSection(2);

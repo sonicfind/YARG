@@ -44,21 +44,29 @@ namespace YARG.Song.Chart
             for (int i = 0; i < handlers.Length; i++)
                 players[i] = new(handlers[i], (notebuf, count), notePositions);
 
-            int noteIndex = 0;
+            int startIndex = 0;
             tempoIndex = 0;
             foreach (FlatMapNode<long, List<SpecialPhrase>> node in phrases)
             {
-                while (noteIndex < count && notebuf[noteIndex].key < node.key)
-                    ++noteIndex;
+                while (startIndex < count && notebuf[startIndex].key < node.key)
+                    ++startIndex;
 
                 int index = tempoIndex;
                 foreach (var phrase in node.obj)
                 {
                     index = tempoIndex;
                     long endTick = node.key + phrase.Duration;
-                    int endIndex = noteIndex;
-                    while (endIndex < count && notebuf[endIndex].key < endTick)
-                        ++endIndex;
+                    int hitCount = 0;
+                    int noteIndex = startIndex;
+                    while (noteIndex < count)
+                    {
+                        ref var note = ref notebuf[noteIndex];
+                        if (note.key >= endTick)
+                            break;
+
+                        hitCount += note.obj.GetNumActive();
+                        ++noteIndex;
+                    }
 
                     DualPosition position = new(node.key, sync.ConvertToSeconds(node.key, ref index));
                     DualPosition endPosition = new(endTick, sync.ConvertToSeconds(endTick, ref index));
@@ -70,12 +78,12 @@ namespace YARG.Song.Chart
                             case SpecialPhraseType.StarPower:
                             case SpecialPhraseType.StarPower_Diff:
                                 {
-                                    player.AttachPhrase(new OverdrivePhrase(player, endIndex - noteIndex, ref position, ref endPosition));
+                                    player.AttachPhrase(new OverdrivePhrase(player, hitCount, ref position, ref endPosition));
                                     break;
                                 }
                             case SpecialPhraseType.Solo:
                                 {
-                                    player.AttachPhrase(new SoloPhrase(endIndex - noteIndex, ref position, ref endPosition));
+                                    player.AttachPhrase(new SoloPhrase(hitCount, ref position, ref endPosition));
                                     break;
                                 }
                             case SpecialPhraseType.FaceOff_Player1:

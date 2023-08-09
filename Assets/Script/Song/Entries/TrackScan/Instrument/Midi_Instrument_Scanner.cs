@@ -18,9 +18,8 @@ namespace YARG.Song.Entries.TrackScan.Instrument
 
         public byte Scan(MidiFileReader reader)
         {
-            while (reader.TryParseEvent())
+            while (reader.TryParseEvent(ref currEvent))
             {
-                currEvent = reader.GetEvent();
                 if (currEvent.type == MidiEventType.Note_On)
                 {
                     reader.ExtractMidiNote(ref note);

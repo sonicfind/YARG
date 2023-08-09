@@ -9,7 +9,6 @@ namespace YARG.Song.Entries.TrackScan
 {
     public unsafe struct ScanValues
     {
-        internal static byte[] shifts = { 1, 2, 4, 8, 16 };
         public byte subTracks;
         public sbyte intensity;
         public ScanValues(sbyte baseIntensity)
@@ -20,11 +19,12 @@ namespace YARG.Song.Entries.TrackScan
 
         public void Set(int subTrack)
         {
-            subTracks |= shifts[subTrack];
+            subTracks |= (byte)(1 << subTrack);
         }
+
         public bool this[int subTrack]
         {
-            get { return (shifts[subTrack] & subTracks) > 0; }
+            get { return ((byte)(1 << subTrack) & subTracks) > 0; }
         }
 
         public static ScanValues operator |(ScanValues lhs, ScanValues rhs)

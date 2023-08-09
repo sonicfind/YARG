@@ -86,7 +86,7 @@ namespace YARG.Serialization
             new(Encoding.ASCII.GetBytes("DoubleBass]"),   NoteTracks_Chart.DoubleBass ),
             new(Encoding.ASCII.GetBytes("DoubleRhythm]"), NoteTracks_Chart.DoubleRhythm ),
             new(Encoding.ASCII.GetBytes("Drums]"),        NoteTracks_Chart.Drums ),
-            new(Encoding.ASCII.GetBytes("Keys]"),         NoteTracks_Chart.Keys ),
+            new(Encoding.ASCII.GetBytes("Keyboard]"),         NoteTracks_Chart.Keys ),
             new(Encoding.ASCII.GetBytes("GHLGuitar]"),    NoteTracks_Chart.GHLGuitar ),
             new(Encoding.ASCII.GetBytes("GHLBass]"),      NoteTracks_Chart.GHLBass ),
         };
@@ -273,16 +273,16 @@ namespace YARG.Serialization
             return reader.ExtractTextSpan();
         }
 
-        public (uint, long) ExtractLaneAndSustain()
+        public (int, long) ExtractLaneAndSustain()
         {
-            uint lane = reader.ReadUInt32();
+            int lane = reader.ReadInt32();
             long sustain = reader.ReadInt64();
             return new(lane, sustain);
         }
 
         public SpecialPhrase ExtractSpecialPhrase()
         {
-            nuint type = reader.ReadUInt32();
+            int type = reader.ReadInt32();
             long duration = reader.ReadInt64();
             return new((SpecialPhraseType)type, duration);
         }

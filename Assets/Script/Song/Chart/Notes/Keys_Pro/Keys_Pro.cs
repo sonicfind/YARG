@@ -88,7 +88,7 @@ namespace YARG.Song.Chart.Notes
     public class Keys_Pro : Note<Pitched_Key>
     {
         public override int NumLanes => 48;
-        public uint NumActive { get; private set; } = 0;
+        public int NumActive { get; private set; } = 0;
         public Keys_Pro() : base(4) { }
 
         public Pitched_Key this[uint index]
@@ -180,7 +180,7 @@ namespace YARG.Song.Chart.Notes
 
                 if (cmp > binary)
                 {
-                    for (uint j = NumActive; j > i; --j)
+                    for (int j = NumActive; j > i; --j)
                         lanes[j] = lanes[j - 1];
                     break;
                 }
@@ -190,7 +190,7 @@ namespace YARG.Song.Chart.Notes
             NumActive++;
         }
 
-        public override uint GetNumActive()
+        public override int GetNumActive()
         {
             return NumActive;
         }

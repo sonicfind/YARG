@@ -33,14 +33,13 @@ namespace YARG.Song.Chart
         protected string m_charter = string.Empty;
         protected string m_playlist = string.Empty;
         protected DrumType m_baseDrumType = DrumType.UNKNOWN;
-        protected long m_hopo_frequency = 170;
+        protected long m_hopo_frequency = -1;
         
         public string m_midiSequenceName = string.Empty;
 
         public long EndTick { get; private set; }
         public long LastNoteTick { get; private set; }
-
-        public virtual long HopoFrequency => m_hopo_frequency;
+        public long HopoFrequency => m_hopo_frequency;
 
         public readonly SyncTrack                        m_sync = new();
         public readonly SongEvents                       m_events = new();

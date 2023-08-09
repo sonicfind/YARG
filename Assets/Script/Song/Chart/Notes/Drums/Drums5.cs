@@ -12,7 +12,7 @@ namespace YARG.Song.Chart.Notes
         public Drum_5() : base(5) { }
         public Drum_5(Drum_Legacy drum) : base(5, drum) { }
 
-        public bool Set_From_Chart(uint lane, long length)
+        public bool Set_From_Chart(int lane, long length)
         {
             if (lane == 0) _bass = length;
             else if (lane <= 5) pads[lane - 1].Duration = length;

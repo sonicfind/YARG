@@ -82,15 +82,6 @@ namespace YARG.Song.Library
         public readonly Dictionary<string, PackedCONGroup> conGroups = new();
         public readonly Dictionary<string, ExtractedConGroup> extractedConGroups = new();
         public readonly Dictionary<Hash128, List<IniSongEntry>> iniEntries = new();
-
-        public List<SongEntry> ToEntryList()
-        {
-            List<SongEntry> songs = new();
-            foreach (var node in entries)
-                songs.AddRange(node.Value);
-            songs.TrimExcess();
-            return songs;
-        }
     }
 
     public abstract class CacheHandler

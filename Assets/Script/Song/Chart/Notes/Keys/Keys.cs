@@ -18,7 +18,7 @@ namespace YARG.Song.Chart.Notes
             set { lanes[lane] = value; }
         }
 
-        public bool Set_From_Chart(uint lane, long length)
+        public bool Set_From_Chart(int lane, long length)
         {
             if (lane >= 5)
                 return false;

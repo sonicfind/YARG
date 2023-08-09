@@ -41,9 +41,9 @@ namespace YARG.Song.Chart.Vocals
             if (!track[index].IsEmpty())
                 return false;
 
-            while (reader.TryParseEvent())
+            MidiParseEvent ev = default;
+            while (reader.TryParseEvent(ref ev))
             {
-                var ev = reader.GetEvent();
                 position = ev.position;
                 if (ev.type == MidiEventType.Note_On)
                 {

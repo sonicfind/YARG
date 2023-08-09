@@ -26,10 +26,9 @@ namespace YARG.Song.Chart
             if (track.IsOccupied())
                 return false;
 
-            while (reader.TryParseEvent())
+            while (reader.TryParseEvent(ref currEvent))
             {
-                var ev = currEvent = reader.GetEvent();
-                if (ev.type == MidiEventType.Note_On)
+                if (currEvent.type == MidiEventType.Note_On)
                 {
                     reader.ExtractMidiNote(ref note);
                     if (note.velocity > 0)
@@ -38,14 +37,14 @@ namespace YARG.Song.Chart
                         ParseNote_Off(ref track);
 
                 }
-                else if (ev.type == MidiEventType.Note_Off)
+                else if (currEvent.type == MidiEventType.Note_Off)
                 {
                     reader.ExtractMidiNote(ref note);
                     ParseNote_Off(ref track);
                 }
-                else if (ev.type == MidiEventType.SysEx || ev.type == MidiEventType.SysEx_End)
+                else if (currEvent.type == MidiEventType.SysEx || currEvent.type == MidiEventType.SysEx_End)
                     ParseSysEx(reader.ExtractTextOrSysEx(), ref track);
-                else if (ev.type <= MidiEventType.Text_EnumLimit)
+                else if (currEvent.type <= MidiEventType.Text_EnumLimit)
                     ParseText(reader.ExtractTextOrSysEx(), ref track);
             }
 

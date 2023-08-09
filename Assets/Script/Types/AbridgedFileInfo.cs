@@ -12,7 +12,7 @@ namespace YARG.Types
         public readonly string FullName;
         public readonly DateTime LastWriteTime;
 
-        public AbridgedFileInfo(string file) : this(file, File.GetLastWriteTime(file)) { }
+        public AbridgedFileInfo(string file) : this(file, File.GetLastAccessTimeUtc(file)) { }
 
         public AbridgedFileInfo(FileInfo info) : this (info.FullName, info.LastWriteTime) { }
 

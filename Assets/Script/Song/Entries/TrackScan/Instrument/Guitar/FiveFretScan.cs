@@ -14,7 +14,7 @@ namespace YARG.Song.Entries.TrackScan.Instrument.Guitar
         internal static readonly byte[][] ENHANCED_STRINGS = new byte[][] { Encoding.ASCII.GetBytes("[ENHANCED_OPENS]"), Encoding.ASCII.GetBytes("ENHANCED_OPENS") };
 
         private readonly bool[,] notes = new bool[4, 6];
-        private readonly int[] lanes = new int[] {
+        private readonly int[] lanes = {
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
             13, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,

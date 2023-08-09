@@ -152,7 +152,8 @@ namespace YARG.Data
                 return;
             }
 
-            GenericLyricInfo currentLyricPhrase = null;
+            List<(float time, string word)> lyrics = new();
+            float phrase = -1;
             foreach (var globalEvent in song.eventsAndSections)
             {
                 float time = (float) globalEvent.time;
@@ -168,37 +169,31 @@ namespace YARG.Data
                 {
                     case LyricHelper.PhraseStartText:
                         // Phrase start events can start new phrases without a preceding end
-                        if (currentLyricPhrase != null)
-                        {
-                            currentLyricPhrase.length = time - currentLyricPhrase.time;
-                            genericLyrics.Add(currentLyricPhrase);
-                        }
-
-                        // Start new phrase
-                        currentLyricPhrase = new()
-                        {
-                            time = time
-                        };
+                        if (phrase != -1)
+                            genericLyrics.Add(new() { time = phrase, length = time  - phrase});
+                        phrase = time;
                         break;
 
                     case LyricHelper.PhraseEndText:
-                        // Complete phrase and add it to the list
-                        currentLyricPhrase.length = time - currentLyricPhrase.time;
-                        genericLyrics.Add(currentLyricPhrase);
-                        currentLyricPhrase = null;
+                        if (phrase != -1)
+                            genericLyrics.Add(new() { time = phrase, length = time - phrase });
+                        phrase = -1;
                         break;
 
                     default:
                         if (text.StartsWith(LyricHelper.LYRIC_EVENT_PREFIX))
-                        {
-                            // Add lyric to current phrase, or ignore if outside a phrase
-                            currentLyricPhrase?.lyric.Add((time, text.Replace(LyricHelper.LYRIC_EVENT_PREFIX, "")));
-                        }
-
+                            lyrics.Add((time, text.Replace(LyricHelper.LYRIC_EVENT_PREFIX, "")));
                         break;
                 }
 
                 events.Add(new EventInfo(text, (float) globalEvent.time));
+            }
+
+            int lyricIndex = 0;
+            for (int i = 0; i < genericLyrics.Count && lyricIndex < lyrics.Count; ++i)
+            {
+                while (lyricIndex < lyrics.Count && genericLyrics[i].time <= lyrics[lyricIndex].time && lyrics[lyricIndex].time < genericLyrics[i].EndTime)
+                    genericLyrics[i].lyric.Add(lyrics[lyricIndex++]);
             }
         }
 

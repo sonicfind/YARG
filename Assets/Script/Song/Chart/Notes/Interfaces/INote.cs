@@ -16,6 +16,8 @@ namespace YARG.Song.Chart.Notes
     public interface INote
     {
         public int NumLanes { get; }
+
+        public int GetNumActive();
         public bool HasActiveNotes();
         public long GetLongestSustain();
 #nullable enable

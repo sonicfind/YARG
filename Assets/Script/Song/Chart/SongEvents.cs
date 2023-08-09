@@ -32,9 +32,9 @@ namespace YARG.Song.Chart
             if (!globals.IsEmpty() || !sections.IsEmpty())
                 return false;
 
-            while (reader.TryParseEvent())
+            MidiParseEvent midiEvent = default;
+            while (reader.TryParseEvent(ref midiEvent))
             {
-                var midiEvent = reader.GetEvent();
                 if (midiEvent.type <= MidiEventType.Text_EnumLimit)
                 {
                     ReadOnlySpan<byte> bytes = reader.ExtractTextOrSysEx();

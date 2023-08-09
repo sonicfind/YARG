@@ -340,7 +340,7 @@ namespace YARG.PlayMode
         {
             chartNew = Song.LoadChart();
             Player.Player.SetSync(chartNew.m_sync, Player.OverdriveStyle.GuitarHero);
-            Playable_Guitar.HopoFrequency = chartNew.HopoFrequency;
+            Playable_Guitar.HopoFrequency = Song.GetHopoFrequency(chartNew.m_sync.Tickrate);
 
             chart = Song.LoadChart_Original();
 

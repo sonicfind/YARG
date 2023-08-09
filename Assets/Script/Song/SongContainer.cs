@@ -56,7 +56,10 @@ namespace YARG.Song
             GameManager.Instance.SelectedSong = null;
 
             _entries = cache.entries;
-            _songs = cache.ToEntryList();
+            _songs = new();
+            foreach (var node in _entries)
+                _songs.AddRange(node.Value);
+            _songs.TrimExcess();
 
             Titles = cache.titles.GetSongSelectionList();
             Years = cache.years.GetSongSelectionList();

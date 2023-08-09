@@ -16,6 +16,7 @@ using UnityEngine;
 using Melanchall.DryWetMidi.Core;
 using Cysharp.Threading.Tasks;
 using YARG.Song.Chart;
+using System;
 
 namespace YARG.Song.Entries
 {
@@ -170,7 +171,7 @@ namespace YARG.Song.Entries
             LegacyDrumScan legacy = new(cymbals, GetDrumTypeFromModifier());
             while (reader.IsStartOfTrack())
             {
-                if (!reader.ValidateDifficulty() || !reader.ValidateInstrument() || !m_scans.ScanFromDotChart(ref legacy, reader))
+                if (!reader.ValidateDifficulty() || !reader.ValidateInstrument() || !m_scans.ScanFromDotChart(legacy, reader))
                     reader.SkipTrack();
             }
 
@@ -496,8 +497,9 @@ namespace YARG.Song.Entries
                     song.Load_Midi(m_chartFile!.FullName);
                 return song;
             }
-            catch
+            catch (Exception e)
             {
+                Debug.LogError(e);
                 return null;
             }
         }

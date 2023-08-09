@@ -2,13 +2,14 @@
 using MoonscraperChartEditor.Song;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
+using System.Buffers.Binary;
 
 namespace YARG.Serialization
 {
@@ -31,7 +32,7 @@ namespace YARG.Serialization
             firstBlock = BitConverter.ToInt32(new byte[4] { data[0x2F], data[0x30], data[0x31], 0x00 });
             pathIndex = BitConverter.ToInt16(new byte[2] { data[0x33], data[0x32] });
             size = BitConverter.ToInt32(new byte[4] { data[0x37], data[0x36], data[0x35], data[0x34] });
-            lastWrite = DateTime.FromBinary(BitConverter.ToInt32(new byte[4] { data[0x3B], data[0x3A], data[0x39], data[0x38] }));
+            lastWrite = FatTimeDT(BitConverter.ToInt32(new byte[4] { data[0x38], data[0x39], data[0x3A], data[0x3B] }));
         }
 
         public void SetParentDirectory(string parentDirectory)
@@ -44,6 +45,30 @@ namespace YARG.Serialization
         public override string ToString() => $"STFS File Listing: {Filename}";
         public bool IsDirectory() { return (flags & 0x80) > 0; }
         public bool IsContiguous() { return (flags & 0x40) > 0; }
+
+        public static DateTime FatTimeDT(int dateTime)
+        {
+            int time = dateTime & 0xFFFF;
+            int date = dateTime >> 16;
+            if (date == 0 && time == 0)
+                return DateTime.Now;
+
+            int seconds = time & 0b11111;
+            int minutes = (time >> 5) & 0b111111;
+            int hour = (time >> 11) & 0b11111;
+
+            int day = date & 0b11111;
+            int month = (date >> 5) & 0b1111;
+            int year = (date >> 9) & 0b1111111;
+
+            if (day == 0)
+                day = 1;
+
+            if (month == 0)
+                month = 1;
+
+            return new DateTime(year + 1980, month, day, hour, minutes, 2 * seconds);
+        }
     }
 
     public unsafe class CONFile
@@ -92,8 +117,9 @@ namespace YARG.Serialization
                 
                 return new(filename, shift, firstBlock, length);
             }
-            catch
+            catch (Exception e)
             {
+                Debug.LogError(e);
                 return null;
             }
         }

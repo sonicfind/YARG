@@ -113,7 +113,7 @@ namespace YARG.Song.Chart.Notes
 
         public override bool HasActiveNotes()
         {
-            return HasActiveNotes() || _bass.IsActive() || _doubleBass.IsActive();
+            return base.HasActiveNotes() || _bass.IsActive() || _doubleBass.IsActive();
         }
     }
 

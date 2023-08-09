@@ -1,7 +1,4 @@
 ﻿using YARG.Serialization;
-using YARG.Song.Entries.DotChartValues.Drums;
-using YARG.Song.Entries.DotChartValues.Guitar;
-using YARG.Song.Entries.DotChartValues.Keys;
 using YARG.Song.Entries.TrackScan;
 using YARG.Song.Entries.TrackScan.Instrument.Drums;
 using YARG.Song.Entries.TrackScan.Instrument.Guitar;
@@ -149,13 +146,13 @@ namespace YARG.Song.Entries
                     }
                 case MidiTrackType.Harm2:
                     {
-                        if (!harmonyVocals[1] && new Midi_Vocal_Scanner(0).Scan(reader))
+                        if (!harmonyVocals[1] && new Midi_Vocal_Scanner(1).Scan(reader))
                             harmonyVocals.Set(1);
                         break;
                     }
                 case MidiTrackType.Harm3:
                     {
-                        if (!harmonyVocals[2] && new Midi_Vocal_Scanner(0).Scan(reader))
+                        if (!harmonyVocals[2] && new Midi_Vocal_Scanner(2).Scan(reader))
                             harmonyVocals.Set(2);
                         break;
                     }
@@ -234,14 +231,14 @@ namespace YARG.Song.Entries
             }
         }
 
-        public bool ScanFromDotChart(ref LegacyDrumScan legacy, ChartFileReader reader)
+        public bool ScanFromDotChart(LegacyDrumScan legacy, ChartFileReader reader)
         {
             switch (reader.Instrument)
             {
-                case NoteTracks_Chart.Single:       return DotChart_Scanner<FiveFretOutline>.Scan(ref lead_5, reader);
-                case NoteTracks_Chart.DoubleGuitar: return DotChart_Scanner<FiveFretOutline>.Scan(ref coop, reader);
-                case NoteTracks_Chart.DoubleBass:   return DotChart_Scanner<FiveFretOutline>.Scan(ref bass_5, reader);
-                case NoteTracks_Chart.DoubleRhythm: return DotChart_Scanner<FiveFretOutline>.Scan(ref rhythm, reader);
+                case NoteTracks_Chart.Single:       return DotChart_Scanner.Scan(reader, ref lead_5, DotChart_Scanner.ValidateFiveFret);
+                case NoteTracks_Chart.DoubleGuitar: return DotChart_Scanner.Scan(reader, ref coop,   DotChart_Scanner.ValidateFiveFret);
+                case NoteTracks_Chart.DoubleBass:   return DotChart_Scanner.Scan(reader, ref bass_5, DotChart_Scanner.ValidateFiveFret);
+                case NoteTracks_Chart.DoubleRhythm: return DotChart_Scanner.Scan(reader, ref rhythm, DotChart_Scanner.ValidateFiveFret);
                 case NoteTracks_Chart.Drums:
                     {
                         switch (legacy.Type)
@@ -249,17 +246,17 @@ namespace YARG.Song.Entries
                             case DrumType.FOUR_PRO:
                                 {
                                     if (legacy.cymbals)
-                                        return DotChart_Scanner<Drums4_ProOutline>.Scan(ref drums_4pro, reader);
-                                    return new Drum4_Pro_ChartScanner().Scan(ref drums_4pro, ref legacy.cymbals, reader);
+                                        return DotChart_Scanner.Scan(reader, ref drums_4pro, DotChart_Scanner.ValidateFourLaneProDrums);
+                                    return DotChart_Scanner.ScanFourLaneDrums_ValidateCymbals(reader, ref drums_4pro, ref legacy.cymbals);
                                 }
-                            case DrumType.FIVE_LANE: return DotChart_Scanner<Drums5Outline>.Scan(ref drums_5, reader);
+                            case DrumType.FIVE_LANE: return DotChart_Scanner.Scan(reader, ref drums_5, DotChart_Scanner.ValidateFiveLaneDrums);
                             case DrumType.UNKNOWN:   return legacy.ScanDotChart(reader);
                         }
                         break;
                     }
-                case NoteTracks_Chart.Keys:      return DotChart_Scanner<KeysOutline>.Scan(ref keys, reader);
-                case NoteTracks_Chart.GHLGuitar: return DotChart_Scanner<SixFretOutline>.Scan(ref lead_6, reader);
-                case NoteTracks_Chart.GHLBass:   return DotChart_Scanner<SixFretOutline>.Scan(ref bass_6, reader);
+                case NoteTracks_Chart.Keys:      return DotChart_Scanner.Scan(reader, ref keys,   DotChart_Scanner.ValidateKeys);
+                case NoteTracks_Chart.GHLGuitar: return DotChart_Scanner.Scan(reader, ref lead_6, DotChart_Scanner.ValidateSixFret);
+                case NoteTracks_Chart.GHLBass:   return DotChart_Scanner.Scan(reader, ref bass_6, DotChart_Scanner.ValidateSixFret);
             }
             return true;
         }

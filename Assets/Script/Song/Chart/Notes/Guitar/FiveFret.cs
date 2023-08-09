@@ -21,7 +21,7 @@ namespace YARG.Song.Chart.Notes
             return new Playable_FiveFret(ref position, this, sync, syncIndex, prevPosition, prevNote as FiveFret);
         }
 
-        public bool Set_From_Chart(uint lane, long length)
+        public bool Set_From_Chart(int lane, long length)
         {
             if (lane < 5)
             {
