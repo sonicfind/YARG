@@ -135,7 +135,7 @@ namespace YARG.Song.Chart.Notes
                 return PlayableGuitarType.HOPO;
 
 
-            bool isStrum = note.IsChorded() || prevNote == null || note.IsContainedIn(prevNote) || position.ticks > prevPosition + HopoFrequency;
+            bool isStrum = note.IsChorded() || prevNote == null || prevNote.StartsWith(note) || position.ticks > prevPosition + HopoFrequency;
             return isStrum != (forcing == ForceStatus.FORCED_LEGACY) ? PlayableGuitarType.STRUM : PlayableGuitarType.HOPO;
         }
     }

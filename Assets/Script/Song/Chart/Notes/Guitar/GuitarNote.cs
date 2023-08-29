@@ -71,8 +71,7 @@ namespace YARG.Song.Chart.Notes
             return num > 1;
         }
 
-        // Assumes the current note is NOT a chord
-        public bool IsContainedIn(GuitarNote note)
+        public bool StartsWith(GuitarNote note)
         {
             for (uint i = 0; i < lanes.Length; ++i)
                 if (lanes[i].IsActive())
