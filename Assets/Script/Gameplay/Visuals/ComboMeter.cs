@@ -25,10 +25,10 @@ namespace YARG.Gameplay.Visuals
         [SerializeField]
         private Material _noFcRingMaterial;
 
-        public void Initialize(EnginePreset preset)
+        public void Initialize(in PresetContainer<EnginePreset> preset)
         {
             // Skip if the preset is a default one
-            if (EnginePreset.Defaults.Contains(preset)) return;
+            if (EnginePreset.IsDefault(preset)) return;
 
             var color = _comboMesh.material.GetColor(_customPresetColorProperty);
             _comboMesh.material.SetColor(_multiplierColorProperty, color);

@@ -3,6 +3,8 @@ using UnityEngine;
 using YARG.Helpers;
 using YARG.Menu.Persistent;
 using YARG.Settings.Metadata;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace YARG.Menu.Settings
 {
@@ -17,67 +19,27 @@ namespace YARG.Menu.Settings
 
         public void RenamePreset()
         {
-            var preset = _tab.SelectedPreset;
-
-            if (preset.DefaultPreset) return;
-
-            DialogManager.Instance.ShowRenameDialog("Rename Preset", value =>
-            {
-                _tab.SelectedContent.RenamePreset(preset, value);
-
-                SettingsMenu.Instance.Refresh();
-            });
+            _tab.Rename();
         }
 
         public void CopyPreset()
         {
-            var preset = _tab.SelectedPreset;
-
-            var copy = preset.CopyWithNewName($"Copy of {preset.Name}");
-            _tab.SelectedContent.AddPreset(copy);
-            _tab.SelectedPreset = copy;
-
-            SettingsMenu.Instance.Refresh();
+            _tab.CopyCurrentPreset();
         }
 
         public void DeletePreset()
         {
-            var preset = _tab.SelectedPreset;
-
-            if (preset.DefaultPreset) return;
-
-            _tab.SelectedContent.DeletePreset(preset);
-            _tab.ResetSelectedPreset();
-
-            SettingsMenu.Instance.Refresh();
+            _tab.DeleteCurrentPreset();
         }
 
         public void ImportPreset()
         {
-            FileExplorerHelper.OpenChooseFile(null, "preset", path =>
-            {
-                var preset = _tab.SelectedContent.ImportPreset(path);
-                if (preset is null) return;
-
-                _tab.SelectedPreset = preset;
-
-                SettingsMenu.Instance.Refresh();
-            });
+            _tab.ImportPreset();
         }
 
         public void ExportPreset()
         {
-            var preset = _tab.SelectedPreset;
-
-            if (preset.DefaultPreset) return;
-
-            // Ask the user for an ending location
-            FileExplorerHelper.OpenSaveFile(null, preset.Name, "preset", path => {
-                // Delete the file if it already exists
-                if (File.Exists(path)) File.Delete(path);
-
-                _tab.SelectedContent.ExportPreset(preset, path);
-            });
+            _tab.ExportPreset();
         }
     }
 }

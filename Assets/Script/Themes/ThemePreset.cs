@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using PlasticBand.Devices;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -7,42 +9,29 @@ using YARG.Core.Game;
 
 namespace YARG.Themes
 {
-    public partial class ThemePreset : BasePreset
+    public partial struct ThemePreset
     {
         public string AssetBundleThemePath;
+        public Guid PreferredColorProfile;
+        public Guid PreferredCameraPreset;
 
-        public List<GameMode> SupportedGameModes = new();
+        public readonly GameMode[] SupportedGameModes;
 
-        public Guid PreferredColorProfile = Guid.Empty;
-        public Guid PreferredCameraPreset = Guid.Empty;
-
-        public ThemePreset(string name, bool defaultPreset)
-            : base(name, defaultPreset)
+        public ThemePreset(params GameMode[] supportedGameModes)
         {
+            AssetBundleThemePath = string.Empty;
+            PreferredColorProfile = Guid.Empty;
+            PreferredCameraPreset = Guid.Empty;
+            SupportedGameModes = supportedGameModes;
         }
 
-        public ThemeContainer CreateThemeContainer()
+        public readonly ThemeContainer CreateThemeContainer()
         {
-            if (DefaultPreset)
-            {
-                var themePrefab = Addressables
+            var themePrefab = Addressables
                     .LoadAssetAsync<GameObject>(AssetBundleThemePath)
                     .WaitForCompletion();
 
-                return new ThemeContainer(themePrefab, true);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override BasePreset CopyWithNewName(string name)
-        {
-            return new ThemePreset(name, false)
-            {
-                SupportedGameModes = new List<GameMode>(SupportedGameModes)
-            };
+            return new ThemeContainer(themePrefab, true);
         }
     }
 }

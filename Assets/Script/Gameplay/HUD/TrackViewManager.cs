@@ -39,7 +39,7 @@ namespace YARG.Gameplay.HUD
             trackPlayer.TrackCamera.targetTexture = renderTexture;
 
             // Setup track view to show the correct track
-            trackView.Initialize(renderTexture, player.CameraPreset, trackPlayer);
+            trackView.Initialize(renderTexture, player.CameraPreset.Config, trackPlayer);
 
             _trackViews.Add(trackView);
             UpdateAllSizing();

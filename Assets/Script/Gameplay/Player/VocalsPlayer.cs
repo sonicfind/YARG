@@ -55,7 +55,7 @@ namespace YARG.Gameplay.Player
 
             base.Initialize(index, player, chart, lastHighScore);
 
-            hud.Initialize(player.EnginePreset);
+            hud.Initialize(in player.EnginePreset);
             _hud = hud;
 
             // Get the notes from the specific harmony or solo part
@@ -100,7 +100,7 @@ namespace YARG.Gameplay.Player
             if (!GameManager.IsReplay)
             {
                 // Create the engine params from the engine preset
-                EngineParams = Player.EnginePreset.Vocals.Create(StarMultiplierThresholds, Player.Profile.CurrentDifficulty, MicDevice.UPDATES_PER_SECOND);
+                EngineParams = Player.EnginePreset.Config.Vocals.Create(StarMultiplierThresholds, Player.Profile.CurrentDifficulty, MicDevice.UPDATES_PER_SECOND);
             }
             else
             {

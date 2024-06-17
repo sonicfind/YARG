@@ -64,7 +64,7 @@ namespace YARG.Gameplay.Player
             if (!GameManager.IsReplay)
             {
                 // Create the engine params from the engine preset
-                EngineParams = Player.EnginePreset.Drums.Create(StarMultiplierThresholds, mode);
+                EngineParams = Player.EnginePreset.Config.Drums.Create(StarMultiplierThresholds, mode);
             }
             else
             {
@@ -143,12 +143,12 @@ namespace YARG.Gameplay.Player
 
             // Get the proper info for four/five lane
             ColorProfile.IFretColorProvider colors = !_fiveLaneMode
-                ? Player.ColorProfile.FourLaneDrums
-                : Player.ColorProfile.FiveLaneDrums;
+                ? Player.ColorProfile.Config.FourLaneDrums
+                : Player.ColorProfile.Config.FiveLaneDrums;
             _fretArray.FretCount = !_fiveLaneMode ? 4 : 5;
 
             _fretArray.Initialize(
-                Player.ThemePreset,
+                in Player.ThemePreset,
                 Player.Profile.GameMode,
                 colors,
                 Player.Profile.LeftyFlip);

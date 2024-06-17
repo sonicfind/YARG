@@ -48,7 +48,7 @@ namespace YARG.Gameplay.Visuals
 
         protected override void UpdateColor()
         {
-            var colors = Player.Player.ColorProfile.FourLaneDrums;
+            var colors = Player.Player.ColorProfile.Config.FourLaneDrums;
 
             // Get pad index
             int pad = NoteRef.Pad;

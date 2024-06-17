@@ -19,23 +19,19 @@ namespace YARG.Gameplay.Visuals
         private int _stripeCount;
         private bool _isCustomPreset;
 
-        public void Initialize(EnginePreset enginePreset)
+        public void Initialize(in PresetContainer<EnginePreset> enginePreset)
         {
             _isCustomPreset = false;
 
-            if (enginePreset == EnginePreset.Default)
-            {
-                // Don't spawn any stripes in if it's the default
-            }
-            else if (enginePreset == EnginePreset.Casual)
+            if (enginePreset.Id == EnginePreset.Casual.Id)
             {
                 SpawnStripe(new Color(0.9f, 0.3f, 0.9f));
             }
-            else if (enginePreset == EnginePreset.Precision)
+            else if (enginePreset.Id == EnginePreset.Precision.Id)
             {
                 SpawnStripe(new Color(1.0f, 0.9f, 0.0f));
             }
-            else
+            else if (enginePreset.Id != EnginePreset.Default.Id)
             {
                 // Otherwise, it must be a custom preset
                 SpawnStripe(new Color(1.0f, 0.25f, 0.25f));

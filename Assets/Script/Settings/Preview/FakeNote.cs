@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using YARG.Core;
+using YARG.Core.Game;
 using YARG.Gameplay;
 using YARG.Gameplay.Player;
 using YARG.Gameplay.Visuals;
@@ -82,8 +83,8 @@ namespace YARG.Settings.Preview
 
         public void OnSettingChanged()
         {
-            var cameraPreset = PresetsTab.GetLastSelectedPreset(CustomContentManager.CameraSettings);
-            var colorProfile = PresetsTab.GetLastSelectedPreset(CustomContentManager.ColorProfiles);
+            var cameraPreset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Camera, CustomContentManager.CameraSettings);
+            var colorProfile = PresetsTab.GetLastSelectedPresetConfig(PresetType.Colors, CustomContentManager.ColorProfiles);
 
             // Update fade
             foreach (var material in _materials)
@@ -117,7 +118,7 @@ namespace YARG.Settings.Preview
             gameObject.SetActive(false);
         }
 
-        public static GameObject CreateFakeNoteFromTheme(ThemePreset themePreset, GameMode gameMode)
+        public static GameObject CreateFakeNoteFromTheme(in PresetContainer<ThemePreset> themePreset, GameMode gameMode)
         {
             // Create GameObject
             var notePrefab = new GameObject("Note Prefab");

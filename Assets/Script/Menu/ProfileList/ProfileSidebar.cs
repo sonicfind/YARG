@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -107,18 +107,10 @@ namespace YARG.Menu.ProfileList
             // These things can change, so do it every time it's enabled.
 
             // Setup preset dropdowns
-            _enginePresetsByIndex =
-                CustomContentManager.EnginePresets.AddOptionsToDropdown(_engineDropdown)
-                    .Select(i => i.Id).ToList();
-            _themesByIndex =
-                CustomContentManager.ThemePresets.AddOptionsToDropdown(_themeDropdown)
-                    .Select(i => i.Id).ToList();
-            _colorProfilesByIndex =
-                CustomContentManager.ColorProfiles.AddOptionsToDropdown(_colorProfileDropdown)
-                    .Select(i => i.Id).ToList();
-            _cameraPresetsByIndex =
-                CustomContentManager.CameraSettings.AddOptionsToDropdown(_cameraPresetDropdown)
-                    .Select(i => i.Id).ToList();
+            _enginePresetsByIndex = CustomContentManager.EnginePresets.AddOptionsToDropdown(_engineDropdown);
+            _themesByIndex = CustomContentManager.ThemePresets.AddOptionsToDropdown(_themeDropdown);
+            _colorProfilesByIndex = CustomContentManager.ColorProfiles.AddOptionsToDropdown(_colorProfileDropdown);
+            _cameraPresetsByIndex = CustomContentManager.CameraSettings.AddOptionsToDropdown(_cameraPresetDropdown);
         }
 
         public void UpdateSidebar(YargProfile profile, ProfileView profileView)
@@ -268,26 +260,25 @@ namespace YARG.Menu.ProfileList
             var themeGuid = _themesByIndex[_themeDropdown.value];
 
             // Skip if there are no changes
-            if (themeGuid == _profile.ThemePreset) return;
+            if (themeGuid == _profile.ThemePreset || CustomContentManager.ThemePresets.TryGetPreset(themeGuid, out var themePreset))
+            {
+                return;
+            }
 
             _profile.ThemePreset = themeGuid;
-
-            var themePreset = CustomContentManager.ThemePresets.GetPresetById(themeGuid);
 
             bool hasPresets = false;
             var presets = string.Empty;
 
             // Check camera presets
-            if (CustomContentManager.CameraSettings
-                .TryGetPresetById(themePreset.PreferredCameraPreset, out var cameraPreset))
+            if (CustomContentManager.CameraSettings.TryGetPreset(themePreset.Config.PreferredCameraPreset, out var cameraPreset))
             {
                 hasPresets = true;
                 presets += $"<color=yellow>Camera Preset: {cameraPreset.Name}</color>\n";
             }
 
             // Check color profiles
-            if (CustomContentManager.ColorProfiles
-                .TryGetPresetById(themePreset.PreferredColorProfile, out var colorProfile))
+            if (CustomContentManager.ColorProfiles.TryGetPreset(themePreset.Config.PreferredColorProfile, out var colorProfile))
             {
                 hasPresets = true;
                 presets += $"<color=yellow>Color Profile: {colorProfile.Name}</color>\n";
@@ -309,8 +300,8 @@ namespace YARG.Menu.ProfileList
 
             dialog.AddDialogButton("Apply", MenuData.Colors.ConfirmButton, () =>
             {
-                _profile.CameraPreset = cameraPreset?.Id ?? CameraPreset.Default.Id;
-                _profile.ColorProfile = colorProfile?.Id ?? ColorProfile.Default.Id;
+                _profile.CameraPreset = cameraPreset.Id;
+                _profile.ColorProfile = colorProfile.Id;
 
                 UpdateSidebar(_profile, _profileView);
 

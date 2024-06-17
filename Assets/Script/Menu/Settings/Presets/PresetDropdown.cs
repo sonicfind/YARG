@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using YARG.Core.Game;
@@ -11,7 +12,7 @@ namespace YARG.Menu.Settings
         [SerializeField]
         private TMP_Dropdown _dropdown;
 
-        private List<BasePreset> _presetsByIndex;
+        private List<Guid> _presetsByIndex;
 
         private PresetsTab _tab;
 
@@ -22,7 +23,7 @@ namespace YARG.Menu.Settings
             _dropdown.options.Clear();
 
             // Add the defaults
-            _presetsByIndex = _tab.SelectedContent.AddOptionsToDropdown(_dropdown);
+            _presetsByIndex = _tab.AddOptionsToDropdown(_dropdown);
 
             // Set index
             _dropdown.SetValueWithoutNotify(_presetsByIndex.IndexOf(_tab.SelectedPreset));

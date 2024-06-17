@@ -2,6 +2,7 @@
 using System.Linq;
 using UnityEngine;
 using YARG.Core;
+using YARG.Core.Game;
 using YARG.Core.Logging;
 using YARG.Gameplay.Visuals;
 
@@ -9,18 +10,18 @@ namespace YARG.Themes
 {
     public class ThemeManager : MonoSingleton<ThemeManager>
     {
-        private readonly Dictionary<ThemePreset, ThemeContainer> _themeContainers = new();
+        private readonly Dictionary<System.Guid, ThemeContainer> _themeContainers = new();
 
         private void Start()
         {
             // Populate all of the default themes
             foreach (var defaultPreset in ThemePreset.Defaults)
             {
-                _themeContainers.Add(defaultPreset, defaultPreset.CreateThemeContainer());
+                _themeContainers.Add(defaultPreset.Id, defaultPreset.Config.CreateThemeContainer());
             }
         }
 
-        public GameObject CreateNotePrefabFromTheme(ThemePreset preset, GameMode gameMode, GameObject noModelPrefab)
+        public GameObject CreateNotePrefabFromTheme(in PresetContainer<ThemePreset> preset, GameMode gameMode, GameObject noModelPrefab)
         {
             // Get the theme container
             var container = GetThemeContainer(preset, gameMode);
@@ -52,17 +53,17 @@ namespace YARG.Themes
             return gameObject;
         }
 
-        public GameObject CreateFretPrefabFromTheme(ThemePreset preset, GameMode gameMode)
+        public GameObject CreateFretPrefabFromTheme(in PresetContainer<ThemePreset> preset, GameMode gameMode)
         {
             return CreatePrefabFromTheme<ThemeFret, Fret>(preset, gameMode);
         }
 
-        public GameObject CreateKickFretPrefabFromTheme(ThemePreset preset, GameMode gameMode)
+        public GameObject CreateKickFretPrefabFromTheme(in PresetContainer<ThemePreset> preset, GameMode gameMode)
         {
             return CreatePrefabFromTheme<ThemeKickFret, KickFret>(preset, gameMode);
         }
 
-        private GameObject CreatePrefabFromTheme<TTheme, TBind>(ThemePreset preset, GameMode gameMode)
+        private GameObject CreatePrefabFromTheme<TTheme, TBind>(in PresetContainer<ThemePreset> preset, GameMode gameMode)
             where TBind : MonoBehaviour, IThemeBindable<TTheme>
         {
             // Get the theme container
@@ -105,17 +106,17 @@ namespace YARG.Themes
             return gameObject;
         }
 
-        public ThemeContainer GetThemeContainer(ThemePreset preset, GameMode mode)
+        public ThemeContainer GetThemeContainer(PresetContainer<ThemePreset> preset, GameMode mode)
         {
             // Check if the theme supports the game mode
-            if (!preset.SupportedGameModes.Contains(mode))
+            if (!preset.Config.SupportedGameModes.Contains(mode))
             {
                 YargLogger.LogFormatInfo("Theme `{0}` does not support `{1}`. Falling back to the default theme.", preset.Name, mode);
                 preset = ThemePreset.Default;
             }
 
             // Get the theme container
-            var container = _themeContainers.GetValueOrDefault(preset);
+            var container = _themeContainers.GetValueOrDefault(preset.Id);
             if (container is null)
             {
                 YargLogger.LogFormatWarning("Could not find theme with ID `{0}`!", preset.Id);

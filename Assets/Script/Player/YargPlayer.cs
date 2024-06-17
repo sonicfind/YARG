@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using YARG.Core.Engine;
 using YARG.Core.Game;
 using YARG.Core.Input;
@@ -11,9 +11,15 @@ namespace YARG.Player
 {
     public class YargPlayer : IDisposable
     {
-        public event MenuInputEvent MenuInput;
+        private YargProfile _profile;
+        private bool _inputsEnabled;
+        private ProfileBindings _bindings;
+        private PresetContainer<EnginePreset> _enginePreset;
+        private PresetContainer<ThemePreset > _themePreset;
+        private PresetContainer<ColorProfile> _colorProfile;
+        private PresetContainer<CameraPreset> _cameraPreset;
 
-        public YargProfile Profile { get; private set; }
+        public event MenuInputEvent MenuInput;
 
         /// <summary>
         /// Whether or not the player is sitting out. This is not needed in <see cref="Profile"/> as
@@ -21,13 +27,13 @@ namespace YARG.Player
         /// </summary>
         public bool SittingOut;
 
-        public bool InputsEnabled { get; private set; }
-        public ProfileBindings Bindings { get; private set; }
-
-        public EnginePreset EnginePreset { get; private set; }
-        public ThemePreset  ThemePreset  { get; private set; }
-        public ColorProfile ColorProfile { get; private set; }
-        public CameraPreset CameraPreset { get; private set; }
+        public YargProfile Profile => _profile;
+        public bool InputsEnabled => _inputsEnabled;
+        public ProfileBindings Bindings => _bindings;
+        public ref readonly PresetContainer<EnginePreset> EnginePreset => ref _enginePreset;
+        public ref readonly PresetContainer<ThemePreset > ThemePreset => ref _themePreset;
+        public ref readonly PresetContainer<ColorProfile> ColorProfile => ref _colorProfile;
+        public ref readonly PresetContainer<CameraPreset> CameraPreset => ref _cameraPreset;
 
         /// <summary>
         /// Overrides the engine parameters in the gameplay player.
@@ -44,18 +50,18 @@ namespace YARG.Player
         public void SwapToProfile(YargProfile profile, ProfileBindings bindings, bool resolveDevices)
         {
             // Force-disable inputs
-            bool enabled = InputsEnabled;
+            bool enabled = _inputsEnabled;
             DisableInputs();
 
             // Swap to the new profile
             Bindings?.Dispose();
-            Profile = profile;
-            Bindings = bindings;
+            _profile = profile;
+            _bindings = bindings;
 
             // Resolve bindings
             if (resolveDevices)
             {
-                Bindings?.ResolveDevices();
+                _bindings?.ResolveDevices();
             }
 
             // Re-enable inputs
@@ -67,53 +73,62 @@ namespace YARG.Player
 
         public void SetPresetsFromProfile()
         {
-            EnginePreset = CustomContentManager.EnginePresets.GetPresetById(Profile.EnginePreset)
-                ?? EnginePreset.Default;
-            ThemePreset = CustomContentManager.ThemePresets.GetPresetById(Profile.ThemePreset)
-                ?? ThemePreset.Default;
-            ColorProfile = CustomContentManager.ColorProfiles.GetPresetById(Profile.ColorProfile)
-                ?? ColorProfile.Default;
-            CameraPreset = CustomContentManager.CameraSettings.GetPresetById(Profile.CameraPreset)
-                ?? CameraPreset.Default;
+            if (!CustomContentManager.EnginePresets.TryGetPreset(Profile.EnginePreset, out _enginePreset))
+            {
+                _enginePreset = Core.Game.EnginePreset.Default;
+            }
+
+            if (!CustomContentManager.ThemePresets.TryGetPreset(Profile.ThemePreset, out _themePreset))
+            {
+                _themePreset = Themes.ThemePreset.Default;
+            }
+
+            if (!CustomContentManager.ColorProfiles.TryGetPreset(Profile.ColorProfile, out _colorProfile))
+            {
+                _colorProfile = Core.Game.ColorProfile.Default;
+            }
+
+            if (!CustomContentManager.CameraSettings.TryGetPreset(Profile.CameraPreset, out _cameraPreset))
+            {
+                _cameraPreset = Core.Game.CameraPreset.Default;
+            }
         }
 
         public void SetPresetsFromReplay(ReplayPresetContainer presetContainer)
         {
-            var colorProfile = presetContainer.GetColorProfile(Profile.ColorProfile);
-            if (colorProfile is not null)
+            if (presetContainer.TryGetColorProfile(Profile.ColorProfile, out var profile))
             {
-                ColorProfile = colorProfile;
+                _colorProfile = profile;
             }
 
-            var cameraPreset = presetContainer.GetCameraPreset(Profile.CameraPreset);
-            if (cameraPreset is not null)
+            if (presetContainer.TryGetCameraPreset(Profile.CameraPreset, out var camera))
             {
-                CameraPreset = cameraPreset;
+                _cameraPreset = camera;
             }
         }
 
         public void EnableInputs()
         {
-            if (InputsEnabled || Bindings == null)
+            if (_inputsEnabled || Bindings == null)
                 return;
 
             Bindings.EnableInputs();
             Bindings.MenuInputProcessed += OnMenuInput;
             InputManager.RegisterPlayer(this);
 
-            InputsEnabled = true;
+            _inputsEnabled = true;
         }
 
         public void DisableInputs()
         {
-            if (!InputsEnabled || Bindings == null)
+            if (!_inputsEnabled || Bindings == null)
                 return;
 
             Bindings.DisableInputs();
             Bindings.MenuInputProcessed -= OnMenuInput;
             InputManager.UnregisterPlayer(this);
 
-            InputsEnabled = false;
+            _inputsEnabled = false;
         }
 
         private void OnMenuInput(ref GameInput input)

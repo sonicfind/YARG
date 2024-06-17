@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using YARG.Helpers;
@@ -12,36 +13,28 @@ namespace YARG.Menu.Settings
         [SerializeField]
         private TMP_Dropdown _dropdown;
 
-        private CustomContent[] _presetTypes;
         private PresetsTab _tab;
 
-        public void Initialize(PresetsTab tab, CustomContent[] presetTypes)
+        public void Initialize(PresetsTab tab)
         {
             _tab = tab;
-            _presetTypes = presetTypes;
 
             // Add the options (in order)
-            _dropdown.options.Clear();
-            foreach (var type in presetTypes)
+            _dropdown.options = new List<TMP_Dropdown.OptionData>()
             {
-                var name = LocaleHelper.LocalizeString("Settings", $"PresetType.{type.GetType().Name}");
-                _dropdown.options.Add(new(name));
-            }
+                new(LocaleHelper.LocalizeString("Settings", $"PresetType.{PresetType.Camera}")),
+                new(LocaleHelper.LocalizeString("Settings", $"PresetType.{PresetType.Colors}")),
+                new(LocaleHelper.LocalizeString("Settings", $"PresetType.{PresetType.Engine}"))
+            };
 
             // Set index
-            _dropdown.SetValueWithoutNotify(Array.IndexOf(presetTypes, tab.SelectedContent));
+            _dropdown.SetValueWithoutNotify((int) tab.SelectedContent);
         }
 
         public void OnDropdownChange()
         {
-            _tab.SelectedContent = _presetTypes[_dropdown.value];
+            _tab.SelectedContent = (PresetType)_dropdown.value;
             SettingsMenu.Instance.Refresh();
-        }
-
-        public void OpenPresetFolder()
-        {
-            var customContent = _presetTypes[_dropdown.value];
-            FileExplorerHelper.OpenFolder(customContent.FullContentDirectory);
         }
     }
 }

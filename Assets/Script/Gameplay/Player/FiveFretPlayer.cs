@@ -72,7 +72,7 @@ namespace YARG.Gameplay.Player
             if (!GameManager.IsReplay)
             {
                 // Create the engine params from the engine preset
-                EngineParams = Player.EnginePreset.FiveFretGuitar.Create(StarMultiplierThresholds, isBass);
+                EngineParams = Player.EnginePreset.Config.FiveFretGuitar.Create(StarMultiplierThresholds, isBass);
             }
             else
             {
@@ -108,11 +108,11 @@ namespace YARG.Gameplay.Player
 
             StarScoreThresholds = PopulateStarScoreThresholds(StarMultiplierThresholds, Engine.BaseScore);
 
-            IndicatorStripes.Initialize(Player.EnginePreset.FiveFretGuitar);
+            IndicatorStripes.Initialize(Player.EnginePreset.Config.FiveFretGuitar);
             _fretArray.Initialize(
-                Player.ThemePreset,
+                in Player.ThemePreset,
                 Player.Profile.GameMode,
-                Player.ColorProfile.FiveFretGuitar,
+                Player.ColorProfile.Config.FiveFretGuitar,
                 Player.Profile.LeftyFlip);
         }
 

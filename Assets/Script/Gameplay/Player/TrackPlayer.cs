@@ -77,13 +77,12 @@ namespace YARG.Gameplay.Player
             Beatlines = SyncTrack.Beatlines;
             BeatlineIndex = 0;
 
-            var preset = player.EnginePreset;
-            IndicatorStripes.Initialize(preset);
-            ComboMeter.Initialize(preset);
+            IndicatorStripes.Initialize(in player.EnginePreset);
+            ComboMeter.Initialize(in player.EnginePreset);
 
             // Set fade information and highway length
             ZeroFadePosition = DEFAULT_ZERO_FADE_POS * Player.Profile.HighwayLength;
-            FadeSize = Player.CameraPreset.FadeLength;
+            FadeSize = Player.CameraPreset.Config.FadeLength;
             if (player.Profile.HighwayLength > 1)
             {
                 FadeSize *= player.Profile.HighwayLength;
@@ -214,8 +213,7 @@ namespace YARG.Gameplay.Player
 
         private void SetupTheme(GameMode gameMode)
         {
-            var themePrefab = ThemeManager.Instance.CreateNotePrefabFromTheme(
-                Player.ThemePreset, gameMode, NotePool.Prefab);
+            var themePrefab = ThemeManager.Instance.CreateNotePrefabFromTheme(Player.ThemePreset, gameMode, NotePool.Prefab);
             NotePool.SetPrefabAndReset(themePrefab);
         }
 
@@ -227,7 +225,7 @@ namespace YARG.Gameplay.Player
             GameManager.BeatEventHandler.Subscribe(StarpowerBar.PulseBar);
 
             TrackMaterial.Initialize(ZeroFadePosition, FadeSize);
-            CameraPositioner.Initialize(Player.CameraPreset);
+            CameraPositioner.Initialize(Player.CameraPreset.Config);
         }
 
         protected void ResetNoteCounters()

@@ -4,48 +4,47 @@ using YARG.Core.Game;
 
 namespace YARG.Themes
 {
-    public partial class ThemePreset
+    public partial struct ThemePreset
     {
-        public static ThemePreset Default = new("Rectangular", true)
+        public static PresetContainer<ThemePreset> Default = new("Rectangular",
+            new ThemePreset(GameMode.FiveFretGuitar, GameMode.SixFretGuitar,
+                            GameMode.FourLaneDrums,  GameMode.FiveLaneDrums,
+                            GameMode.ProKeys)
         {
             AssetBundleThemePath = "Themes/Rectangular",
-            SupportedGameModes =
-            {
-                GameMode.FiveFretGuitar,
-                GameMode.SixFretGuitar,
-                GameMode.FourLaneDrums,
-                GameMode.FiveLaneDrums,
-                GameMode.ProKeys
-            },
             PreferredColorProfile = ColorProfile.Default.Id,
             PreferredCameraPreset = CameraPreset.Default.Id
-        };
+        });
 
-        public static readonly List<ThemePreset> Defaults = new()
+        public static readonly PresetContainer<ThemePreset>[] Defaults =
         {
             Default,
-            new ThemePreset("Circular (Beta)", true)
+            new("Circular (Beta)", new ThemePreset(GameMode.FiveFretGuitar)
             {
                 AssetBundleThemePath = "Themes/Circular",
-                SupportedGameModes =
-                {
-                    GameMode.FiveFretGuitar
-                },
                 PreferredColorProfile = ColorProfile.CircularDefault.Id,
                 PreferredCameraPreset = CameraPreset.CircularDefault.Id,
-            },
-            new ThemePreset("YARG on Fire", true)
+            }),
+            new("YARG on Fire", new ThemePreset(GameMode.FiveFretGuitar,
+                                                GameMode.FourLaneDrums,
+                                                GameMode.FiveLaneDrums)
             {
                 AssetBundleThemePath = "Themes/AprilFools",
-                SupportedGameModes =
-                {
-                    GameMode.FiveFretGuitar,
-                    GameMode.FourLaneDrums,
-                    GameMode.FiveLaneDrums
-                },
                 PreferredColorProfile = ColorProfile.AprilFoolsDefault.Id,
                 PreferredCameraPreset = CameraPreset.CircularDefault.Id,
-            }
+            })
         };
+
+        public static bool IsDefault(in PresetContainer<ThemePreset> theme)
+        {
+            foreach (var def in Defaults)
+            {
+                if (def.Id == theme.Id)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

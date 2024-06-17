@@ -23,7 +23,7 @@ namespace YARG.Settings.Preview
 
         private void Update()
         {
-            var preset = PresetsTab.GetLastSelectedPreset(CustomContentManager.CameraSettings);
+            var preset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Camera, CustomContentManager.CameraSettings);
             _material.SetFloat(_curveFactor, preset.CurveFactor);
         }
     }

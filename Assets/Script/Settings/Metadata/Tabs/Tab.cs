@@ -57,7 +57,8 @@ namespace YARG.Settings.Metadata
         {
         }
 
-        protected static BaseSettingVisual SpawnSettingVisual(ISettingType setting, Transform container)
+        protected static BaseSettingVisual SpawnSettingVisual<TSetting>(TSetting setting, Transform container)
+            where TSetting : ISettingType
         {
             // Spawn the setting
             var settingPrefab = Addressables.LoadAssetAsync<GameObject>(setting.AddressableName)

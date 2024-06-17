@@ -3,17 +3,27 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using YARG.Core.Game;
 using YARG.Core.Logging;
+using YARG.Helpers;
 using YARG.Menu.Navigation;
+using YARG.Menu.Persistent;
 using YARG.Menu.Settings;
 using YARG.Settings.Customization;
 using Object = UnityEngine.Object;
 
 namespace YARG.Settings.Metadata
 {
+    public enum PresetType
+    {
+        Camera,
+        Colors,
+        Engine,
+    }
+
     public class PresetsTab : Tab
     {
         // Prefabs needed for this tab type
@@ -30,62 +40,192 @@ namespace YARG.Settings.Metadata
             .LoadAssetAsync<GameObject>("SettingTab/PresetDefaultText")
             .WaitForCompletion();
 
-        // We essentially need to create sub-tabs for each preset
-        private static readonly List<PresetSubTab> _presetTabs = new()
+        private static readonly CameraPresetSubTab _cameraTab = new(CustomContentManager.CameraSettings, new TrackPreviewBuilder());
+        private static readonly ColorProfileSubTab _colorsTab = new(CustomContentManager.ColorProfiles, new TrackPreviewBuilder());
+        private static readonly EnginePresetSubTab _engineTab = new(CustomContentManager.EnginePresets, new TrackPreviewBuilder(forceShowHitWindow: true));
+
+        private PresetType _currentPresetTab = PresetType.Camera;
+
+        public void Rename()
         {
-            new PresetSubTab<CameraPreset>(
-                CustomContentManager.CameraSettings,
-                new TrackPreviewBuilder()),
+            if (IsCurrentPresetDefault())
+            {
+                return;
+            }
 
-            new PresetSubTab<ColorProfile>(
-                CustomContentManager.ColorProfiles,
-                new TrackPreviewBuilder()),
+            DialogManager.Instance.ShowRenameDialog("Rename Preset", value =>
+            {
+                switch (_currentPresetTab)
+                {
+                    case PresetType.Camera:
+                        _cameraTab.RenamePreset(value);
+                        break;
+                    case PresetType.Colors:
+                        _colorsTab.RenamePreset(value);
+                        break;
+                    case PresetType.Engine:
+                        _engineTab.RenamePreset(value);
+                        break;
+                }
+                SettingsMenu.Instance.Refresh();
+            });
+        }
 
-            new PresetSubTab<EnginePreset>(
-                CustomContentManager.EnginePresets,
-                new TrackPreviewBuilder(forceShowHitWindow: true)),
-        };
+        public void DeleteCurrentPreset()
+        {
+            if (IsCurrentPresetDefault())
+            {
+                return;
+            }
 
-        private static readonly Dictionary<Type, BasePreset> _lastSelectedPresetOfType = new();
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    _cameraTab.DeletePreset();
+                    _lastSelectedPresetOfType[0] = CameraPreset.Default.Id;
+                    break;
+                case PresetType.Colors:
+                    _colorsTab.DeletePreset();
+                    _lastSelectedPresetOfType[1] = ColorProfile.Default.Id;
+                    break;
+                case PresetType.Engine:
+                    _engineTab.DeletePreset();
+                    _lastSelectedPresetOfType[2] = EnginePreset.Default.Id;
+                    break;
+            }
+            SettingsMenu.Instance.Refresh();
+        }
+
+        public void CopyCurrentPreset()
+        {
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    _lastSelectedPresetOfType[0] = _cameraTab.CopyPreset();
+                    break;
+                case PresetType.Colors:
+                    _lastSelectedPresetOfType[1] = _colorsTab.CopyPreset();
+                    break;
+                case PresetType.Engine:
+                    _lastSelectedPresetOfType[2] = _engineTab.CopyPreset();
+                    break;
+            }
+            SettingsMenu.Instance.Refresh();
+        }
+
+        public void ImportPreset()
+        {
+            FileExplorerHelper.OpenChooseFile(null, "preset", path =>
+            {
+                switch (_currentPresetTab)
+                {
+                    case PresetType.Camera:
+                        if (!_cameraTab.ImportPreset(path, out var id))
+                        {
+                            return;
+                        }
+                        _lastSelectedPresetOfType[0] = id;
+                        break;
+                    case PresetType.Colors:
+                        if (!_cameraTab.ImportPreset(path, out id))
+                        {
+                            return;
+                        }
+                        _lastSelectedPresetOfType[1] = id;
+                        break;
+                    case PresetType.Engine:
+                        if (!_cameraTab.ImportPreset(path, out id))
+                        {
+                            return;
+                        }
+                        _lastSelectedPresetOfType[2] = id;
+                        break;
+                }
+                SettingsMenu.Instance.Refresh();
+            });
+        }
+
+        public void ExportPreset()
+        {
+            var id = _lastSelectedPresetOfType[(int)_currentPresetTab];
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    if (_cameraTab.CustomContent.TryGetCustomPreset(id, out var camera))
+                    {
+                        // Ask the user for an ending location
+                        FileExplorerHelper.OpenSaveFile(null, camera.Name, "preset", camera.Export);
+                    }
+                    break;
+                case PresetType.Colors:
+                    if (_colorsTab.CustomContent.TryGetCustomPreset(id, out var colors))
+                    {
+                        // Ask the user for an ending location
+                        FileExplorerHelper.OpenSaveFile(null, colors.Name, "preset", colors.Export);
+                    }
+                    break;
+                case PresetType.Engine:
+                    if (_engineTab.CustomContent.TryGetCustomPreset(id, out var engine))
+                    {
+                        // Ask the user for an ending location
+                        FileExplorerHelper.OpenSaveFile(null, engine.Name, "preset", engine.Export);
+                    }
+                    break;
+            }
+        }
+
+        private static readonly Guid[] _lastSelectedPresetOfType = { Guid.Empty, Guid.Empty, Guid.Empty };
         private static readonly List<string> _ignoredPathUpdates = new();
 
-        private PresetSubTab CurrentSubTab => _presetTabs
-            .FirstOrDefault(i => i.CustomContent == SelectedContent);
-
-        private CustomContent _selectedContent;
-        public CustomContent SelectedContent
+        public PresetType SelectedContent
         {
-            get => _selectedContent;
+            get => _currentPresetTab;
             set
             {
-                _selectedContent = value;
+                _currentPresetTab = value;
                 ResetSelectedPreset();
             }
         }
 
-        private Guid _selectedPresetId;
-        public BasePreset SelectedPreset
+        public Guid SelectedPreset
         {
-            get => SelectedContent.GetBasePresetById(_selectedPresetId);
-            set
-            {
-                _selectedPresetId = value.Id;
-                _lastSelectedPresetOfType[value.GetType()] = value;
-            }
+            get => _lastSelectedPresetOfType[(int) _currentPresetTab];
+            set => _lastSelectedPresetOfType[(int) _currentPresetTab] = value;
         }
 
         private FileSystemWatcher _watcher;
 
         public PresetsTab(string name, string icon = "Generic") : base(name, icon)
         {
-            SelectedContent = _presetTabs.First().CustomContent;
             ResetSelectedPreset();
         }
 
-        public void ResetSelectedPreset()
+        public bool IsCurrentPresetDefault()
         {
-            // Get the preferred preset
-            SelectedPreset = GetLastSelectedBasePreset(SelectedContent);
+            return _currentPresetTab switch
+            {
+                PresetType.Camera => CameraPreset.IsDefault(_cameraTab.Preset),
+                PresetType.Colors => ColorProfile.IsDefault(_colorsTab.Preset),
+                PresetType.Engine => EnginePreset.IsDefault(_engineTab.Preset),
+                _ => true
+            };
+        }
+
+        /// <summary>
+        /// Adds all of the presets to the specified dropdown.
+        /// </summary>
+        /// <returns>
+        /// A list containing all of the base presets in order as shown in the dropdown.
+        /// </returns>
+        public List<Guid> AddOptionsToDropdown(TMP_Dropdown dropdown)
+        {
+            return _currentPresetTab switch
+            {
+                PresetType.Camera => _cameraTab.CustomContent.AddOptionsToDropdown(dropdown),
+                PresetType.Colors => _colorsTab.CustomContent.AddOptionsToDropdown(dropdown),
+                PresetType.Engine => _engineTab.CustomContent.AddOptionsToDropdown(dropdown),
+                _ => throw new NotImplementedException(),
+            };
         }
 
         public override void OnTabEnter()
@@ -95,7 +235,6 @@ namespace YARG.Settings.Metadata
             _watcher = new FileSystemWatcher(CustomContentManager.CustomizationDirectory, "*.json")
             {
                 EnableRaisingEvents = true,
-                IncludeSubdirectories = true
             };
 
             // This is async, so we must queue an action for the main thread
@@ -120,29 +259,27 @@ namespace YARG.Settings.Metadata
                 return;
             }
 
-            // Find which custom content container uses the directory of the preset
-            foreach (var content in CustomContentManager.CustomContentContainers)
+            switch(Path.GetFileName(path))
             {
-                if (content.FullContentDirectory != Directory.GetParent(path)?.FullName) continue;
+                case CustomContentManager.COLORS_FILE:
+                    CustomContentManager.ColorProfiles.LoadPresetsFromFile();
+                    break;
+                case CustomContentManager.CAMERAS_FILE:
+                    CustomContentManager.CameraSettings.LoadPresetsFromFile();
+                    break;
+                case CustomContentManager.THEMES_FILE:
+                    CustomContentManager.ThemePresets.LoadPresetsFromFile();
+                    break;
+                case CustomContentManager.ENGINES_FILE:
+                    CustomContentManager.EnginePresets.LoadPresetsFromFile();
+                    break;
+                default:
+                    return;
+            }
 
-                // Reload it
-                content.ReloadPresetAtPath(path);
-
-                // If the settings menu is open, and in the preset tab, also reload that
-                if (SettingsMenu.Instance.gameObject.activeSelf &&
-                    SettingsMenu.Instance.CurrentTab is PresetsTab)
-                {
-                    if (File.Exists(path))
-                    {
-                        // Reload the selected preset, otherwise the _lastSelectedPresetOfType
-                        // will be pointing to the old reference (before the change)
-                        SelectedPreset = SelectedPreset;
-                    }
-
-                    SettingsMenu.Instance.Refresh();
-                }
-
-                break;
+            if (SettingsMenu.Instance.gameObject.activeSelf && SettingsMenu.Instance.CurrentTab is PresetsTab)
+            {
+                SettingsMenu.Instance.Refresh();
             }
         }
 
@@ -154,18 +291,9 @@ namespace YARG.Settings.Metadata
 
         public override void BuildSettingTab(Transform settingContainer, NavigationGroup navGroup)
         {
-            // Try to get the preset, and if unsuccessful, load the default one instead
-            var preset = SelectedPreset;
-            if (preset is null)
-            {
-                ResetSelectedPreset();
-                preset = SelectedPreset;
-            }
-
             // Create the preset type dropdown
             var typeDropdown = Object.Instantiate(_presetTypeDropdown, settingContainer);
-            typeDropdown.GetComponent<PresetTypeDropdown>().Initialize(this,
-                _presetTabs.Select(i => i.CustomContent).ToArray());
+            typeDropdown.GetComponent<PresetTypeDropdown>().Initialize(this);
 
             // Create the preset dropdown
             var dropdown = Object.Instantiate(_presetDropdown, settingContainer);
@@ -175,68 +303,119 @@ namespace YARG.Settings.Metadata
             var actions = Object.Instantiate(_presetActions, settingContainer);
             actions.GetComponent<PresetActions>().Initialize(this);
 
-            // Get the tab for the selected custom content type
-            var tab = CurrentSubTab;
-            if (tab is null) return;
-
-            if (preset is null || preset.DefaultPreset)
+            switch (_currentPresetTab)
             {
-                Object.Instantiate(_presetDefaultText, settingContainer);
+                case PresetType.Camera:
+                    if (_cameraTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var camera))
+                    {
+                        _cameraTab.SetPreset(camera);
+                        _cameraTab.BuildSettingTab(settingContainer, navGroup);
+                        return;
+                    }
+                    break;
+                case PresetType.Colors:
+                    if (_colorsTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var colors))
+                    {
+                        _colorsTab.SetPreset(colors);
+                        _colorsTab.BuildSettingTab(settingContainer, navGroup);
+                        return;
+                    }
+                    break;
+                case PresetType.Engine:
+                    if (_engineTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var engine))
+                    {
+                        _engineTab.SetPreset(engine);
+                        _engineTab.BuildSettingTab(settingContainer, navGroup);
+                        return;
+                    }
+                    break;
             }
-            else
-            {
-                // Create the settings
-                tab.SetPresetReference(SelectedPreset);
-                tab.BuildSettingTab(settingContainer, navGroup);
-            }
+            // Only reached as a last resort
+            Object.Instantiate(_presetDefaultText, settingContainer);
         }
 
         public override async UniTask BuildPreviewWorld(Transform worldContainer)
         {
-            var tab = CurrentSubTab;
-            if (tab is null) return;
-
-            await tab.BuildPreviewWorld(worldContainer);
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    await _cameraTab.BuildPreviewWorld(worldContainer);
+                    break;
+                case PresetType.Colors:
+                    await _colorsTab.BuildPreviewWorld(worldContainer);
+                    break;
+                case PresetType.Engine:
+                    await _engineTab.BuildPreviewWorld(worldContainer);
+                    break;
+            }
         }
 
         public override async UniTask BuildPreviewUI(Transform uiContainer)
         {
-            var tab = CurrentSubTab;
-            if (tab is null) return;
-
-            await tab.BuildPreviewUI(uiContainer);
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    await _cameraTab.BuildPreviewUI(uiContainer);
+                    break;
+                case PresetType.Colors:
+                    await _colorsTab.BuildPreviewUI(uiContainer);
+                    break;
+                case PresetType.Engine:
+                    await _engineTab.BuildPreviewUI(uiContainer);
+                    break;
+            }
         }
 
         public override void OnSettingChanged()
         {
-            CurrentSubTab?.OnSettingChanged();
+            switch (_currentPresetTab)
+            {
+                case PresetType.Camera:
+                    _cameraTab.OnSettingChanged();
+                    break;
+                case PresetType.Colors:
+                    _colorsTab.OnSettingChanged();
+                    break;
+                case PresetType.Engine:
+                    _engineTab.OnSettingChanged();
+                    break;
+            }
         }
 
-        private static BasePreset GetLastSelectedBasePreset(CustomContent customContent)
+        private void ResetSelectedPreset()
         {
-            // We need to get the type of the preset, so without reflection, this is the easiest way
-            var defaultPreset = customContent.DefaultBasePresets[0];
-            var lastPreset = _lastSelectedPresetOfType.GetValueOrDefault(defaultPreset.GetType());
-
-            if (lastPreset is null)
+            if (!_cameraTab.CustomContent.HasPreset(_lastSelectedPresetOfType[0]))
             {
-                return defaultPreset;
+                _lastSelectedPresetOfType[0] = CameraPreset.Default.Id;
             }
 
-            if (!customContent.HasPresetId(lastPreset.Id))
+            if (!_colorsTab.CustomContent.HasPreset(_lastSelectedPresetOfType[1]))
             {
-                // Prevent an unadded preset from becoming the last selected one
-                _lastSelectedPresetOfType.Remove(defaultPreset.GetType());
-
-                return defaultPreset;
+                _lastSelectedPresetOfType[1] = ColorProfile.Default.Id;
             }
 
-            return lastPreset;
+            if (!_engineTab.CustomContent.HasPreset(_lastSelectedPresetOfType[2]))
+            {
+                _lastSelectedPresetOfType[2] = EnginePreset.Default.Id;
+            }
         }
 
-        public static T GetLastSelectedPreset<T>(CustomContent<T> customContent) where T : BasePreset
+        public static PresetContainer<TPreset> GetLastSelectedPreset<TPreset>(PresetType type, CustomContentContainer<TPreset> customContent)
+            where TPreset : struct
         {
-            return (T) GetLastSelectedBasePreset(customContent);
+            ref var id = ref _lastSelectedPresetOfType[(int) type];
+            if (!customContent.TryGetPreset(id, out var preset))
+            {
+                preset = customContent[0];
+                id = preset.Id;
+            }
+            return preset;
+        }
+
+        public static TPreset GetLastSelectedPresetConfig<TPreset>(PresetType type, CustomContentContainer<TPreset> customContent)
+            where TPreset : struct
+        {
+            return GetLastSelectedPreset(type, customContent).Config;
         }
 
         public static void IgnorePathUpdate(string path)

@@ -28,7 +28,7 @@ namespace YARG.Gameplay.Visuals
         private readonly List<Fret> _frets = new();
         private readonly List<KickFret> _kickFrets = new();
 
-        public void Initialize(ThemePreset themePreset, GameMode gameMode,
+        public void Initialize(in PresetContainer<ThemePreset> themePreset, GameMode gameMode,
             ColorProfile.IFretColorProvider fretColorProvider, bool leftyFlip)
         {
             var fretPrefab = ThemeManager.Instance.CreateFretPrefabFromTheme(

@@ -135,7 +135,7 @@ namespace YARG.Gameplay.Player
 
             if (InputViewer != null)
             {
-                InputViewer.SetColors(player.ColorProfile);
+                InputViewer.SetColors(player.ColorProfile.Config);
                 InputViewer.ResetButtons();
             }
 

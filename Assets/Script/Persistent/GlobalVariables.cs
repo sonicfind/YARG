@@ -70,7 +70,6 @@ namespace YARG
             ReplayContainer.Init();
             ScoreContainer.Init();
             PlaylistContainer.Initialize();
-            CustomContentManager.Initialize();
 
             // Check for offline mode
             OfflineMode = CommandLineArguments.Contains(OFFLINE_ARG);

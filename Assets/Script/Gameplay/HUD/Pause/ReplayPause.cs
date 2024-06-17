@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using YARG.Core.Game;
 using YARG.Gameplay.Player;
@@ -14,7 +14,7 @@ namespace YARG.Gameplay.HUD
         [SerializeField]
         private GameObject _saveColorObject;
         private BasePlayer _thisPlayer;
-        private ColorProfile _colorProfile;
+        private PresetContainer<ColorProfile> _colorProfile;
 
         // get _thisPlayer and _colorProfile before OnEnable
         protected override void GameplayAwake()
@@ -26,7 +26,7 @@ namespace YARG.Gameplay.HUD
             _colorProfile = _thisPlayer.Player.ColorProfile;
 
             // If the user already has the color profile, remove the Save button
-            if (CustomContentManager.ColorProfiles.HasPresetId(_colorProfile.Id))
+            if (CustomContentManager.ColorProfiles.HasPreset(_colorProfile.Id))
             {
                 _separatorObject.SetActive(false);
                 _saveColorObject.SetActive(false);
@@ -37,7 +37,7 @@ namespace YARG.Gameplay.HUD
         {
             // save the color profile
             CustomContentManager.ColorProfiles.AddPreset(_colorProfile);
-            CustomContentManager.ColorProfiles.SaveAll();
+            CustomContentManager.ColorProfiles.SavePresetsToFile();
 
             // get Name object then set text to Saved!
             _saveColorObject.GetComponentInChildren<TextMeshProUGUI>().text = "Saved!";

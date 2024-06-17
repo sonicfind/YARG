@@ -42,21 +42,17 @@ namespace YARG.Gameplay.HUD
             GameManager.BeatEventHandler.Unsubscribe(PulseBar);
         }
 
-        public void Initialize(EnginePreset enginePreset)
+        public void Initialize(in PresetContainer<EnginePreset> enginePreset)
         {
-            if (enginePreset == EnginePreset.Default)
-            {
-                // Don't change combo meter fill color if it's the default
-            }
-            else if (enginePreset == EnginePreset.Casual)
+            if (enginePreset.Id == EnginePreset.Casual.Id)
             {
                 _comboMeterFill.color = new Color(0.9f, 0.3f, 0.9f);
             }
-            else if (enginePreset == EnginePreset.Precision)
+            else if (enginePreset.Id == EnginePreset.Precision.Id)
             {
                 _comboMeterFill.color = new Color(1.0f, 0.9f, 0.0f);
             }
-            else
+            else if (enginePreset.Id != EnginePreset.Default.Id)
             {
                 // Otherwise, it must be a custom preset
                 _comboMeterFill.color = new Color(1.0f, 0.25f, 0.25f);
