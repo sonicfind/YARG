@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using YARG.Core.Game;
 using YARG.Helpers.Extensions;
 using YARG.Themes;
-using Color = System.Drawing.Color;
 
 namespace YARG.Gameplay.Visuals
 {
@@ -26,7 +26,7 @@ namespace YARG.Gameplay.Visuals
         private bool _hasPressedParam;
         private bool _hasSustainParam;
 
-        public void Initialize(Color top, Color inner, Color particles)
+        public void Initialize(YARGColor top, YARGColor inner, YARGColor particles)
         {
             // Set the top material color
             foreach (var material in ThemeBind.GetColoredMaterials())

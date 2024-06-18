@@ -1,18 +1,19 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEngine;
+using YARG.Core.Game;
 
 namespace YARG.Helpers.Extensions
 {
     public static class ColorExtensions
     {
-        public static Color ToUnityColor(this System.Drawing.Color color)
+        public static Color ToUnityColor(this YARGColor color)
         {
             return new Color(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f);
         }
 
-        public static System.Drawing.Color ToSystemColor(this Color color)
+        public static YARGColor ToSystemColor(this Color color)
         {
-            return System.Drawing.Color.FromArgb(
+            return YARGColor.FromArgb(
                 (int) (color.a * 255),
                 (int) (color.r * 255),
                 (int) (color.g * 255),

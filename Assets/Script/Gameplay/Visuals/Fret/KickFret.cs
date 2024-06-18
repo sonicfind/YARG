@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
+using YARG.Core.Game;
 using YARG.Helpers.Extensions;
 using YARG.Themes;
-using Color = System.Drawing.Color;
 
 namespace YARG.Gameplay.Visuals
 {
@@ -15,7 +15,7 @@ namespace YARG.Gameplay.Visuals
         [field: HideInInspector]
         public ThemeKickFret ThemeBind { get; set; }
 
-        public void Initialize(Color color)
+        public void Initialize(YARGColor color)
         {
             foreach (var material in ThemeBind.GetColoredMaterials())
             {
