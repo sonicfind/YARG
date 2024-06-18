@@ -308,7 +308,7 @@ namespace YARG.Settings.Metadata
                 case PresetType.Camera:
                     if (_cameraTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var camera))
                     {
-                        _cameraTab.SetPreset(camera);
+                        _cameraTab.Preset = camera;
                         _cameraTab.BuildSettingTab(settingContainer, navGroup);
                         return;
                     }
@@ -316,7 +316,7 @@ namespace YARG.Settings.Metadata
                 case PresetType.Colors:
                     if (_colorsTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var colors))
                     {
-                        _colorsTab.SetPreset(colors);
+                        _colorsTab.Preset = colors;
                         _colorsTab.BuildSettingTab(settingContainer, navGroup);
                         return;
                     }
@@ -324,7 +324,7 @@ namespace YARG.Settings.Metadata
                 case PresetType.Engine:
                     if (_engineTab.CustomContent.TryGetCustomPreset(SelectedPreset, out var engine))
                     {
-                        _engineTab.SetPreset(engine);
+                        _engineTab.Preset = engine;
                         _engineTab.BuildSettingTab(settingContainer, navGroup);
                         return;
                     }
@@ -387,16 +387,19 @@ namespace YARG.Settings.Metadata
             if (!_cameraTab.CustomContent.HasPreset(_lastSelectedPresetOfType[0]))
             {
                 _lastSelectedPresetOfType[0] = CameraPreset.Default.Id;
+                _cameraTab.Preset = CameraPreset.Default;
             }
 
             if (!_colorsTab.CustomContent.HasPreset(_lastSelectedPresetOfType[1]))
             {
                 _lastSelectedPresetOfType[1] = ColorProfile.Default.Id;
+                _colorsTab.Preset = ColorProfile.Default;
             }
 
             if (!_engineTab.CustomContent.HasPreset(_lastSelectedPresetOfType[2]))
             {
                 _lastSelectedPresetOfType[2] = EnginePreset.Default.Id;
+                _engineTab.Preset = EnginePreset.Default;
             }
         }
 
@@ -405,7 +408,7 @@ namespace YARG.Settings.Metadata
         {
             if (!tab.CustomContent.TryGetPreset(id, out var preset))
             {
-                preset = tab.CustomContent[0];
+                tab.Preset = preset = tab.CustomContent[0];
                 id = preset.Id;
             }
             return preset;

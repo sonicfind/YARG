@@ -35,9 +35,7 @@ namespace YARG.Settings.Metadata
 
         protected PresetContainer<TPreset> _preset;
 
-        public PresetContainer<TPreset> Preset => _preset;
-
-        public abstract void SetPreset(in PresetContainer<TPreset> preset);
+        public abstract PresetContainer<TPreset> Preset { get; set; }
 
         public void RenamePreset(string name)
         {
@@ -124,16 +122,20 @@ namespace YARG.Settings.Metadata
             };
         }
 
-        public override void SetPreset(in PresetContainer<CameraPreset> preset)
+        public override PresetContainer<CameraPreset> Preset
         {
-            _preset = preset;
-            _settings[nameof(CameraPreset.FieldOfView)].SetValueWithoutNotify(preset.Config.FieldOfView);
-            _settings[nameof(CameraPreset.PositionY)]  .SetValueWithoutNotify(preset.Config.PositionY);
-            _settings[nameof(CameraPreset.PositionZ)]  .SetValueWithoutNotify(preset.Config.PositionZ);
-            _settings[nameof(CameraPreset.Rotation)]   .SetValueWithoutNotify(preset.Config.Rotation);
-            _settings[nameof(CameraPreset.FadeLength)] .SetValueWithoutNotify(preset.Config.FadeLength);
-            _settings[nameof(CameraPreset.CurveFactor)].SetValueWithoutNotify(preset.Config.CurveFactor);
-            SettingsMenu.Instance.OnSettingChanged();
+            get => _preset;
+            set
+            {
+                _preset = value;
+                _settings[nameof(CameraPreset.FieldOfView)].SetValueWithoutNotify(_preset.Config.FieldOfView);
+                _settings[nameof(CameraPreset.PositionY)].SetValueWithoutNotify(_preset.Config.PositionY);
+                _settings[nameof(CameraPreset.PositionZ)].SetValueWithoutNotify(_preset.Config.PositionZ);
+                _settings[nameof(CameraPreset.Rotation)].SetValueWithoutNotify(_preset.Config.Rotation);
+                _settings[nameof(CameraPreset.FadeLength)].SetValueWithoutNotify(_preset.Config.FadeLength);
+                _settings[nameof(CameraPreset.CurveFactor)].SetValueWithoutNotify(_preset.Config.CurveFactor);
+                SettingsMenu.Instance.OnSettingChanged();
+            }
         }
 
         public override void BuildSettingTab(Transform settingContainer, NavigationGroup navGroup)
@@ -280,118 +282,122 @@ namespace YARG.Settings.Metadata
             };
         }
 
-        public override void SetPreset(in PresetContainer<ColorProfile> profile)
+        public override PresetContainer<ColorProfile> Preset
         {
-            _preset = profile;
-            var settings = _allSettings[_mode];
-            switch (_mode)
+            get => _preset;
+            set
             {
-                case GameMode.FiveFretGuitar:
-                    ref readonly var fivefret = ref profile.Config.FiveFretGuitar;
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OpenFret)]           .SetValueWithoutNotify(fivefret.OpenFret.ToUnityColor());          
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.GreenFret)]          .SetValueWithoutNotify(fivefret.GreenFret.ToUnityColor());         
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.RedFret)]            .SetValueWithoutNotify(fivefret.RedFret.ToUnityColor());           
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.YellowFret)]         .SetValueWithoutNotify(fivefret.YellowFret.ToUnityColor());        
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.BlueFret)]           .SetValueWithoutNotify(fivefret.BlueFret.ToUnityColor());          
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeFret)]         .SetValueWithoutNotify(fivefret.OrangeFret.ToUnityColor());        
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OpenFretInner)]      .SetValueWithoutNotify(fivefret.OpenFretInner.ToUnityColor());     
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.GreenFretInner)]     .SetValueWithoutNotify(fivefret.GreenFretInner.ToUnityColor());    
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.RedFretInner)]       .SetValueWithoutNotify(fivefret.RedFretInner.ToUnityColor());      
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.YellowFretInner)]    .SetValueWithoutNotify(fivefret.YellowFretInner.ToUnityColor());   
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.BlueFretInner)]      .SetValueWithoutNotify(fivefret.BlueFretInner.ToUnityColor());     
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeFretInner)]    .SetValueWithoutNotify(fivefret.OrangeFretInner.ToUnityColor());   
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OpenParticles)]      .SetValueWithoutNotify(fivefret.OpenParticles.ToUnityColor());     
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.GreenParticles)]     .SetValueWithoutNotify(fivefret.GreenParticles.ToUnityColor());    
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.RedParticles)]       .SetValueWithoutNotify(fivefret.RedParticles.ToUnityColor());      
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.YellowParticles)]    .SetValueWithoutNotify(fivefret.YellowParticles.ToUnityColor());   
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.BlueParticles)]      .SetValueWithoutNotify(fivefret.BlueParticles.ToUnityColor());     
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeParticles)]    .SetValueWithoutNotify(fivefret.OrangeParticles.ToUnityColor());   
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OpenNote)]           .SetValueWithoutNotify(fivefret.OpenNote.ToUnityColor());          
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.GreenNote)]          .SetValueWithoutNotify(fivefret.GreenNote.ToUnityColor());         
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.RedNote)]            .SetValueWithoutNotify(fivefret.RedNote.ToUnityColor());           
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.YellowNote)]         .SetValueWithoutNotify(fivefret.YellowNote.ToUnityColor());        
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.BlueNote)]           .SetValueWithoutNotify(fivefret.BlueNote.ToUnityColor());          
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeNote)]         .SetValueWithoutNotify(fivefret.OrangeNote.ToUnityColor());        
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OpenNoteStarPower)]  .SetValueWithoutNotify(fivefret.OpenNoteStarPower.ToUnityColor()); 
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.GreenNoteStarPower)] .SetValueWithoutNotify(fivefret.GreenNoteStarPower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.RedNoteStarPower)]   .SetValueWithoutNotify(fivefret.RedNoteStarPower.ToUnityColor());  
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.YellowNoteStarPower)].SetValueWithoutNotify(fivefret.YellowNoteStarPower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.BlueNoteStarPower)]  .SetValueWithoutNotify(fivefret.BlueNoteStarPower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeNoteStarPower)].SetValueWithoutNotify(fivefret.OrangeNoteStarPower.ToUnityColor());
-                    break;
-                case GameMode.FourLaneDrums:
-                    ref readonly var fourlane = ref profile.Config.FourLaneDrums;
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.KickFret)]             .SetValueWithoutNotify(fourlane.KickFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedFret)]              .SetValueWithoutNotify(fourlane.RedFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowFret)]           .SetValueWithoutNotify(fourlane.YellowFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueFret)]             .SetValueWithoutNotify(fourlane.BlueFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenFret)]            .SetValueWithoutNotify(fourlane.GreenFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.KickFretInner)]        .SetValueWithoutNotify(fourlane.KickFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedFretInner)]         .SetValueWithoutNotify(fourlane.RedFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowFretInner)]      .SetValueWithoutNotify(fourlane.YellowFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueFretInner)]        .SetValueWithoutNotify(fourlane.BlueFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenFretInner)]       .SetValueWithoutNotify(fourlane.GreenFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.KickParticles)]        .SetValueWithoutNotify(fourlane.KickParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedParticles)]         .SetValueWithoutNotify(fourlane.RedParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowParticles)]      .SetValueWithoutNotify(fourlane.YellowParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueParticles)]        .SetValueWithoutNotify(fourlane.BlueParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenParticles)]       .SetValueWithoutNotify(fourlane.GreenParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.KickNote)]             .SetValueWithoutNotify(fourlane.KickNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedDrum)]              .SetValueWithoutNotify(fourlane.RedDrum.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowDrum)]           .SetValueWithoutNotify(fourlane.YellowDrum.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueDrum)]             .SetValueWithoutNotify(fourlane.BlueDrum.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenDrum)]            .SetValueWithoutNotify(fourlane.GreenDrum.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedCymbal)]            .SetValueWithoutNotify(fourlane.RedCymbal.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowCymbal)]         .SetValueWithoutNotify(fourlane.YellowCymbal.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueCymbal)]           .SetValueWithoutNotify(fourlane.BlueCymbal.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenCymbal)]          .SetValueWithoutNotify(fourlane.GreenCymbal.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.KickStarpower)]        .SetValueWithoutNotify(fourlane.KickStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedDrumStarpower)]     .SetValueWithoutNotify(fourlane.RedDrumStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowDrumStarpower)]  .SetValueWithoutNotify(fourlane.YellowDrumStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueDrumStarpower)]    .SetValueWithoutNotify(fourlane.BlueDrumStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenDrumStarpower)]   .SetValueWithoutNotify(fourlane.GreenDrumStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.RedCymbalStarpower)]   .SetValueWithoutNotify(fourlane.RedCymbalStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.YellowCymbalStarpower)].SetValueWithoutNotify(fourlane.YellowCymbalStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.BlueCymbalStarpower)]  .SetValueWithoutNotify(fourlane.BlueCymbalStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.GreenCymbalStarpower)] .SetValueWithoutNotify(fourlane.GreenCymbalStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FourLaneDrumsColors.ActivationNote)]       .SetValueWithoutNotify(fourlane.ActivationNote.ToUnityColor());
-                    break;
-                case GameMode.FiveLaneDrums:
-                    ref readonly var fivelane = ref profile.Config.FiveLaneDrums;
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.KickFret)]       .SetValueWithoutNotify(fivelane.KickFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.RedFret)]        .SetValueWithoutNotify(fivelane.RedFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowFret)]     .SetValueWithoutNotify(fivelane.YellowFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueFret)]       .SetValueWithoutNotify(fivelane.BlueFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeFret)]     .SetValueWithoutNotify(fivelane.OrangeFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenFret)]      .SetValueWithoutNotify(fivelane.GreenFret.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.KickFretInner)]  .SetValueWithoutNotify(fivelane.KickFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.RedFretInner)]   .SetValueWithoutNotify(fivelane.RedFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowFretInner)].SetValueWithoutNotify(fivelane.YellowFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueFretInner)]  .SetValueWithoutNotify(fivelane.BlueFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeFretInner)].SetValueWithoutNotify(fivelane.OrangeFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenFretInner)] .SetValueWithoutNotify(fivelane.GreenFretInner.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.KickParticles)]  .SetValueWithoutNotify(fivelane.KickParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.RedParticles)]   .SetValueWithoutNotify(fivelane.RedParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowParticles)].SetValueWithoutNotify(fivelane.YellowParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueParticles)]  .SetValueWithoutNotify(fivelane.BlueParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeParticles)].SetValueWithoutNotify(fivelane.OrangeParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenParticles)] .SetValueWithoutNotify(fivelane.GreenParticles.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.KickNote)]       .SetValueWithoutNotify(fivelane.KickNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.RedNote)]        .SetValueWithoutNotify(fivelane.RedNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowNote)]     .SetValueWithoutNotify(fivelane.YellowNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueNote)]       .SetValueWithoutNotify(fivelane.BlueNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeNote)]     .SetValueWithoutNotify(fivelane.OrangeNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenNote)]      .SetValueWithoutNotify(fivelane.GreenNote.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.KickStarpower)]  .SetValueWithoutNotify(fivelane.KickStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.RedStarpower)]   .SetValueWithoutNotify(fivelane.RedStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowStarpower)].SetValueWithoutNotify(fivelane.YellowStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueStarpower)]  .SetValueWithoutNotify(fivelane.BlueStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeStarpower)].SetValueWithoutNotify(fivelane.OrangeStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenStarpower)] .SetValueWithoutNotify(fivelane.GreenStarpower.ToUnityColor());
-                    settings[nameof(ColorProfile.FiveLaneDrumsColors.ActivationNote)] .SetValueWithoutNotify(fivelane.ActivationNote.ToUnityColor());
-                    break;                                           
+                _preset = value;
+                var settings = _allSettings[_mode];
+                switch (_mode)
+                {
+                    case GameMode.FiveFretGuitar:
+                        ref readonly var fivefret = ref _preset.Config.FiveFretGuitar;
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OpenFret)].SetValueWithoutNotify(fivefret.OpenFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.GreenFret)].SetValueWithoutNotify(fivefret.GreenFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.RedFret)].SetValueWithoutNotify(fivefret.RedFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.YellowFret)].SetValueWithoutNotify(fivefret.YellowFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.BlueFret)].SetValueWithoutNotify(fivefret.BlueFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeFret)].SetValueWithoutNotify(fivefret.OrangeFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OpenFretInner)].SetValueWithoutNotify(fivefret.OpenFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.GreenFretInner)].SetValueWithoutNotify(fivefret.GreenFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.RedFretInner)].SetValueWithoutNotify(fivefret.RedFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.YellowFretInner)].SetValueWithoutNotify(fivefret.YellowFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.BlueFretInner)].SetValueWithoutNotify(fivefret.BlueFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeFretInner)].SetValueWithoutNotify(fivefret.OrangeFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OpenParticles)].SetValueWithoutNotify(fivefret.OpenParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.GreenParticles)].SetValueWithoutNotify(fivefret.GreenParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.RedParticles)].SetValueWithoutNotify(fivefret.RedParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.YellowParticles)].SetValueWithoutNotify(fivefret.YellowParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.BlueParticles)].SetValueWithoutNotify(fivefret.BlueParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeParticles)].SetValueWithoutNotify(fivefret.OrangeParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OpenNote)].SetValueWithoutNotify(fivefret.OpenNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.GreenNote)].SetValueWithoutNotify(fivefret.GreenNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.RedNote)].SetValueWithoutNotify(fivefret.RedNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.YellowNote)].SetValueWithoutNotify(fivefret.YellowNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.BlueNote)].SetValueWithoutNotify(fivefret.BlueNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeNote)].SetValueWithoutNotify(fivefret.OrangeNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OpenNoteStarPower)].SetValueWithoutNotify(fivefret.OpenNoteStarPower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.GreenNoteStarPower)].SetValueWithoutNotify(fivefret.GreenNoteStarPower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.RedNoteStarPower)].SetValueWithoutNotify(fivefret.RedNoteStarPower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.YellowNoteStarPower)].SetValueWithoutNotify(fivefret.YellowNoteStarPower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.BlueNoteStarPower)].SetValueWithoutNotify(fivefret.BlueNoteStarPower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveFretGuitarColors.OrangeNoteStarPower)].SetValueWithoutNotify(fivefret.OrangeNoteStarPower.ToUnityColor());
+                        break;
+                    case GameMode.FourLaneDrums:
+                        ref readonly var fourlane = ref _preset.Config.FourLaneDrums;
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.KickFret)].SetValueWithoutNotify(fourlane.KickFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedFret)].SetValueWithoutNotify(fourlane.RedFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowFret)].SetValueWithoutNotify(fourlane.YellowFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueFret)].SetValueWithoutNotify(fourlane.BlueFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenFret)].SetValueWithoutNotify(fourlane.GreenFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.KickFretInner)].SetValueWithoutNotify(fourlane.KickFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedFretInner)].SetValueWithoutNotify(fourlane.RedFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowFretInner)].SetValueWithoutNotify(fourlane.YellowFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueFretInner)].SetValueWithoutNotify(fourlane.BlueFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenFretInner)].SetValueWithoutNotify(fourlane.GreenFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.KickParticles)].SetValueWithoutNotify(fourlane.KickParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedParticles)].SetValueWithoutNotify(fourlane.RedParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowParticles)].SetValueWithoutNotify(fourlane.YellowParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueParticles)].SetValueWithoutNotify(fourlane.BlueParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenParticles)].SetValueWithoutNotify(fourlane.GreenParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.KickNote)].SetValueWithoutNotify(fourlane.KickNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedDrum)].SetValueWithoutNotify(fourlane.RedDrum.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowDrum)].SetValueWithoutNotify(fourlane.YellowDrum.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueDrum)].SetValueWithoutNotify(fourlane.BlueDrum.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenDrum)].SetValueWithoutNotify(fourlane.GreenDrum.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedCymbal)].SetValueWithoutNotify(fourlane.RedCymbal.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowCymbal)].SetValueWithoutNotify(fourlane.YellowCymbal.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueCymbal)].SetValueWithoutNotify(fourlane.BlueCymbal.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenCymbal)].SetValueWithoutNotify(fourlane.GreenCymbal.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.KickStarpower)].SetValueWithoutNotify(fourlane.KickStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedDrumStarpower)].SetValueWithoutNotify(fourlane.RedDrumStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowDrumStarpower)].SetValueWithoutNotify(fourlane.YellowDrumStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueDrumStarpower)].SetValueWithoutNotify(fourlane.BlueDrumStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenDrumStarpower)].SetValueWithoutNotify(fourlane.GreenDrumStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.RedCymbalStarpower)].SetValueWithoutNotify(fourlane.RedCymbalStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.YellowCymbalStarpower)].SetValueWithoutNotify(fourlane.YellowCymbalStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.BlueCymbalStarpower)].SetValueWithoutNotify(fourlane.BlueCymbalStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.GreenCymbalStarpower)].SetValueWithoutNotify(fourlane.GreenCymbalStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FourLaneDrumsColors.ActivationNote)].SetValueWithoutNotify(fourlane.ActivationNote.ToUnityColor());
+                        break;
+                    case GameMode.FiveLaneDrums:
+                        ref readonly var fivelane = ref _preset.Config.FiveLaneDrums;
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.KickFret)].SetValueWithoutNotify(fivelane.KickFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.RedFret)].SetValueWithoutNotify(fivelane.RedFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowFret)].SetValueWithoutNotify(fivelane.YellowFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueFret)].SetValueWithoutNotify(fivelane.BlueFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeFret)].SetValueWithoutNotify(fivelane.OrangeFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenFret)].SetValueWithoutNotify(fivelane.GreenFret.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.KickFretInner)].SetValueWithoutNotify(fivelane.KickFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.RedFretInner)].SetValueWithoutNotify(fivelane.RedFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowFretInner)].SetValueWithoutNotify(fivelane.YellowFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueFretInner)].SetValueWithoutNotify(fivelane.BlueFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeFretInner)].SetValueWithoutNotify(fivelane.OrangeFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenFretInner)].SetValueWithoutNotify(fivelane.GreenFretInner.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.KickParticles)].SetValueWithoutNotify(fivelane.KickParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.RedParticles)].SetValueWithoutNotify(fivelane.RedParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowParticles)].SetValueWithoutNotify(fivelane.YellowParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueParticles)].SetValueWithoutNotify(fivelane.BlueParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeParticles)].SetValueWithoutNotify(fivelane.OrangeParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenParticles)].SetValueWithoutNotify(fivelane.GreenParticles.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.KickNote)].SetValueWithoutNotify(fivelane.KickNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.RedNote)].SetValueWithoutNotify(fivelane.RedNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowNote)].SetValueWithoutNotify(fivelane.YellowNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueNote)].SetValueWithoutNotify(fivelane.BlueNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeNote)].SetValueWithoutNotify(fivelane.OrangeNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenNote)].SetValueWithoutNotify(fivelane.GreenNote.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.KickStarpower)].SetValueWithoutNotify(fivelane.KickStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.RedStarpower)].SetValueWithoutNotify(fivelane.RedStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.YellowStarpower)].SetValueWithoutNotify(fivelane.YellowStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.BlueStarpower)].SetValueWithoutNotify(fivelane.BlueStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.OrangeStarpower)].SetValueWithoutNotify(fivelane.OrangeStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.GreenStarpower)].SetValueWithoutNotify(fivelane.GreenStarpower.ToUnityColor());
+                        settings[nameof(ColorProfile.FiveLaneDrumsColors.ActivationNote)].SetValueWithoutNotify(fivelane.ActivationNote.ToUnityColor());
+                        break;
+                }
+                SettingsMenu.Instance.OnSettingChanged();
             }
-            SettingsMenu.Instance.OnSettingChanged();
         }
 
         public override void BuildSettingTab(Transform settingContainer, NavigationGroup navGroup)
@@ -538,41 +544,45 @@ namespace YARG.Settings.Metadata
             );
         }
 
-        public override void SetPreset(in PresetContainer<EnginePreset> preset)
+        public override PresetContainer<EnginePreset> Preset
         {
-            _preset = preset;
-            switch (_type)
+            get => _preset;
+            set
             {
-                case EnginePreset.Type.FiveFretGuitarPreset:
-                    ref readonly var fivefret = ref preset.Config.FiveFretGuitar;
-                    _guitar.AntiGhosting.SetValueWithoutNotify(fivefret.AntiGhosting);
-                    _guitar.InfiniteFrontEnd.SetValueWithoutNotify(fivefret.InfiniteFrontEnd);
-                    _guitar.HopoLeniency.SetValueWithoutNotify(fivefret.HopoLeniency);
-                    _guitar.StrumLeniency.SetValueWithoutNotify(fivefret.StrumLeniency);
-                    _guitar.StrumLeniencySmall.SetValueWithoutNotify(fivefret.StrumLeniencySmall);
-                    _guitar.DynamicHitWindow.SetValueWithoutNotify(fivefret.HitWindow.IsDynamic);
-                    _guitar.HitWindow.SetValueWithoutNotify(fivefret.HitWindow);
-                    _guitar.WindowFrontToBack.SetValueWithoutNotify((float) fivefret.HitWindow.FrontToBackRatio);
-                    break;
-                case EnginePreset.Type.DrumsPreset:
-                    ref readonly var drums = ref preset.Config.Drums;
-                    _drum.DynamicHitWindow.SetValueWithoutNotify(drums.HitWindow.IsDynamic);
-                    _drum.HitWindow.SetValueWithoutNotify(drums.HitWindow);
-                    _drum.WindowFrontToBack.SetValueWithoutNotify((float) drums.HitWindow.FrontToBackRatio);
-                    break;
-                case EnginePreset.Type.VocalsPreset:
-                    ref readonly var vocals = ref preset.Config.Vocals;
-                    _vocal.WindowSizeE.SetValueWithoutNotify((float) vocals.WindowSizeE);
-                    _vocal.WindowSizeM.SetValueWithoutNotify((float) vocals.WindowSizeM);
-                    _vocal.WindowSizeH.SetValueWithoutNotify((float) vocals.WindowSizeH);
-                    _vocal.WindowSizeX.SetValueWithoutNotify((float) vocals.WindowSizeX);
-                    _vocal.HitPercentE.SetValueWithoutNotify((float) vocals.HitPercentE);
-                    _vocal.HitPercentM.SetValueWithoutNotify((float) vocals.HitPercentM);
-                    _vocal.HitPercentH.SetValueWithoutNotify((float) vocals.HitPercentH);
-                    _vocal.HitPercentX.SetValueWithoutNotify((float) vocals.HitPercentX);
-                    break;
+                _preset = value;
+                switch (_type)
+                {
+                    case EnginePreset.Type.FiveFretGuitarPreset:
+                        ref readonly var fivefret = ref _preset.Config.FiveFretGuitar;
+                        _guitar.AntiGhosting.SetValueWithoutNotify(fivefret.AntiGhosting);
+                        _guitar.InfiniteFrontEnd.SetValueWithoutNotify(fivefret.InfiniteFrontEnd);
+                        _guitar.HopoLeniency.SetValueWithoutNotify(fivefret.HopoLeniency);
+                        _guitar.StrumLeniency.SetValueWithoutNotify(fivefret.StrumLeniency);
+                        _guitar.StrumLeniencySmall.SetValueWithoutNotify(fivefret.StrumLeniencySmall);
+                        _guitar.DynamicHitWindow.SetValueWithoutNotify(fivefret.HitWindow.IsDynamic);
+                        _guitar.HitWindow.SetValueWithoutNotify(fivefret.HitWindow);
+                        _guitar.WindowFrontToBack.SetValueWithoutNotify((float) fivefret.HitWindow.FrontToBackRatio);
+                        break;
+                    case EnginePreset.Type.DrumsPreset:
+                        ref readonly var drums = ref _preset.Config.Drums;
+                        _drum.DynamicHitWindow.SetValueWithoutNotify(drums.HitWindow.IsDynamic);
+                        _drum.HitWindow.SetValueWithoutNotify(drums.HitWindow);
+                        _drum.WindowFrontToBack.SetValueWithoutNotify((float) drums.HitWindow.FrontToBackRatio);
+                        break;
+                    case EnginePreset.Type.VocalsPreset:
+                        ref readonly var vocals = ref _preset.Config.Vocals;
+                        _vocal.WindowSizeE.SetValueWithoutNotify((float) vocals.WindowSizeE);
+                        _vocal.WindowSizeM.SetValueWithoutNotify((float) vocals.WindowSizeM);
+                        _vocal.WindowSizeH.SetValueWithoutNotify((float) vocals.WindowSizeH);
+                        _vocal.WindowSizeX.SetValueWithoutNotify((float) vocals.WindowSizeX);
+                        _vocal.HitPercentE.SetValueWithoutNotify((float) vocals.HitPercentE);
+                        _vocal.HitPercentM.SetValueWithoutNotify((float) vocals.HitPercentM);
+                        _vocal.HitPercentH.SetValueWithoutNotify((float) vocals.HitPercentH);
+                        _vocal.HitPercentX.SetValueWithoutNotify((float) vocals.HitPercentX);
+                        break;
+                }
+                SettingsMenu.Instance.OnSettingChanged();
             }
-            SettingsMenu.Instance.OnSettingChanged();
         }
 
         public override void BuildSettingTab(Transform settingContainer, NavigationGroup navGroup)
