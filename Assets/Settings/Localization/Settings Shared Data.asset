@@ -684,15 +684,15 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 62024422966812672
-    m_Key: PresetType.CameraSettingsContainer
+    m_Key: PresetType.Camera
     m_Metadata:
       m_Items: []
   - m_Id: 64543436070838272
-    m_Key: PresetType.ColorProfileContainer
+    m_Key: PresetType.Colors
     m_Metadata:
       m_Items: []
   - m_Id: 92846839955841025
-    m_Key: PresetType.EnginePresetContainer
+    m_Key: PresetType.Engine
     m_Metadata:
       m_Items: []
   - m_Id: 126547259244797952
