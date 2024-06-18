@@ -280,9 +280,9 @@ namespace YARG.Settings.Preview
 
         private void OnSettingChanged()
         {
-            var cameraPreset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Camera, CustomContentManager.CameraSettings);
-            var colorProfile = PresetsTab.GetLastSelectedPresetConfig(PresetType.Colors, CustomContentManager.ColorProfiles);
-            var enginePreset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Engine, CustomContentManager.EnginePresets);
+            var cameraPreset = PresetsTab.GetLastSelectedCameraPresetConfig();
+            var colorProfile = PresetsTab.GetLastSelectedColorProfileConfig();
+            var enginePreset = PresetsTab.GetLastSelectedEnginePresetConfig();
 
             // Update camera presets
             _trackMaterial.Initialize(3f, cameraPreset.FadeLength);

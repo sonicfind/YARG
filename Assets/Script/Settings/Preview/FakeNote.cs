@@ -83,8 +83,8 @@ namespace YARG.Settings.Preview
 
         public void OnSettingChanged()
         {
-            var cameraPreset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Camera, CustomContentManager.CameraSettings);
-            var colorProfile = PresetsTab.GetLastSelectedPresetConfig(PresetType.Colors, CustomContentManager.ColorProfiles);
+            var cameraPreset = PresetsTab.GetLastSelectedCameraPresetConfig();
+            var colorProfile = PresetsTab.GetLastSelectedColorProfileConfig();
 
             // Update fade
             foreach (var material in _materials)

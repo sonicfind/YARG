@@ -400,22 +400,30 @@ namespace YARG.Settings.Metadata
             }
         }
 
-        public static PresetContainer<TPreset> GetLastSelectedPreset<TPreset>(PresetType type, CustomContentContainer<TPreset> customContent)
+        private static PresetContainer<TPreset> GetLastSelectedPreset<TPreset>(ref Guid id, PresetSubTab<TPreset> tab)
             where TPreset : struct
         {
-            ref var id = ref _lastSelectedPresetOfType[(int) type];
-            if (!customContent.TryGetPreset(id, out var preset))
+            if (!tab.CustomContent.TryGetPreset(id, out var preset))
             {
-                preset = customContent[0];
+                preset = tab.CustomContent[0];
                 id = preset.Id;
             }
             return preset;
         }
 
-        public static TPreset GetLastSelectedPresetConfig<TPreset>(PresetType type, CustomContentContainer<TPreset> customContent)
-            where TPreset : struct
+        public static CameraPreset GetLastSelectedCameraPresetConfig()
         {
-            return GetLastSelectedPreset(type, customContent).Config;
+            return GetLastSelectedPreset(ref _lastSelectedPresetOfType[0], _cameraTab).Config;
+        }
+
+        public static ColorProfile GetLastSelectedColorProfileConfig()
+        {
+            return GetLastSelectedPreset(ref _lastSelectedPresetOfType[1], _colorsTab).Config;
+        }
+
+        public static EnginePreset GetLastSelectedEnginePresetConfig()
+        {
+            return GetLastSelectedPreset(ref _lastSelectedPresetOfType[2], _engineTab).Config;
         }
 
         public static void IgnorePathUpdate(string path)

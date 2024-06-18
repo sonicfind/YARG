@@ -18,7 +18,7 @@ namespace YARG.Settings.Preview
             _transformCache = transform;
 
             // Set fade (required in case the hit window goes past the fade threshold)
-            var cameraPreset = PresetsTab.GetLastSelectedPresetConfig(PresetType.Camera, CustomContentManager.CameraSettings);
+            var cameraPreset = PresetsTab.GetLastSelectedCameraPresetConfig();
             GetComponent<MeshRenderer>().material.SetFade(3f, cameraPreset.FadeLength);
         }
 
