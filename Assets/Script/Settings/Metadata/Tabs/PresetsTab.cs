@@ -404,7 +404,7 @@ namespace YARG.Settings.Metadata
         }
 
         private static PresetContainer<TPreset> GetLastSelectedPreset<TPreset>(ref Guid id, PresetSubTab<TPreset> tab)
-            where TPreset : struct
+            where TPreset : unmanaged
         {
             if (!tab.CustomContent.TryGetPreset(id, out var preset))
             {

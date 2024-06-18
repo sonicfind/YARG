@@ -17,7 +17,7 @@ using YARG.Settings.Metadata;
 namespace YARG.Settings.Customization
 {
     public class CustomContentContainer<TPreset>
-        where TPreset : struct
+        where TPreset : unmanaged
     {
         public IReadOnlyList<PresetContainer<TPreset>> DefaultPresets => _defaultPresets;
         public IReadOnlyList<PresetContainer<TPreset>> CustomPresets => _customPresets;

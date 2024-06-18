@@ -16,7 +16,7 @@ using YARG.Settings.Types;
 namespace YARG.Settings.Metadata
 {
     public abstract class PresetSubTab<TPreset> : Tab
-        where TPreset : struct
+        where TPreset : unmanaged
     {
         // Prefabs needed for this tab type
         private static readonly GameObject _headerPrefab = Addressables
