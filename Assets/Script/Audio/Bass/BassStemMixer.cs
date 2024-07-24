@@ -12,6 +12,7 @@ namespace YARG.Audio.BASS
     public sealed class BassStemMixer : StemMixer
     {
         private readonly int _mixerHandle;
+        private readonly int _tempoStream;
         private readonly int _sourceStream;
 
         private StreamHandle _mainHandle;
@@ -56,14 +57,14 @@ namespace YARG.Audio.BASS
 
         protected override int Play_Internal(bool restartBuffer)
         {
-            if (!Bass.ChannelPlay(_mixerHandle, restartBuffer))
+            if (!Bass.ChannelPlay(_tempoStream, restartBuffer))
             {
                 return (int) Bass.LastError;
             }
 
             if (Settings.SettingsManager.Settings.EnablePlaybackBuffer.Value)
             {
-                if (!Bass.ChannelUpdate(_mixerHandle, Bass.PlaybackBufferLength))
+                if (!Bass.ChannelUpdate(_tempoStream, Bass.PlaybackBufferLength))
                 {
                     YargLogger.LogFormatError("Failed to fill playback buffer: {0}!", Bass.LastError);
                 }
@@ -74,17 +75,17 @@ namespace YARG.Audio.BASS
         protected override void FadeIn_Internal(double maxVolume, double duration)
         {
             float scaled = (float) BassAudioManager.ExponentialVolume(maxVolume);
-            Bass.ChannelSlideAttribute(_mixerHandle, ChannelAttribute.Volume, scaled, (int) (duration * SongEntry.MILLISECOND_FACTOR));
+            Bass.ChannelSlideAttribute(_tempoStream, ChannelAttribute.Volume, scaled, (int) (duration * SongEntry.MILLISECOND_FACTOR));
         }
 
         protected override void FadeOut_Internal(double duration)
         {
-            Bass.ChannelSlideAttribute(_mixerHandle, ChannelAttribute.Volume, 0, (int) (duration * SongEntry.MILLISECOND_FACTOR));
+            Bass.ChannelSlideAttribute(_tempoStream, ChannelAttribute.Volume, 0, (int) (duration * SongEntry.MILLISECOND_FACTOR));
         }
 
         protected override int Pause_Internal()
         {
-            if (!Bass.ChannelPause(_mixerHandle))
+            if (!Bass.ChannelPause(_tempoStream))
             {
                 return (int) Bass.LastError;
             }
@@ -93,14 +94,14 @@ namespace YARG.Audio.BASS
 
         protected override double GetPosition_Internal()
         {
-            long position = Bass.ChannelGetPosition(_mainHandle.Stream);
+            long position = Bass.ChannelGetPosition(_tempoStream);
             if (position < 0)
             {
                 YargLogger.LogFormatError("Failed to get channel position in bytes: {0}", Bass.LastError);
                 return -1;
             }
 
-            double seconds = Bass.ChannelBytes2Seconds(_mainHandle.Stream, position);
+            double seconds = Bass.ChannelBytes2Seconds(_tempoStream, position);
             if (seconds < 0)
             {
                 YargLogger.LogFormatError("Failed to get channel position in seconds: {0}", Bass.LastError);
@@ -109,7 +110,7 @@ namespace YARG.Audio.BASS
 
             if (Settings.SettingsManager.Settings.EnablePlaybackBuffer.Value)
             {
-                seconds -= (Bass.PlaybackBufferLength / 1000.0f) * _speed;
+                seconds -= Bass.PlaybackBufferLength / 1000.0f;
                 // Gotta do this because ChannelBytes2Seconds() may not be less than the buffer at position 0
                 if (seconds < 0)
                 {
@@ -121,7 +122,7 @@ namespace YARG.Audio.BASS
 
         protected override double GetVolume_Internal()
         {
-            if (!Bass.ChannelGetAttribute(_mixerHandle, ChannelAttribute.Volume, out float volume))
+            if (!Bass.ChannelGetAttribute(_tempoStream, ChannelAttribute.Volume, out float volume))
             {
                 YargLogger.LogFormatError("Failed to get volume: {0}", Bass.LastError);
             }
@@ -171,7 +172,7 @@ namespace YARG.Audio.BASS
         protected override void SetVolume_Internal(double volume)
         {
             volume = BassAudioManager.ExponentialVolume(volume);
-            if (!Bass.ChannelSetAttribute(_mixerHandle, ChannelAttribute.Volume, volume))
+            if (!Bass.ChannelSetAttribute(_tempoStream, ChannelAttribute.Volume, volume))
             {
                 YargLogger.LogFormatError("Failed to set mixer volume: {0}", Bass.LastError);
             }
@@ -179,7 +180,7 @@ namespace YARG.Audio.BASS
 
         protected override int GetData_Internal(float[] buffer)
         {
-            int data = Bass.ChannelGetData(_mixerHandle, buffer, (int) (DataFlags.FFT256));
+            int data = Bass.ChannelGetData(_tempoStream, buffer, (int) (DataFlags.FFT256));
             if (data < 0)
             {
                 return (int) Bass.LastError;
@@ -196,9 +197,23 @@ namespace YARG.Audio.BASS
             }
 
             _speed = speed;
-            foreach (var channel in _channels)
+            // Gets relative speed from 100% (so 1.05f = 5% increase)
+            float percentageSpeed = speed * 100;
+            float relativeSpeed = percentageSpeed - 100;
+
+            if (!Bass.ChannelSetAttribute(_tempoStream, ChannelAttribute.Tempo, relativeSpeed))
             {
-                channel.SetSpeed(speed, shiftPitch);
+                YargLogger.LogFormatError("Failed to set channel speed: {0}!", Bass.LastError);
+            }
+
+            if (GlobalAudioHandler.IsChipmunkSpeedup && shiftPitch)
+            {
+                double accurateSemitoneShift = 12 * Math.Log(speed, 2);
+                float finalSemitoneShift = (float) Math.Clamp(accurateSemitoneShift, -60, 60);
+                if (!Bass.ChannelSetAttribute(_tempoStream, ChannelAttribute.Pitch, finalSemitoneShift))
+                {
+                    YargLogger.LogFormatError("Failed to set channel pitch: {0}!", Bass.LastError);
+                }
             }
         }
 
@@ -315,7 +330,7 @@ namespace YARG.Audio.BASS
                 length = 0;
             }
 
-            if (!Bass.ChannelSetAttribute(_mixerHandle, ChannelAttribute.Buffer, length))
+            if (!Bass.ChannelSetAttribute(_tempoStream, ChannelAttribute.Buffer, length))
             {
                 YargLogger.LogFormatError("Failed to set playback buffer: {0}!", Bass.LastError);
             }

@@ -290,6 +290,64 @@ namespace YARG.Playback
             _syncThread.Start();
         }
 
+        private double timeBase = 0;
+        private double syncOffset = 0;
+        private double audPivot = 0;
+        private double inputStart = 0;
+        private double inputOffset = 0;
+        private bool waiting = true;
+        public void Update2(float time)
+        {
+            if (Paused)
+            {
+                return;
+            }
+
+            if (_mixer.IsPaused)
+            {
+                double offset = SongOffset + AudioCalibration * SongSpeed;
+                if (SyncVisualTime >= offset)
+                {
+                    audPivot = _mixer.GetPosition();
+                    timeBase = time;
+                    _mixer.Play(true);
+                }
+                return;
+            }
+
+            double audTime = _mixer.GetPosition();
+            if (waiting)
+            {
+                if (audTime == audPivot)
+                {
+                    return;
+                }
+
+                double tmp = time - (audTime - audPivot);
+                inputStart = tmp + inputOffset;
+                syncOffset = tmp - timeBase;
+                waiting = false;
+
+                /*
+                 * Clear out of range inputs here (less than inputStart)
+                 */
+            }
+
+            /*
+             * Loop through all inputs up to time
+             * Then run non-input update at time
+             */
+
+            /*
+             * Check for pause inputs
+             */
+
+            if (false)
+            {
+
+            }
+        }
+
         public void Update()
         {
             // Runner is lazy-started to avoid timing issues with lag
