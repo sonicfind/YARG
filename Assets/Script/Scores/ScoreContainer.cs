@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using YARG.Assets.Script.Scores;
 using YARG.Core;
 using YARG.Core.Game;
 using YARG.Core.Logging;
@@ -18,6 +19,11 @@ namespace YARG.Scores
     {
         HighestOverall,
         HighestDifficulty,
+    }
+
+    public class ScoreContainer2
+    {
+        private readonly Dictionary<HashWrapper, List<PlayerRecord>> _songRecords = new();
     }
 
     public static partial class ScoreContainer
